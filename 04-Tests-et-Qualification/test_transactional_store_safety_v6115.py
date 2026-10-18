@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from contextlib import closing
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "03-Sources"))
 import transactional_store as store
@@ -29,7 +30,7 @@ class SnapshotSafetyTests(unittest.TestCase):
         connection.close()
         with self.assertRaises(sqlite3.OperationalError):
             store.load_snapshot(self.db, "0" * 64)
-        with sqlite3.connect(self.db) as check:
+        with closing(sqlite3.connect(self.db)) as check:
             self.assertEqual(check.execute("PRAGMA user_version").fetchone()[0], 0)
             self.assertEqual(check.execute("SELECT count(*) FROM sqlite_master WHERE name='snapshots'").fetchone()[0], 0)
 
@@ -49,8 +50,9 @@ class SnapshotSafetyTests(unittest.TestCase):
 
     def test_corrupted_item_payload_rejected(self):
         key = store.save_snapshot(self.db, [{"id": "a"}])
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn:
             conn.execute("UPDATE snapshot_items SET payload=? WHERE snapshot_id=?", ('{broken', key))
+            conn.commit()
         with self.assertRaisesRegex(ValueError, "Invalid snapshot item JSON"):
             store.load_snapshot(self.db, key)
 
@@ -59,9 +61,10 @@ class SnapshotSafetyTests(unittest.TestCase):
         payload = store.canonical([{"id": "same"}, {"id": "same"}])
         key = hashlib.sha256(payload.encode()).hexdigest()
         store.save_snapshot(self.db, [])  # Initialize schema before deliberate corruption.
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn:
             conn.execute("INSERT INTO snapshots VALUES (?,?,?)", (key, payload, "2026-01-01"))
             conn.execute("INSERT INTO snapshot_items VALUES (?,?,?)", (key, "same", '{"id":"same"}'))
+            conn.commit()
         with self.assertRaisesRegex(ValueError, "Duplicate asset ids"):
             store.load_snapshot(self.db, key)
 
