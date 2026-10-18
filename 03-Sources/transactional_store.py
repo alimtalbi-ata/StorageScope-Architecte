@@ -54,8 +54,17 @@ def save_snapshot(path, assets):
     return key
 
 def load_snapshot(path,key):
-    with closing(connect(path)) as conn:
-        migrate(conn)
+    # A read must not create a database or apply schema migrations.
+    # Open with SQLite mode=ro to keep diagnostics non-destructive.
+    from urllib.parse import quote
+    db_path = Path(path)
+    if not db_path.is_file():
+        raise KeyError(key)
+    uri = "file:" + quote(str(db_path.resolve()), safe="/") + "?mode=ro"
+    with closing(sqlite3.connect(uri, uri=True, timeout=15)) as conn:
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version > SCHEMA_VERSION:
+            raise ValueError("Database schema newer than application")
         row=conn.execute("SELECT payload FROM snapshots WHERE id=?",(key,)).fetchone()
         if row is None: raise KeyError(key)
         payload=row[0]
