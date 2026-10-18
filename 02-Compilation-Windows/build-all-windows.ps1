@@ -19,7 +19,7 @@ $unfinishedBackup = Join-Path $PSScriptRoot '.publish-backup'
 if (Test-Path -LiteralPath $unfinishedBackup) {
   throw "Publication interrompue detectee: $unfinishedBackup. Restaurer manuellement avant nouvelle compilation."
 }
-$unfinishedJournal = Join-Path $PSScriptRoot '.publish-pending'
+$unfinishedJournal = Join-Path $root '.storagescope-publish-pending'
 if (Test-Path -LiteralPath $unfinishedJournal) {
   throw "Publication en attente non resolue: $unfinishedJournal. Examiner les preuves et sauvegardes avant toute compilation."
 }
@@ -61,7 +61,7 @@ try {
       } finally { Pop-Location }
   foreach ($requiredOutput in @('dist/StorageScope.exe','dist/StorageScope-UpgradeGate.exe',"installer/StorageScope-Setup-v$releaseVersion.exe","installer/release-manifest-v$releaseVersion.json","portable/StorageScope-Portable-v$releaseVersion-win-x64.zip")) { if (-not (Test-Path (Join-Path $stage $requiredOutput))) { throw "Missing build output: $requiredOutput" } }
   # Validate all release payloads before publishing any of them.
-  $publishRoot = Join-Path $PSScriptRoot '.publish-pending'
+  $publishRoot = Join-Path $root '.storagescope-publish-pending'
   if (Test-Path -LiteralPath $publishRoot) { throw "Publication precedente non resolue: $publishRoot. Utiliser --recover avant de relancer." }
   New-Item -ItemType Directory -Path $publishRoot | Out-Null
   try {
