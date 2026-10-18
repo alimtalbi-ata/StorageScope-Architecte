@@ -70,6 +70,18 @@ def load_snapshot(path,key):
         payload=row[0]
         if hashlib.sha256(payload.encode()).hexdigest()!=key: raise ValueError("Snapshot hash mismatch")
         assets=json.loads(payload)
+        if not isinstance(assets, list):
+            raise ValueError("Snapshot payload must be a list")
+        if any(not isinstance(a, dict) or not isinstance(a.get("id"), str) for a in assets):
+            raise ValueError("Snapshot assets must have string identifiers")
+        asset_ids = [a["id"] for a in assets]
+        if len(set(asset_ids)) != len(asset_ids):
+            raise ValueError("Duplicate asset ids in snapshot payload")
         items=conn.execute("SELECT asset_id,payload FROM snapshot_items WHERE snapshot_id=?",(key,)).fetchall()
-        if len(items)!=len(assets) or {i[0]:json.loads(i[1]) for i in items}!={a['id']:a for a in assets}: raise ValueError("Snapshot item mismatch")
+        try:
+            decoded_items = {item_id: json.loads(item_payload) for item_id, item_payload in items}
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Invalid snapshot item JSON") from exc
+        if len(items)!=len(assets) or decoded_items!={a["id"]:a for a in assets}:
+            raise ValueError("Snapshot item mismatch")
         return assets
