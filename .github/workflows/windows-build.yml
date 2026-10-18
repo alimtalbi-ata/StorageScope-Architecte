@@ -11,6 +11,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Enforce single release version across sources and installer
+        shell: pwsh
+        run: |
+          python '03-Sources/release_version_guard.py'
+          if ($LASTEXITCODE -ne 0) { throw 'Release version metadata disagree; refusing to build' }
       - name: Check release sources and binary workspace
         shell: pwsh
         run: |
@@ -63,6 +68,11 @@ jobs:
           if (-not (Test-Path $reportPath)) { throw 'Portable smoke report missing' }
           $result = Get-Content -Raw $reportPath | ConvertFrom-Json
           if ($result.status -ne 'PASS' -or -not $result.archive_present -or -not $result.extracted -or -not $result.version_checked -or -not $result.self_test -or -not $result.cleanup) { throw 'Portable smoke evidence is not PASS' }
+      - name: Verify packaged source version after build
+        shell: pwsh
+        run: |
+          python '03-Sources/release_version_guard.py'
+          if ($LASTEXITCODE -ne 0) { throw 'Release version metadata drifted during build' }
       - name: Validate published binary deliverables
         shell: pwsh
         run: |
