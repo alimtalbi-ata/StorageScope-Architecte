@@ -54,7 +54,7 @@ def save_snapshot(path, assets):
     return key
 
 def load_snapshot(path,key):
-    with connect(path) as conn:
+    with closing(connect(path)) as conn:
         migrate(conn)
         row=conn.execute("SELECT payload FROM snapshots WHERE id=?",(key,)).fetchone()
         if row is None: raise KeyError(key)
