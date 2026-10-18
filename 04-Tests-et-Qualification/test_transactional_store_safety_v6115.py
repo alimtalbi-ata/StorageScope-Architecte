@@ -47,7 +47,7 @@ class SnapshotSafetyTests(unittest.TestCase):
         store.save_snapshot(self.db, assets)
         self.assertEqual(assets, [{"id": " a "}])
 
-    def test_connection_closes_on_success(self):
+    def test_write_connection_closes_on_success(self):
         actual = store.connect
         opened = []
         def tracked(path):
@@ -56,26 +56,29 @@ class SnapshotSafetyTests(unittest.TestCase):
             return connection
         with patch.object(store, "connect", side_effect=tracked):
             key = store.save_snapshot(self.db, [{"id": "a"}])
-            store.load_snapshot(self.db, key)
-        self.assertEqual(len(opened), 2)
-        for connection in opened:
-            with self.assertRaises(sqlite3.ProgrammingError):
-                connection.execute("SELECT 1")
-
-    def test_connection_closes_on_missing_snapshot(self):
-        store.save_snapshot(self.db, [])
-        actual = store.connect
-        opened = []
-        def tracked(path):
-            connection = actual(path)
-            opened.append(connection)
-            return connection
-        with patch.object(store, "connect", side_effect=tracked):
-            with self.assertRaises(KeyError):
-                store.load_snapshot(self.db, "0" * 64)
         self.assertEqual(len(opened), 1)
         with self.assertRaises(sqlite3.ProgrammingError):
             opened[0].execute("SELECT 1")
+        self.assertEqual(store.load_snapshot(self.db, key), [{"id": "a"}])
+
+    def test_read_connection_closes_on_success_and_error(self):
+        store.save_snapshot(self.db, [{"id": "a"}])
+        actual = store.sqlite3.connect
+        opened = []
+        def tracked(*args, **kwargs):
+            connection = actual(*args, **kwargs)
+            opened.append(connection)
+            return connection
+        with patch.object(store.sqlite3, "connect", side_effect=tracked):
+            key = store.save_snapshot(self.db, [{"id": "a"}])
+            store.load_snapshot(self.db, key)
+            with self.assertRaises(KeyError):
+                store.load_snapshot(self.db, "0" * 64)
+        # The write and both read connections must be closed.
+        self.assertEqual(len(opened), 3)
+        for connection in opened:
+            with self.assertRaises(sqlite3.ProgrammingError):
+                connection.execute("SELECT 1")
 
 if __name__ == "__main__":
     unittest.main()
