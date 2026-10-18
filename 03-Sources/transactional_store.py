@@ -1,5 +1,6 @@
 """StorageScope transactional store v6.25. Non-destructive governance snapshots."""
 import sqlite3, json, hashlib, datetime
+from contextlib import closing
 from pathlib import Path
 SCHEMA_VERSION = 1
 
@@ -35,9 +36,11 @@ def save_snapshot(path, assets):
         if not isinstance(asset,dict) or not isinstance(asset.get("id"),str) or not asset["id"].strip(): raise ValueError("Each asset needs a stable id")
         ids.append(asset["id"].strip())
     if len(set(ids))!=len(ids): raise ValueError("Duplicate asset ids")
-    ordered=sorted(assets,key=lambda a:a["id"])
+    # Normalize stable identifiers before hashing and writing the snapshot.
+    # Without this, ' x ' passes validation but roundtrip checks can diverge.
+    ordered=sorted(({**asset, "id": asset["id"].strip()} for asset in assets),key=lambda a:a["id"])
     payload=canonical(ordered); key=hashlib.sha256(payload.encode()).hexdigest()
-    with connect(path) as conn:
+    with closing(connect(path)) as conn:
         migrate(conn)
         conn.execute("BEGIN IMMEDIATE")
         try:
