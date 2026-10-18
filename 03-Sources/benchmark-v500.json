@@ -1,0 +1,14 @@
+[
+  {
+    "dependencies": 500,
+    "cold_seconds": 0.39264,
+    "warm_median_seconds": 9e-05,
+    "cache_hits": 5
+  },
+  {
+    "dependencies": 1000,
+    "cold_seconds": 1.03155,
+    "warm_median_seconds": 0.00022,
+    "cache_hits": 5
+  }
+]

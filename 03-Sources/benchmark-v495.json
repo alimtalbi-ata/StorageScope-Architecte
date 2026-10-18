@@ -1,0 +1,23 @@
+{
+  "environment": "Synthetic Linux headless; no Tk UI; includes index build",
+  "results": [
+    {
+      "rectangles": 500,
+      "queries": 100,
+      "linear_ms": 34.02,
+      "indexed_build_included_ms": 1.5
+    },
+    {
+      "rectangles": 1000,
+      "queries": 100,
+      "linear_ms": 38.38,
+      "indexed_build_included_ms": 2.21
+    },
+    {
+      "rectangles": 5000,
+      "queries": 100,
+      "linear_ms": 206.48,
+      "indexed_build_included_ms": 14.35
+    }
+  ]
+}

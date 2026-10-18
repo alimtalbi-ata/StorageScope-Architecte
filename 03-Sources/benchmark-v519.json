@@ -1,0 +1,994 @@
+{
+  "method": "Offline gate-decision comparison on 48 identical synthetic traces; no measured performance gain",
+  "scenarios": 48,
+  "policies": [
+    {
+      "policy": "v5.18_default",
+      "full_routes": 8,
+      "partial_eligible": 40,
+      "decisions": [
+        {
+          "id": "100-1-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-6-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-6-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-6-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-6-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-7-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-7-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-7-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-7-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-8-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-1-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-8-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        }
+      ]
+    },
+    {
+      "policy": "density_05pct",
+      "full_routes": 14,
+      "partial_eligible": 34,
+      "decisions": [
+        {
+          "id": "100-1-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-spaced-favorable",
+          "full_route": false,
+          "reason": "reuse_or_cost_favorable"
+        },
+        {
+          "id": "100-5-spaced-adverse",
+          "full_route": true,
+          "reason": "measured_cost"
+        },
+        {
+          "id": "100-5-dense-favorable",
+          "full_route": false,
+          "reason": "reuse_or_cost_favorable"
+        },
+        {
+          "id": "100-5-dense-adverse",
+          "full_route": true,
+          "reason": "measured_cost"
+        },
+        {
+          "id": "100-6-spaced-favorable",
+          "full_route": false,
+          "reason": "reuse_or_cost_favorable"
+        },
+        {
+          "id": "100-6-spaced-adverse",
+          "full_route": true,
+          "reason": "measured_cost"
+        },
+        {
+          "id": "100-6-dense-favorable",
+          "full_route": false,
+          "reason": "reuse_or_cost_favorable"
+        },
+        {
+          "id": "100-6-dense-adverse",
+          "full_route": true,
+          "reason": "measured_cost"
+        },
+        {
+          "id": "100-7-spaced-favorable",
+          "full_route": false,
+          "reason": "reuse_or_cost_favorable"
+        },
+        {
+          "id": "100-7-spaced-adverse",
+          "full_route": true,
+          "reason": "measured_cost"
+        },
+        {
+          "id": "100-7-dense-favorable",
+          "full_route": false,
+          "reason": "reuse_or_cost_favorable"
+        },
+        {
+          "id": "100-7-dense-adverse",
+          "full_route": true,
+          "reason": "measured_cost"
+        },
+        {
+          "id": "100-8-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-1-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-8-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        }
+      ]
+    },
+    {
+      "policy": "conservative_6edits",
+      "full_routes": 24,
+      "partial_eligible": 24,
+      "decisions": [
+        {
+          "id": "100-1-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-6-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-6-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-6-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-6-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-7-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-7-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-7-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-7-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-1-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-6-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-6-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-6-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-7-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-7-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-7-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-7-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        }
+      ]
+    },
+    {
+      "policy": "cost_strict",
+      "full_routes": 8,
+      "partial_eligible": 40,
+      "decisions": [
+        {
+          "id": "100-1-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-1-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-3-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-5-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-6-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-6-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-6-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-6-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-7-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-7-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-7-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-7-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "100-8-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "100-8-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-1-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-1-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-3-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-5-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-6-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-spaced-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-spaced-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-dense-favorable",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-7-dense-adverse",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "300-8-spaced-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-spaced-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-dense-favorable",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "300-8-dense-adverse",
+          "full_route": true,
+          "reason": "hard_limit"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "environment": "Linux container, synthetic data; not Windows UI",
+  "candidate_count": 1000,
+  "iterations": 3,
+  "results": [
+    {
+      "query": "netapp",
+      "matched": 1000,
+      "mean_ms": 3.125
+    },
+    {
+      "query": "asset:netapp-99",
+      "matched": 11,
+      "mean_ms": 3.221
+    },
+    {
+      "query": "status:blocked",
+      "matched": 0,
+      "mean_ms": 3.117
+    }
+  ]
+}

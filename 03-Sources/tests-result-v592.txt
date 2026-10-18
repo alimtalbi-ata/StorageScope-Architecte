@@ -1,0 +1,6 @@
+834 tests automatisés réussis sous Linux.
+Contrôle build Windows : PASS.
+Version CLI : 5.92.
+Self-test : PASS.
+Aucun build natif Windows ou screenshot réel effectué.
+Avertissements ResourceWarning SQLite présents dans les tests.

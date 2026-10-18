@@ -1,0 +1,3 @@
+Windows UI -> lecture portefeuille async -> SQLite mode=ro -> BEGIN -> SELECT -> COMMIT -> close
+Erreur -> rollback seulement si transaction ouverte -> close -> remonter erreur originale
+Annulation graphe -> verifiee avant ouverture SQLite

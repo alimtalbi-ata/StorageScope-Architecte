@@ -1,0 +1,61 @@
+{
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "results": [
+    {
+      "size": 10000,
+      "query": "",
+      "state": "ALL",
+      "matches": 10000,
+      "elapsed_ms": 1.66
+    },
+    {
+      "size": 10000,
+      "query": "",
+      "state": "BLOCKED_CONTRADICTION",
+      "matches": 1000,
+      "elapsed_ms": 0.88
+    },
+    {
+      "size": 10000,
+      "query": "asset:netapp-999",
+      "state": "ALL",
+      "matches": 11,
+      "elapsed_ms": 10.83
+    },
+    {
+      "size": 10000,
+      "query": "site 4",
+      "state": "ALL",
+      "matches": 3439,
+      "elapsed_ms": 36.54
+    },
+    {
+      "size": 100000,
+      "query": "",
+      "state": "ALL",
+      "matches": 100000,
+      "elapsed_ms": 15.93
+    },
+    {
+      "size": 100000,
+      "query": "",
+      "state": "BLOCKED_CONTRADICTION",
+      "matches": 10000,
+      "elapsed_ms": 13.91
+    },
+    {
+      "size": 100000,
+      "query": "asset:netapp-999",
+      "state": "ALL",
+      "matches": 111,
+      "elapsed_ms": 127.78
+    },
+    {
+      "size": 100000,
+      "query": "site 4",
+      "state": "ALL",
+      "matches": 40951,
+      "elapsed_ms": 380.9
+    }
+  ]
+}

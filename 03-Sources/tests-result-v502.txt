@@ -1,0 +1,1 @@
+217 tests automatisés réussis sous Linux, 5 nouveaux tests v5.02. Avertissements ResourceWarning hérités.

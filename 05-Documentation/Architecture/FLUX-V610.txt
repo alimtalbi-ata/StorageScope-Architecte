@@ -1,0 +1,1 @@
+Utilisateur -> UI Tkinter -> PageController -> Gouvernance / Campagnes -> SQLite local -> Audit / sauvegarde SHA256

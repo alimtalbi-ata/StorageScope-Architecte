@@ -1,0 +1,8 @@
+{
+  "version": "6.100",
+  "author": "Abdelhalim Talbi",
+  "windows_build_executed": false,
+  "precompiled_binaries": false,
+  "new_tests_passed": 5,
+  "feature": "stale qualification evidence rejection"
+}

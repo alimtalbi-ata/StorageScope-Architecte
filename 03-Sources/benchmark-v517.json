@@ -1,0 +1,379 @@
+{
+  "method": "2 repetitions per 12 scenarios; 5 successive edits each; seeded synthetic adverse timing history; paired exact full-route comparison; timings include cache and validation; Linux headless",
+  "scenarios": [
+    {
+      "nodes": 100,
+      "edits": 1,
+      "spacing": 115,
+      "cache_median_ms": 3.563,
+      "full_median_ms": 22.836,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 100,
+      "edits": 1,
+      "spacing": 260,
+      "cache_median_ms": 4.017,
+      "full_median_ms": 24.988,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 100,
+      "edits": 3,
+      "spacing": 115,
+      "cache_median_ms": 6.164,
+      "full_median_ms": 22.918,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 100,
+      "edits": 3,
+      "spacing": 260,
+      "cache_median_ms": 6.434,
+      "full_median_ms": 26.287,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 100,
+      "edits": 8,
+      "spacing": 115,
+      "cache_median_ms": 28.397,
+      "full_median_ms": 25.94,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 100,
+      "edits": 8,
+      "spacing": 260,
+      "cache_median_ms": 25.197,
+      "full_median_ms": 23.939,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 300,
+      "edits": 1,
+      "spacing": 115,
+      "cache_median_ms": 8.12,
+      "full_median_ms": 120.754,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 300,
+      "edits": 1,
+      "spacing": 260,
+      "cache_median_ms": 11.946,
+      "full_median_ms": 152.84,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 300,
+      "edits": 3,
+      "spacing": 115,
+      "cache_median_ms": 14.243,
+      "full_median_ms": 124.397,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 300,
+      "edits": 3,
+      "spacing": 260,
+      "cache_median_ms": 15.733,
+      "full_median_ms": 132.486,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 300,
+      "edits": 8,
+      "spacing": 115,
+      "cache_median_ms": 115.841,
+      "full_median_ms": 119.695,
+      "comparisons": 10,
+      "cost_skips": 0
+    },
+    {
+      "nodes": 300,
+      "edits": 8,
+      "spacing": 260,
+      "cache_median_ms": 124.114,
+      "full_median_ms": 126.65,
+      "comparisons": 10,
+      "cost_skips": 0
+    }
+  ],
+  "runs": [
+    {
+      "nodes": 100,
+      "edits": 1,
+      "spacing": 115,
+      "repetition": 0,
+      "cache_median_ms": 3.3615450010984205,
+      "full_median_ms": 22.22292900114553,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 1,
+      "spacing": 115,
+      "repetition": 1,
+      "cache_median_ms": 3.76473799951782,
+      "full_median_ms": 23.449522001101286,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 1,
+      "spacing": 260,
+      "repetition": 0,
+      "cache_median_ms": 4.452144999959273,
+      "full_median_ms": 27.335169999787468,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 1,
+      "spacing": 260,
+      "repetition": 1,
+      "cache_median_ms": 3.5809830005746335,
+      "full_median_ms": 22.64090400058194,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 3,
+      "spacing": 115,
+      "repetition": 0,
+      "cache_median_ms": 6.441289000576944,
+      "full_median_ms": 22.833981998701347,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 3,
+      "spacing": 115,
+      "repetition": 1,
+      "cache_median_ms": 5.886398999791709,
+      "full_median_ms": 23.002604000794236,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 3,
+      "spacing": 260,
+      "repetition": 0,
+      "cache_median_ms": 6.18927200048347,
+      "full_median_ms": 25.021322999236872,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 3,
+      "spacing": 260,
+      "repetition": 1,
+      "cache_median_ms": 6.679093999991892,
+      "full_median_ms": 27.552326000659377,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 8,
+      "spacing": 115,
+      "repetition": 0,
+      "cache_median_ms": 24.418300001343596,
+      "full_median_ms": 23.54887100045744,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 8,
+      "spacing": 115,
+      "repetition": 1,
+      "cache_median_ms": 32.37563500078977,
+      "full_median_ms": 28.33045400075207,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 8,
+      "spacing": 260,
+      "repetition": 0,
+      "cache_median_ms": 27.739450000808574,
+      "full_median_ms": 25.0751620005758,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 100,
+      "edits": 8,
+      "spacing": 260,
+      "repetition": 1,
+      "cache_median_ms": 22.65415399961057,
+      "full_median_ms": 22.802505000072415,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 1,
+      "spacing": 115,
+      "repetition": 0,
+      "cache_median_ms": 8.403652000197326,
+      "full_median_ms": 130.7506809989718,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 1,
+      "spacing": 115,
+      "repetition": 1,
+      "cache_median_ms": 7.8366750003624475,
+      "full_median_ms": 110.75642499963578,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 1,
+      "spacing": 260,
+      "repetition": 0,
+      "cache_median_ms": 12.499345000833273,
+      "full_median_ms": 150.5523389987502,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 1,
+      "spacing": 260,
+      "repetition": 1,
+      "cache_median_ms": 11.391729000024498,
+      "full_median_ms": 155.1266910009872,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 3,
+      "spacing": 115,
+      "repetition": 0,
+      "cache_median_ms": 14.299865999419126,
+      "full_median_ms": 121.73159099984332,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 3,
+      "spacing": 115,
+      "repetition": 1,
+      "cache_median_ms": 14.185595000526519,
+      "full_median_ms": 127.06313100170519,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 3,
+      "spacing": 260,
+      "repetition": 0,
+      "cache_median_ms": 16.323380999892834,
+      "full_median_ms": 137.1953770012624,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 3,
+      "spacing": 260,
+      "repetition": 1,
+      "cache_median_ms": 15.142866999667604,
+      "full_median_ms": 127.77680799990776,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 8,
+      "spacing": 115,
+      "repetition": 0,
+      "cache_median_ms": 118.31212899960519,
+      "full_median_ms": 122.75626299924625,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 8,
+      "spacing": 115,
+      "repetition": 1,
+      "cache_median_ms": 113.3706370001164,
+      "full_median_ms": 116.63360499915143,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 8,
+      "spacing": 260,
+      "repetition": 0,
+      "cache_median_ms": 122.967172999779,
+      "full_median_ms": 127.80503500107443,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    },
+    {
+      "nodes": 300,
+      "edits": 8,
+      "spacing": 260,
+      "repetition": 1,
+      "cache_median_ms": 125.26123200041184,
+      "full_median_ms": 125.49500199929753,
+      "cost_skips": 0,
+      "cost_probes": 0,
+      "comparisons": 5
+    }
+  ]
+}

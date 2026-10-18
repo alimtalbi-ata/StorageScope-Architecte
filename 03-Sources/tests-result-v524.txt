@@ -1,0 +1,34 @@
+/mnt/data/ss524/test_v464.py:24: ResourceWarning: unclosed file <_io.TextIOWrapper name='desktop.py' mode='r' encoding='UTF-8'>
+  source=open('desktop.py').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss524/test_v465.py:23: ResourceWarning: unclosed file <_io.TextIOWrapper name='desktop.py' mode='r' encoding='utf-8'>
+  source=open('desktop.py',encoding='utf-8').read();self.assertIn('portfolio_page',source);self.assertIn('portfolio_offset',source)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss524/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f9b142fdb70>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss524/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f9b142ff4c0>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss524/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f9b142ff5b0>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss524/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f9b142ff790>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss524/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f9b142ff880>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss524/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f9b142ff970>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss524/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f9b142ffa60>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss524/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f9b142ffb50>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+----------------------------------------------------------------------
+Ran 298 tests in 4.876s
+
+OK

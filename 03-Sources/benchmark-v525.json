@@ -1,0 +1,59 @@
+{
+  "kind": "deterministic_example_not_performance_measurement",
+  "stable": {
+    "selected_policy": "candidate_measured",
+    "reason": "candidate_stable_across_campaigns",
+    "recommendation_only": true,
+    "production_activation": false,
+    "campaign_count": 3,
+    "outliers": 0,
+    "observations": 36,
+    "outlier_fraction": 0.0,
+    "categories": 1,
+    "campaigns": [
+      {
+        "id": "0",
+        "reason": "candidate_passes_category_guard",
+        "selected_policy": "candidate_measured"
+      },
+      {
+        "id": "1",
+        "reason": "candidate_passes_category_guard",
+        "selected_policy": "candidate_measured"
+      },
+      {
+        "id": "2",
+        "reason": "candidate_passes_category_guard",
+        "selected_policy": "candidate_measured"
+      }
+    ]
+  },
+  "regression": {
+    "selected_policy": "default",
+    "reason": "cross_campaign_drift_or_missing_category",
+    "recommendation_only": true,
+    "production_activation": false,
+    "campaign_count": 3,
+    "outliers": 0,
+    "observations": 36,
+    "outlier_fraction": 0.0,
+    "categories": 1,
+    "campaigns": [
+      {
+        "id": "1",
+        "reason": "candidate_passes_category_guard",
+        "selected_policy": "candidate_measured"
+      },
+      {
+        "id": "2",
+        "reason": "candidate_passes_category_guard",
+        "selected_policy": "candidate_measured"
+      },
+      {
+        "id": "3",
+        "reason": "regression_guard",
+        "selected_policy": "default"
+      }
+    ]
+  }
+}

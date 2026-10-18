@@ -1,0 +1,1 @@
+759 tests automatises OK (Linux, Python 3.13). Qualification Windows non executee.

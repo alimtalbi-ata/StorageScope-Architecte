@@ -1,0 +1,23 @@
+test_clean (test_inventory_quality_v618.QualityTests.test_clean) ... ok
+test_duplicate (test_inventory_quality_v618.QualityTests.test_duplicate) ... ok
+test_empty (test_inventory_quality_v618.QualityTests.test_empty) ... ok
+test_future (test_inventory_quality_v618.QualityTests.test_future) ... ok
+test_invalid_record (test_inventory_quality_v618.QualityTests.test_invalid_record) ... ok
+test_invalid_time (test_inventory_quality_v618.QualityTests.test_invalid_time) ... ok
+test_nondestructive (test_inventory_quality_v618.QualityTests.test_nondestructive) ... ok
+test_required (test_inventory_quality_v618.QualityTests.test_required) ... ok
+test_stale (test_inventory_quality_v618.QualityTests.test_stale) ... ok
+test_timezone (test_inventory_quality_v618.QualityTests.test_timezone) ... ok
+test_bad_top_level (test_inventory_reconcile_v619.ReconciliationTests.test_bad_top_level) ... ok
+test_different_identifiers (test_inventory_reconcile_v619.ReconciliationTests.test_different_identifiers) ... ok
+test_duplicate_evidence (test_inventory_reconcile_v619.ReconciliationTests.test_duplicate_evidence) ... ok
+test_input_not_modified (test_inventory_reconcile_v619.ReconciliationTests.test_input_not_modified) ... ok
+test_missing_source (test_inventory_reconcile_v619.ReconciliationTests.test_missing_source) ... ok
+test_no_name_only_merge (test_inventory_reconcile_v619.ReconciliationTests.test_no_name_only_merge) ... ok
+test_non_object (test_inventory_reconcile_v619.ReconciliationTests.test_non_object) ... ok
+test_same_serial (test_inventory_reconcile_v619.ReconciliationTests.test_same_serial) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.001s
+
+OK

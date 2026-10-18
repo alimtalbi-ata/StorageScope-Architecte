@@ -1,0 +1,4 @@
+Commande : python -m unittest discover -q
+Résultat : Ran 148 tests — OK
+Plateforme : Linux, tests unitaires sans recette Tk graphique native Windows.
+Avertissements : ResourceWarning sur certains tests historiques SQLite.

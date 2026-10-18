@@ -1,0 +1,434 @@
+[
+  {
+    "nodes": 100,
+    "density": "sparse",
+    "edits": 1,
+    "repeats": 3,
+    "partial_median_seconds": 0.00435,
+    "full_median_seconds": 0.028886,
+    "reused_median": 91,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.004350381999756792,
+        "full": 0.09878223099985917,
+        "prefix_reused": 6,
+        "suffix_reused": 85,
+        "recomputed": 9,
+        "skipped": 0
+      },
+      {
+        "partial": 0.004263192000507843,
+        "full": 0.028172226999231498,
+        "prefix_reused": 25,
+        "suffix_reused": 66,
+        "recomputed": 9,
+        "skipped": 0
+      },
+      {
+        "partial": 0.004628668000805192,
+        "full": 0.02888642400102981,
+        "prefix_reused": 42,
+        "suffix_reused": 49,
+        "recomputed": 9,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 100,
+    "density": "sparse",
+    "edits": 3,
+    "repeats": 3,
+    "partial_median_seconds": 0.025913,
+    "full_median_seconds": 0.031894,
+    "reused_median": 0,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.025912840001183213,
+        "full": 0.026612345000103232,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 100,
+        "skipped": 0
+      },
+      {
+        "partial": 0.009397476000231109,
+        "full": 0.03561025900125969,
+        "prefix_reused": 19,
+        "suffix_reused": 56,
+        "recomputed": 25,
+        "skipped": 0
+      },
+      {
+        "partial": 0.03272814600131824,
+        "full": 0.03189416399982292,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 100,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 100,
+    "density": "sparse",
+    "edits": 8,
+    "repeats": 3,
+    "partial_median_seconds": 0.030283,
+    "full_median_seconds": 0.029674,
+    "reused_median": 39,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.02435711399994034,
+        "full": 0.028533296999739832,
+        "prefix_reused": 10,
+        "suffix_reused": 37,
+        "recomputed": 53,
+        "skipped": 0
+      },
+      {
+        "partial": 0.031230869000864914,
+        "full": 0.035201733000576496,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 100,
+        "skipped": 0
+      },
+      {
+        "partial": 0.030282765999800176,
+        "full": 0.029674416999114328,
+        "prefix_reused": 7,
+        "suffix_reused": 32,
+        "recomputed": 61,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 100,
+    "density": "dense",
+    "edits": 1,
+    "repeats": 3,
+    "partial_median_seconds": 0.02939,
+    "full_median_seconds": 0.027435,
+    "reused_median": 90,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.004965871999957017,
+        "full": 0.0274346139995032,
+        "prefix_reused": 25,
+        "suffix_reused": 66,
+        "recomputed": 9,
+        "skipped": 0
+      },
+      {
+        "partial": 0.02939018699908047,
+        "full": 0.0280657280000014,
+        "prefix_reused": 42,
+        "suffix_reused": 48,
+        "recomputed": 10,
+        "skipped": 0
+      },
+      {
+        "partial": 0.045964120001372066,
+        "full": 0.02436501499869337,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 100,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 100,
+    "density": "dense",
+    "edits": 3,
+    "repeats": 3,
+    "partial_median_seconds": 0.01057,
+    "full_median_seconds": 0.023273,
+    "reused_median": 72,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.010569668000243837,
+        "full": 0.028161496000393527,
+        "prefix_reused": 19,
+        "suffix_reused": 53,
+        "recomputed": 28,
+        "skipped": 0
+      },
+      {
+        "partial": 0.024559957999372273,
+        "full": 0.02283317699948384,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 100,
+        "skipped": 0
+      },
+      {
+        "partial": 0.007996091000677552,
+        "full": 0.023273135000636103,
+        "prefix_reused": 15,
+        "suffix_reused": 65,
+        "recomputed": 20,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 100,
+    "density": "dense",
+    "edits": 8,
+    "repeats": 3,
+    "partial_median_seconds": 0.028313,
+    "full_median_seconds": 0.035133,
+    "reused_median": 0,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.02831337200041162,
+        "full": 0.034067857999616535,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 100,
+        "skipped": 0
+      },
+      {
+        "partial": 0.028079638999770395,
+        "full": 0.03585745300006238,
+        "prefix_reused": 7,
+        "suffix_reused": 29,
+        "recomputed": 64,
+        "skipped": 0
+      },
+      {
+        "partial": 0.041463041001406964,
+        "full": 0.03513278999889735,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 100,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 300,
+    "density": "sparse",
+    "edits": 1,
+    "repeats": 3,
+    "partial_median_seconds": 0.008758,
+    "full_median_seconds": 0.137307,
+    "reused_median": 291,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.008276550001028227,
+        "full": 0.1544084320012189,
+        "prefix_reused": 46,
+        "suffix_reused": 245,
+        "recomputed": 9,
+        "skipped": 0
+      },
+      {
+        "partial": 0.008769596999627538,
+        "full": 0.13730682200002775,
+        "prefix_reused": 6,
+        "suffix_reused": 285,
+        "recomputed": 9,
+        "skipped": 0
+      },
+      {
+        "partial": 0.008758129000852932,
+        "full": 0.13098959400122112,
+        "prefix_reused": 127,
+        "suffix_reused": 164,
+        "recomputed": 9,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 300,
+    "density": "sparse",
+    "edits": 3,
+    "repeats": 3,
+    "partial_median_seconds": 0.075727,
+    "full_median_seconds": 0.155961,
+    "reused_median": 279,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.023547224000139977,
+        "full": 0.15596054100024048,
+        "prefix_reused": 85,
+        "suffix_reused": 194,
+        "recomputed": 21,
+        "skipped": 0
+      },
+      {
+        "partial": 0.07572746400001051,
+        "full": 0.125786952999988,
+        "prefix_reused": 29,
+        "suffix_reused": 250,
+        "recomputed": 21,
+        "skipped": 0
+      },
+      {
+        "partial": 0.15344634799839696,
+        "full": 0.15988606800056004,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 300,
+    "density": "sparse",
+    "edits": 8,
+    "repeats": 3,
+    "partial_median_seconds": 0.157814,
+    "full_median_seconds": 0.153599,
+    "reused_median": 0,
+    "skipped_runs": 1,
+    "samples": [
+      {
+        "partial": 0.15781437199984794,
+        "full": 0.15359926199926122,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 1
+      },
+      {
+        "partial": 0.17677495000134513,
+        "full": 0.2004624649998732,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 0
+      },
+      {
+        "partial": 0.14351677800004836,
+        "full": 0.1506057669994334,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 300,
+    "density": "dense",
+    "edits": 1,
+    "repeats": 3,
+    "partial_median_seconds": 0.009363,
+    "full_median_seconds": 0.130225,
+    "reused_median": 290,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.009362593998957891,
+        "full": 0.13022516700038977,
+        "prefix_reused": 6,
+        "suffix_reused": 284,
+        "recomputed": 10,
+        "skipped": 0
+      },
+      {
+        "partial": 0.008546318000298925,
+        "full": 0.15242638900053862,
+        "prefix_reused": 127,
+        "suffix_reused": 164,
+        "recomputed": 9,
+        "skipped": 0
+      },
+      {
+        "partial": 0.11622798000098555,
+        "full": 0.11766506800086063,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 300,
+    "density": "dense",
+    "edits": 3,
+    "repeats": 3,
+    "partial_median_seconds": 0.115519,
+    "full_median_seconds": 0.138615,
+    "reused_median": 0,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.01912642500064976,
+        "full": 0.13861456000086037,
+        "prefix_reused": 29,
+        "suffix_reused": 250,
+        "recomputed": 21,
+        "skipped": 0
+      },
+      {
+        "partial": 0.11551858900020306,
+        "full": 0.12221536200013361,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 0
+      },
+      {
+        "partial": 0.14655010900060006,
+        "full": 0.15023005500006548,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 0
+      }
+    ]
+  },
+  {
+    "nodes": 300,
+    "density": "dense",
+    "edits": 8,
+    "repeats": 3,
+    "partial_median_seconds": 0.127136,
+    "full_median_seconds": 0.160201,
+    "reused_median": 0,
+    "skipped_runs": 0,
+    "samples": [
+      {
+        "partial": 0.31993237800088536,
+        "full": 0.17472832200110133,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 0
+      },
+      {
+        "partial": 0.12713610300124856,
+        "full": 0.16020103299888433,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 0
+      },
+      {
+        "partial": 0.11548858400055906,
+        "full": 0.12247371199919144,
+        "prefix_reused": 0,
+        "suffix_reused": 0,
+        "recomputed": 300,
+        "skipped": 0
+      }
+    ]
+  }
+]

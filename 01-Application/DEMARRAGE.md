@@ -1,0 +1,1 @@
+Version 6.15. A la racine, double-cliquer Construire-StorageScope.cmd pour preparer les sources et lancer la compilation. La compilation et les dependances Windows doivent etre qualifiees sur Windows. Auteur Abdelhalim Talbi.

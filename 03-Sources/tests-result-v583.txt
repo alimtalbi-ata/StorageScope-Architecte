@@ -1,0 +1,4 @@
+python -m unittest discover -q
+Ran 789 tests in 12.179s
+OK
+Windows native tests: NOT RUN

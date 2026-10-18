@@ -1,0 +1,4 @@
+874 tests OK (Linux)
+Windows preflight PASS 6.00
+Python self-test PASS
+Windows EXE, installer and GUI not tested

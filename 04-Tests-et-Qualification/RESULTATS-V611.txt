@@ -1,0 +1,3 @@
+936 tests Python réussis sous Linux (unittest discover).
+Précontrôle statique Windows : PASS 6.11.
+Build/installateur natifs Windows et recette graphique : NON EFFECTUÉS.

@@ -1,0 +1,4 @@
+StorageScope v5.89 — 819 tests Python PASS sous Linux.
+Controle statique build : PASS.
+CLI --version : 5.89 ; CLI --self-test : PASS (frozen=false).
+Windows natif : NON EXECUTE. UI Windows : NON CAPTUREE.

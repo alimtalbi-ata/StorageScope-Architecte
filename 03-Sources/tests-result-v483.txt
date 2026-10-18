@@ -1,0 +1,1 @@
+144 tests, OK (Linux, headless). Voir RELEASE-V483.md pour les limites.

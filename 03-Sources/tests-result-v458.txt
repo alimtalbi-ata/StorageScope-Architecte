@@ -1,0 +1,27 @@
+test_empty (test_dashboard.DashboardTests.test_empty) ... ok
+test_links_and_counts (test_dashboard.DashboardTests.test_links_and_counts) ... ok
+test_tamper_rejected (test_dashboard.DashboardTests.test_tamper_rejected) ... ok
+test_unknown_decision (test_dashboard.DashboardTests.test_unknown_decision) ... ok
+test_desktop_has_expected_commands (test_desktop_integration.DesktopIntegrationTests.test_desktop_has_expected_commands) ... ok
+test_desktop_syntax (test_desktop_integration.DesktopIntegrationTests.test_desktop_syntax) ... ok
+test_audit_tamper_blocks_approval (test_extensions.ExtensionsTests.test_audit_tamper_blocks_approval) ... ok
+test_blocking_readiness (test_extensions.ExtensionsTests.test_blocking_readiness) ... ok
+test_dashboard (test_extensions.ExtensionsTests.test_dashboard) ... ok
+test_export (test_extensions.ExtensionsTests.test_export) ... ok
+test_reject_empty_actor (test_extensions.ExtensionsTests.test_reject_empty_actor) ... ok
+test_audit_tampering (test_governance.GovernanceTests.test_audit_tampering) ... ok
+test_blocking_reservation (test_governance.GovernanceTests.test_blocking_reservation) ... ok
+test_export_hash (test_governance.GovernanceTests.test_export_hash) ... ok
+test_self_approval_forbidden (test_governance.GovernanceTests.test_self_approval_forbidden) ... ok
+test_audit_tamper_blocks_write (test_traceability.TraceabilityTests.test_audit_tamper_blocks_write) ... ok
+test_complete_evidence_enables (test_traceability.TraceabilityTests.test_complete_evidence_enables) ... ok
+test_missing_evidence_blocks (test_traceability.TraceabilityTests.test_missing_evidence_blocks) ... ok
+test_open_action_blocks (test_traceability.TraceabilityTests.test_open_action_blocks) ... ok
+test_self_approval_still_blocked (test_traceability.TraceabilityTests.test_self_approval_still_blocked) ... ok
+test_ui_compiles (test_ui_traceability.UITraceabilityTests.test_ui_compiles) ... ok
+test_ui_exposes_traceability (test_ui_traceability.UITraceabilityTests.test_ui_exposes_traceability) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.039s
+
+OK

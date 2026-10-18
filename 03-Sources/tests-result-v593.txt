@@ -1,0 +1,1 @@
+839 tests passed under Linux; Windows build preflight PASS 5.93; --version 5.93; --self-test PASS. Windows binary not compiled.

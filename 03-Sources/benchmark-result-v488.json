@@ -1,0 +1,26 @@
+{
+  "100": {
+    "build_ms": 0.108,
+    "100_linear_queries_ms": 0.754,
+    "100_indexed_queries_ms": 0.367,
+    "speedup": 2.06
+  },
+  "500": {
+    "build_ms": 0.459,
+    "100_linear_queries_ms": 3.469,
+    "100_indexed_queries_ms": 0.694,
+    "speedup": 5.0
+  },
+  "1000": {
+    "build_ms": 1.108,
+    "100_linear_queries_ms": 7.708,
+    "100_indexed_queries_ms": 1.343,
+    "speedup": 5.74
+  },
+  "5000": {
+    "build_ms": 59.617,
+    "100_linear_queries_ms": 36.817,
+    "100_indexed_queries_ms": 2.075,
+    "speedup": 17.74
+  }
+}

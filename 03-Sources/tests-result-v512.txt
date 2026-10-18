@@ -1,0 +1,4 @@
+python -m unittest discover -q
+Ran 250 tests in 3.802s
+OK
+Linux headless; Windows not qualified.

@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "case": "corrupt_sqlite",
+      "passed": true,
+      "blocked": true,
+      "error_type": "ValueError",
+      "source_unchanged": true
+    },
+    {
+      "case": "unsafe_backup_location",
+      "passed": true,
+      "blocked": true,
+      "error_type": "ValueError",
+      "source_unchanged": true
+    },
+    {
+      "case": "no_supported_data",
+      "passed": true,
+      "blocked": true,
+      "error_type": "ValueError",
+      "source_unchanged": true
+    },
+    {
+      "case": "valid_data",
+      "passed": true,
+      "blocked": false,
+      "error_type": null,
+      "source_unchanged": true
+    }
+  ],
+  "scope": "isolated Python gate; does not launch Windows installer"
+}

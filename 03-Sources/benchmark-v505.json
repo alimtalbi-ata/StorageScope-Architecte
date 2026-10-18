@@ -1,0 +1,22 @@
+[
+  {
+    "dependencies": 1000,
+    "initial_seconds": 1.2379,
+    "partial_seconds": 1.0332,
+    "full_seconds": 0.9808,
+    "speedup": 0.95,
+    "identical": true,
+    "reused_prefixes": 0,
+    "reused_suffix_paths": 0
+  },
+  {
+    "dependencies": 2000,
+    "initial_seconds": 3.5328,
+    "partial_seconds": 3.6573,
+    "full_seconds": 4.1638,
+    "speedup": 1.14,
+    "identical": true,
+    "reused_prefixes": 0,
+    "reused_suffix_paths": 0
+  }
+]

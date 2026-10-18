@@ -1,0 +1,989 @@
+{
+  "description": "Synthetic seeded-by-formula deterministic layouts, wall-clock timings fluctuate; equality against full router.",
+  "results": [
+    {
+      "nodes": 100,
+      "edits": 1,
+      "spacing": 115,
+      "median_cache_seconds": 0.0034531174997027847,
+      "median_full_seconds": 0.021465093000188062,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.09009955100009392,
+          "full_seconds": 0.021685202000298887,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.02206192599987844,
+          "full_seconds": 0.021363781999752973,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.00460663800004113,
+          "full_seconds": 0.021372343999246368,
+          "decision": "reactivated",
+          "reused": 91
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.003470689000096172,
+          "full_seconds": 0.021557842001129757,
+          "decision": "not_applicable",
+          "reused": 91
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.003403978998903767,
+          "full_seconds": 0.020617374999346794,
+          "decision": "not_applicable",
+          "reused": 91
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.0033756070006347727,
+          "full_seconds": 0.020783714000572218,
+          "decision": "eligible",
+          "reused": 91
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.004356673000074807,
+          "full_seconds": 0.021739722998972866,
+          "decision": "eligible",
+          "reused": 91
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.003369228001247393,
+          "full_seconds": 0.02200561099925835,
+          "decision": "eligible",
+          "reused": 91
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.0034355459993093973,
+          "full_seconds": 0.021706113000618643,
+          "decision": "eligible",
+          "reused": 91
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.0032710899995436193,
+          "full_seconds": 0.02093657300065388,
+          "decision": "eligible",
+          "reused": 91
+        }
+      ]
+    },
+    {
+      "nodes": 100,
+      "edits": 1,
+      "spacing": 260,
+      "median_cache_seconds": 0.0035695869992196094,
+      "median_full_seconds": 0.022507726500407443,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.02300705800007563,
+          "full_seconds": 0.022344908000377472,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.0214425600006507,
+          "full_seconds": 0.02335217499967257,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.0036970479995943606,
+          "full_seconds": 0.02228446799927042,
+          "decision": "reactivated",
+          "reused": 91
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.003645229999165167,
+          "full_seconds": 0.02220210599989514,
+          "decision": "not_applicable",
+          "reused": 91
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.003897787999449065,
+          "full_seconds": 0.023058865999701084,
+          "decision": "not_applicable",
+          "reused": 91
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.0033977209986915113,
+          "full_seconds": 0.02373811100005696,
+          "decision": "eligible",
+          "reused": 91
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.0034939439992740517,
+          "full_seconds": 0.021814645999256754,
+          "decision": "eligible",
+          "reused": 91
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.0034100989996659337,
+          "full_seconds": 0.022670545000437414,
+          "decision": "eligible",
+          "reused": 91
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.0033945049999601906,
+          "full_seconds": 0.021484262000740273,
+          "decision": "eligible",
+          "reused": 91
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.003364741000041249,
+          "full_seconds": 0.023460957001589122,
+          "decision": "eligible",
+          "reused": 91
+        }
+      ]
+    },
+    {
+      "nodes": 100,
+      "edits": 3,
+      "spacing": 115,
+      "median_cache_seconds": 0.007209829500425258,
+      "median_full_seconds": 0.024985437498799,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.024461383000016212,
+          "full_seconds": 0.027209161999053322,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.03271144700011064,
+          "full_seconds": 0.033206938998773694,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.008947927999543026,
+          "full_seconds": 0.02184927799862635,
+          "decision": "reactivated",
+          "reused": 87
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.005665029999363469,
+          "full_seconds": 0.022352920999765047,
+          "decision": "not_applicable",
+          "reused": 87
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.008043957001063973,
+          "full_seconds": 0.024536574999729055,
+          "decision": "not_applicable",
+          "reused": 87
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.007967743000335759,
+          "full_seconds": 0.02504033999866806,
+          "decision": "eligible",
+          "reused": 87
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.006007691999911913,
+          "full_seconds": 0.021989938000842812,
+          "decision": "eligible",
+          "reused": 87
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.006451916000514757,
+          "full_seconds": 0.027821387000585673,
+          "decision": "eligible",
+          "reused": 87
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.005791548999695806,
+          "full_seconds": 0.025501267999061383,
+          "decision": "eligible",
+          "reused": 87
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.00617637499999546,
+          "full_seconds": 0.024930534998929943,
+          "decision": "eligible",
+          "reused": 87
+        }
+      ]
+    },
+    {
+      "nodes": 100,
+      "edits": 3,
+      "spacing": 260,
+      "median_cache_seconds": 0.0062285925005198806,
+      "median_full_seconds": 0.0251188660004118,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.02501165600006061,
+          "full_seconds": 0.022842422999019618,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.022932357000172487,
+          "full_seconds": 0.032530316999327624,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.005859880999196321,
+          "full_seconds": 0.022218910000447067,
+          "decision": "reactivated",
+          "reused": 87
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.00580878499931714,
+          "full_seconds": 0.025590391000150703,
+          "decision": "not_applicable",
+          "reused": 87
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.005968783998469007,
+          "full_seconds": 0.026742092999484157,
+          "decision": "not_applicable",
+          "reused": 87
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.006617674998778966,
+          "full_seconds": 0.024647341000672895,
+          "decision": "eligible",
+          "reused": 87
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.005826020000313292,
+          "full_seconds": 0.022912627000550856,
+          "decision": "eligible",
+          "reused": 87
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.006072619000406121,
+          "full_seconds": 0.041932575000828365,
+          "decision": "eligible",
+          "reused": 87
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.0066510450014902744,
+          "full_seconds": 0.02636914600043383,
+          "decision": "eligible",
+          "reused": 87
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.00638456600063364,
+          "full_seconds": 0.023989106999579235,
+          "decision": "eligible",
+          "reused": 87
+        }
+      ]
+    },
+    {
+      "nodes": 100,
+      "edits": 8,
+      "spacing": 115,
+      "median_cache_seconds": 0.01317774249946524,
+      "median_full_seconds": 0.023690320000241627,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.024803423999401275,
+          "full_seconds": 0.027745494000555482,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.029983239001012407,
+          "full_seconds": 0.02710063900121895,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.013121027999659418,
+          "full_seconds": 0.0259259030008252,
+          "decision": "reactivated",
+          "reused": 77
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.012396935000651865,
+          "full_seconds": 0.023668878000535187,
+          "decision": "not_applicable",
+          "reused": 77
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.013721615998292691,
+          "full_seconds": 0.023711761999948067,
+          "decision": "not_applicable",
+          "reused": 77
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.011811108999609132,
+          "full_seconds": 0.02243682600055763,
+          "decision": "eligible",
+          "reused": 77
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.013869026000975282,
+          "full_seconds": 0.022690696001518518,
+          "decision": "eligible",
+          "reused": 74
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.011948355000640731,
+          "full_seconds": 0.02106008800001291,
+          "decision": "eligible",
+          "reused": 74
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.011684680001053493,
+          "full_seconds": 0.021089452000524034,
+          "decision": "eligible",
+          "reused": 74
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.01323445699927106,
+          "full_seconds": 0.025616024000555626,
+          "decision": "eligible",
+          "reused": 74
+        }
+      ]
+    },
+    {
+      "nodes": 100,
+      "edits": 8,
+      "spacing": 260,
+      "median_cache_seconds": 0.012658290999752353,
+      "median_full_seconds": 0.024940267999227217,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.025652484999227454,
+          "full_seconds": 0.02871346999927482,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.08331499700034328,
+          "full_seconds": 0.02530015599950275,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.012792105999324122,
+          "full_seconds": 0.024580379998951685,
+          "decision": "reactivated",
+          "reused": 77
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.011476498999400064,
+          "full_seconds": 0.023504373000832857,
+          "decision": "not_applicable",
+          "reused": 77
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.013136920999386348,
+          "full_seconds": 0.026507562999540824,
+          "decision": "not_applicable",
+          "reused": 77
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.0123244659989723,
+          "full_seconds": 0.023305895998419146,
+          "decision": "eligible",
+          "reused": 77
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.012829141000111122,
+          "full_seconds": 0.026172851999945124,
+          "decision": "eligible",
+          "reused": 77
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.011305251999147004,
+          "full_seconds": 0.02424346699990565,
+          "decision": "eligible",
+          "reused": 77
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.012524476000180584,
+          "full_seconds": 0.02697642299972358,
+          "decision": "eligible",
+          "reused": 77
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.011588155999561423,
+          "full_seconds": 0.023260196998307947,
+          "decision": "eligible",
+          "reused": 77
+        }
+      ]
+    },
+    {
+      "nodes": 300,
+      "edits": 1,
+      "spacing": 115,
+      "median_cache_seconds": 0.008606902999417798,
+      "median_full_seconds": 0.13148850650031818,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.12380217000099947,
+          "full_seconds": 0.11775809400023718,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.1347062040003948,
+          "full_seconds": 0.22230526600105804,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.012872375998995267,
+          "full_seconds": 0.1460836490005022,
+          "decision": "reactivated",
+          "reused": 291
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.00842357399960747,
+          "full_seconds": 0.137608316999831,
+          "decision": "not_applicable",
+          "reused": 291
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.010433188999741105,
+          "full_seconds": 0.13218280100045376,
+          "decision": "not_applicable",
+          "reused": 291
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.008710462998351431,
+          "full_seconds": 0.12110399599987431,
+          "decision": "eligible",
+          "reused": 291
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.007755695998639567,
+          "full_seconds": 0.13114420599958976,
+          "decision": "eligible",
+          "reused": 291
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.008396233999519609,
+          "full_seconds": 0.1318328070010466,
+          "decision": "eligible",
+          "reused": 291
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.00848841100014397,
+          "full_seconds": 0.1294815559995186,
+          "decision": "eligible",
+          "reused": 291
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.008503343000484165,
+          "full_seconds": 0.12411582399909094,
+          "decision": "eligible",
+          "reused": 291
+        }
+      ]
+    },
+    {
+      "nodes": 300,
+      "edits": 1,
+      "spacing": 260,
+      "median_cache_seconds": 0.008278782999695977,
+      "median_full_seconds": 0.12564003799980128,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.14156272400032321,
+          "full_seconds": 0.18603675200029102,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.21692801199969836,
+          "full_seconds": 0.1263915769995947,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.008328743000674876,
+          "full_seconds": 0.12950277799973264,
+          "decision": "reactivated",
+          "reused": 291
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.00930828699893027,
+          "full_seconds": 0.22500978399875748,
+          "decision": "not_applicable",
+          "reused": 291
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.013952620000054594,
+          "full_seconds": 0.12488849900000787,
+          "decision": "not_applicable",
+          "reused": 291
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.008161732999724336,
+          "full_seconds": 0.13590947700140532,
+          "decision": "eligible",
+          "reused": 291
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.00815924899870879,
+          "full_seconds": 0.11921156199969118,
+          "decision": "eligible",
+          "reused": 291
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.008228822998717078,
+          "full_seconds": 0.11952528099936899,
+          "decision": "eligible",
+          "reused": 291
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.008160100000168313,
+          "full_seconds": 0.1194761059996381,
+          "decision": "eligible",
+          "reused": 291
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.007983686999068595,
+          "full_seconds": 0.11988147100055357,
+          "decision": "eligible",
+          "reused": 291
+        }
+      ]
+    },
+    {
+      "nodes": 300,
+      "edits": 3,
+      "spacing": 115,
+      "median_cache_seconds": 0.014071903500735061,
+      "median_full_seconds": 0.11788140599855979,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.12394416999995883,
+          "full_seconds": 0.14781703100015875,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.20343660099933913,
+          "full_seconds": 0.1338462290004827,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.0158646290001343,
+          "full_seconds": 0.12064089600062289,
+          "decision": "reactivated",
+          "reused": 287
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.01939743000002636,
+          "full_seconds": 0.12578535699867643,
+          "decision": "not_applicable",
+          "reused": 287
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.014292068000941072,
+          "full_seconds": 0.11119234000034339,
+          "decision": "not_applicable",
+          "reused": 287
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.013554864999605343,
+          "full_seconds": 0.11831384699871705,
+          "decision": "eligible",
+          "reused": 287
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.01354966799954127,
+          "full_seconds": 0.11201812500075903,
+          "decision": "eligible",
+          "reused": 287
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.013306002998433542,
+          "full_seconds": 0.10938928500036127,
+          "decision": "eligible",
+          "reused": 287
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.013205972998548532,
+          "full_seconds": 0.1100981050003611,
+          "decision": "eligible",
+          "reused": 287
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.01385173900052905,
+          "full_seconds": 0.11744896499840252,
+          "decision": "eligible",
+          "reused": 287
+        }
+      ]
+    },
+    {
+      "nodes": 300,
+      "edits": 3,
+      "spacing": 260,
+      "median_cache_seconds": 0.017716728000777948,
+      "median_full_seconds": 0.144954476500061,
+      "cost_skips": 4,
+      "cost_probes": 1,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.1434417750006105,
+          "full_seconds": 0.18150895299913827,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.23984737799946743,
+          "full_seconds": 0.17119407199970738,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.019210491000194452,
+          "full_seconds": 0.15458608600056323,
+          "decision": "reactivated",
+          "reused": 287
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.02005560499856074,
+          "full_seconds": 0.13737543600109348,
+          "decision": "not_applicable",
+          "reused": 287
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.01564645200051018,
+          "full_seconds": 0.13660483899911924,
+          "decision": "not_applicable",
+          "reused": 287
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.015720323001005454,
+          "full_seconds": 0.13343053800053895,
+          "decision": "eligible",
+          "reused": 287
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.016115153001010185,
+          "full_seconds": 0.15076872899953742,
+          "decision": "eligible",
+          "reused": 287
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.01943859199855069,
+          "full_seconds": 0.13914022400058457,
+          "decision": "eligible",
+          "reused": 287
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.016222965001361445,
+          "full_seconds": 0.12846144899958745,
+          "decision": "eligible",
+          "reused": 287
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.014510813998640515,
+          "full_seconds": 0.15763166999931855,
+          "decision": "eligible",
+          "reused": 287
+        }
+      ]
+    },
+    {
+      "nodes": 300,
+      "edits": 8,
+      "spacing": 115,
+      "median_cache_seconds": 0.1187118220004777,
+      "median_full_seconds": 0.12096066899903235,
+      "cost_skips": 16,
+      "cost_probes": 3,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.2690429470003437,
+          "full_seconds": 0.122664081000039,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.1240259279984457,
+          "full_seconds": 0.12299031899965485,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.11986434500067844,
+          "full_seconds": 0.12042313100027968,
+          "decision": "cost_probe",
+          "reused": 0
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.11755929900027695,
+          "full_seconds": 0.11914596099995833,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.11988334399939049,
+          "full_seconds": 0.11756975500065892,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.1170510590000049,
+          "full_seconds": 0.15370775900009903,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.12365109699931054,
+          "full_seconds": 0.13846835999902396,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.11597618700034218,
+          "full_seconds": 0.11750818300060928,
+          "decision": "cost_probe",
+          "reused": 0
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.11347574399951554,
+          "full_seconds": 0.12109153999881528,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.1135609109987854,
+          "full_seconds": 0.12082979799924942,
+          "decision": "full_cost_gate",
+          "reused": 0
+        }
+      ]
+    },
+    {
+      "nodes": 300,
+      "edits": 8,
+      "spacing": 260,
+      "median_cache_seconds": 0.13446773649957322,
+      "median_full_seconds": 0.13781856450077612,
+      "cost_skips": 16,
+      "cost_probes": 3,
+      "validated_comparisons": 10,
+      "samples": [
+        {
+          "step": 0,
+          "cache_seconds": 0.1277140709989908,
+          "full_seconds": 0.12711564700111921,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 1,
+          "cache_seconds": 0.13002339400009078,
+          "full_seconds": 0.14091913900119835,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 2,
+          "cache_seconds": 0.14612287299860327,
+          "full_seconds": 0.21959941599925514,
+          "decision": "cost_probe",
+          "reused": 0
+        },
+        {
+          "step": 3,
+          "cache_seconds": 0.12469315499947697,
+          "full_seconds": 0.19378083500123466,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 4,
+          "cache_seconds": 0.1327606940012629,
+          "full_seconds": 0.12687986299897602,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 5,
+          "cache_seconds": 0.14104715899884468,
+          "full_seconds": 0.14338303400108998,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 6,
+          "cache_seconds": 0.13495746899934602,
+          "full_seconds": 0.1347179900003539,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 7,
+          "cache_seconds": 0.13397800399980042,
+          "full_seconds": 0.13345058699997026,
+          "decision": "cost_probe",
+          "reused": 0
+        },
+        {
+          "step": 8,
+          "cache_seconds": 0.14521944999978587,
+          "full_seconds": 0.15403504999994766,
+          "decision": "full_cost_gate",
+          "reused": 0
+        },
+        {
+          "step": 9,
+          "cache_seconds": 0.14357210699927236,
+          "full_seconds": 0.13403261599887628,
+          "decision": "full_cost_gate",
+          "reused": 0
+        }
+      ]
+    }
+  ]
+}

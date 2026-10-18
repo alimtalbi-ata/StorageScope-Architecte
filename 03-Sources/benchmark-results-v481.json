@@ -1,0 +1,17 @@
+[
+  {
+    "nodes": 100,
+    "seconds": 1.3022,
+    "paths": 100
+  },
+  {
+    "nodes": 500,
+    "seconds": 8.0994,
+    "paths": 500
+  },
+  {
+    "nodes": 1000,
+    "seconds": 18.8965,
+    "paths": 1000
+  }
+]

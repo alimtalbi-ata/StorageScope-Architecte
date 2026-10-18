@@ -1,0 +1,50 @@
+{
+  "runs": [
+    {
+      "rows": 100,
+      "repetitions": 5,
+      "environment": "Tkinter real Treeview; display-dependent",
+      "results": {
+        "unchanged": {
+          "rebuild": 0.357,
+          "adaptive": 0.492
+        },
+        "single_change": {
+          "rebuild": 0.369,
+          "adaptive": 0.445
+        },
+        "mass_change": {
+          "rebuild": 0.348,
+          "adaptive": 0.542
+        },
+        "reverse": {
+          "rebuild": 0.382,
+          "adaptive": 0.401
+        }
+      }
+    },
+    {
+      "rows": 1000,
+      "repetitions": 5,
+      "environment": "Tkinter real Treeview; display-dependent",
+      "results": {
+        "unchanged": {
+          "rebuild": 3.437,
+          "adaptive": 4.263
+        },
+        "single_change": {
+          "rebuild": 3.326,
+          "adaptive": 4.384
+        },
+        "mass_change": {
+          "rebuild": 3.372,
+          "adaptive": 7.377
+        },
+        "reverse": {
+          "rebuild": 3.516,
+          "adaptive": 5.291
+        }
+      }
+    }
+  ]
+}

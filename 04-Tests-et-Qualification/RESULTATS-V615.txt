@@ -1,0 +1,1 @@
+Tests Python Linux : PASS (voir sortie de test). Précontrôle Windows statique : PASS. Build Windows natif : NON EXÉCUTÉ.

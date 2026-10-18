@@ -1,0 +1,12 @@
+{'nodes': 100, 'edits': 1, 'spacing': 115, 'cache_median_ms': 3.563, 'full_median_ms': 22.836, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 100, 'edits': 1, 'spacing': 260, 'cache_median_ms': 4.017, 'full_median_ms': 24.988, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 100, 'edits': 3, 'spacing': 115, 'cache_median_ms': 6.164, 'full_median_ms': 22.918, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 100, 'edits': 3, 'spacing': 260, 'cache_median_ms': 6.434, 'full_median_ms': 26.287, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 100, 'edits': 8, 'spacing': 115, 'cache_median_ms': 28.397, 'full_median_ms': 25.94, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 100, 'edits': 8, 'spacing': 260, 'cache_median_ms': 25.197, 'full_median_ms': 23.939, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 300, 'edits': 1, 'spacing': 115, 'cache_median_ms': 8.12, 'full_median_ms': 120.754, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 300, 'edits': 1, 'spacing': 260, 'cache_median_ms': 11.946, 'full_median_ms': 152.84, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 300, 'edits': 3, 'spacing': 115, 'cache_median_ms': 14.243, 'full_median_ms': 124.397, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 300, 'edits': 3, 'spacing': 260, 'cache_median_ms': 15.733, 'full_median_ms': 132.486, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 300, 'edits': 8, 'spacing': 115, 'cache_median_ms': 115.841, 'full_median_ms': 119.695, 'comparisons': 10, 'cost_skips': 0}
+{'nodes': 300, 'edits': 8, 'spacing': 260, 'cache_median_ms': 124.114, 'full_median_ms': 126.65, 'comparisons': 10, 'cost_skips': 0}

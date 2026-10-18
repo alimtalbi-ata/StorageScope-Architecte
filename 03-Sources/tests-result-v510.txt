@@ -1,0 +1,5 @@
+StorageScope v5.10 — Linux unittest discover
+Ran 244 tests — OK
+Trois tests supplémentaires dans test_graph_v510.py.
+Avertissements ResourceWarning hérités de tests anciens.
+Qualification Windows et captures réelles : non effectuées.

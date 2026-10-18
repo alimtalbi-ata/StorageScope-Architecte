@@ -1,0 +1,4 @@
+python -m unittest discover -q
+Ran 152 tests in 0.559s
+OK
+Plateforme: Linux; avertissements ResourceWarning SQLite dans tests existants.

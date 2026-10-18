@@ -1,0 +1,127 @@
+
+test_calendar (test_calendar.CalendarTests.test_calendar) ... ok
+test_calendar_window (test_calendar.CalendarTests.test_calendar_window) ... ok
+test_invalid_horizon (test_calendar.CalendarTests.test_invalid_horizon) ... ok
+test_overdue (test_calendar.CalendarTests.test_overdue) ... ok
+test_reminder_draft (test_calendar.CalendarTests.test_reminder_draft) ... ok
+test_report_digest (test_calendar.CalendarTests.test_report_digest) ... ok
+test_attendee_and_report (test_committee.CommitteeTests.test_attendee_and_report) ... ok
+test_cannot_hold_without_attendee (test_committee.CommitteeTests.test_cannot_hold_without_attendee) ... ok
+test_close_after_evidence (test_committee.CommitteeTests.test_close_after_evidence) ... ok
+test_closure_blocked (test_committee.CommitteeTests.test_closure_blocked) ... ok
+test_immutable_after_hold (test_committee.CommitteeTests.test_immutable_after_hold) ... ok
+test_tamper_blocks (test_committee.CommitteeTests.test_tamper_blocks) ... ok
+test_empty (test_dashboard.DashboardTests.test_empty) ... ok
+test_links_and_counts (test_dashboard.DashboardTests.test_links_and_counts) ... ok
+test_tamper_rejected (test_dashboard.DashboardTests.test_tamper_rejected) ... ok
+test_unknown_decision (test_dashboard.DashboardTests.test_unknown_decision) ... ok
+test_desktop_has_expected_commands (test_desktop_integration.DesktopIntegrationTests.test_desktop_has_expected_commands) ... ok
+test_desktop_syntax (test_desktop_integration.DesktopIntegrationTests.test_desktop_syntax) ... ok
+test_audit_tamper_blocks_approval (test_extensions.ExtensionsTests.test_audit_tamper_blocks_approval) ... ok
+test_blocking_readiness (test_extensions.ExtensionsTests.test_blocking_readiness) ... ok
+test_dashboard (test_extensions.ExtensionsTests.test_dashboard) ... ok
+test_export (test_extensions.ExtensionsTests.test_export) ... ok
+test_reject_empty_actor (test_extensions.ExtensionsTests.test_reject_empty_actor) ... ok
+test_audit_tampering (test_governance.GovernanceTests.test_audit_tampering) ... ok
+test_blocking_reservation (test_governance.GovernanceTests.test_blocking_reservation) ... ok
+test_export_hash (test_governance.GovernanceTests.test_export_hash) ... ok
+test_self_approval_forbidden (test_governance.GovernanceTests.test_self_approval_forbidden) ... ok
+test_empty (test_graph_layout.GraphLayoutTests.test_empty) ... ok
+test_filter_kind (test_graph_layout.GraphLayoutTests.test_filter_kind) ... ok
+test_filter_text (test_graph_layout.GraphLayoutTests.test_filter_text) ... ok
+test_nonoverlap (test_graph_layout.GraphLayoutTests.test_nonoverlap) ... ok
+test_validation (test_graph_layout.GraphLayoutTests.test_validation) ... ok
+test_filter (test_month_view.TestMonth.test_filter) ... ok
+test_invalid (test_month_view.TestMonth.test_invalid) ... ok
+test_month (test_month_view.TestMonth.test_month) ... ok
+test_agenda_decision (test_planning.PlanningTests.test_agenda_decision) ... ok
+test_audit (test_planning.PlanningTests.test_audit) ... ok
+test_digest (test_planning.PlanningTests.test_digest) ... ok
+test_followup_and_close (test_planning.PlanningTests.test_followup_and_close) ... ok
+test_invalid_link (test_planning.PlanningTests.test_invalid_link) ... ok
+test_missing_evidence (test_planning.PlanningTests.test_missing_evidence) ... ok
+test_empty (test_portfolio.PortfolioTests.test_empty) ... ok
+test_filter_and_pending (test_portfolio.PortfolioTests.test_filter_and_pending) ... ok
+test_invalid_audit_blocks (test_portfolio.PortfolioTests.test_invalid_audit_blocks) ... ok
+test_audit_tamper_blocks_write (test_traceability.TraceabilityTests.test_audit_tamper_blocks_write) ... ok
+test_complete_evidence_enables (test_traceability.TraceabilityTests.test_complete_evidence_enables) ... ok
+test_missing_evidence_blocks (test_traceability.TraceabilityTests.test_missing_evidence_blocks) ... ok
+test_open_action_blocks (test_traceability.TraceabilityTests.test_open_action_blocks) ... ok
+test_self_approval_still_blocked (test_traceability.TraceabilityTests.test_self_approval_still_blocked) ... ok
+test_ui_compiles (test_ui_traceability.UITraceabilityTests.test_ui_compiles) ... ok
+test_ui_exposes_traceability (test_ui_traceability.UITraceabilityTests.test_ui_exposes_traceability) ... ok
+test_bad_limit (test_v464.GovernanceSearchTests.test_bad_limit) ... ok
+test_bad_sort (test_v464.GovernanceSearchTests.test_bad_sort) ... ok
+test_limit (test_v464.GovernanceSearchTests.test_limit) ... ok
+test_priority (test_v464.GovernanceSearchTests.test_priority) ... ok
+test_search_title (test_v464.GovernanceSearchTests.test_search_title) ... ok
+test_sort_id (test_v464.GovernanceSearchTests.test_sort_id) ... ok
+test_ui_wired (test_v464.GovernanceSearchTests.test_ui_wired) ... /mnt/data/ss473/test_v464.py:24: ResourceWarning: unclosed file <_io.TextIOWrapper name='desktop.py' mode='r' encoding='UTF-8'>
+  source=open('desktop.py').read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_bad_offset (test_v465.PaginationTests.test_bad_offset) ... ok
+test_first_page (test_v465.PaginationTests.test_first_page) ... ok
+test_last_page (test_v465.PaginationTests.test_last_page) ... ok
+test_middle_page (test_v465.PaginationTests.test_middle_page) ... ok
+test_out_of_range (test_v465.PaginationTests.test_out_of_range) ... ok
+test_ui_paging (test_v465.PaginationTests.test_ui_paging) ... /mnt/data/ss473/test_v465.py:23: ResourceWarning: unclosed file <_io.TextIOWrapper name='desktop.py' mode='r' encoding='utf-8'>
+  source=open('desktop.py',encoding='utf-8').read();self.assertIn('portfolio_page',source);self.assertIn('portfolio_offset',source)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_filter_sql (test_v466.SqlPaginationTests.test_filter_sql) ... ok
+test_index_exists (test_v466.SqlPaginationTests.test_index_exists) ... ok
+test_pagination_sql (test_v466.SqlPaginationTests.test_pagination_sql) ... ok
+test_reject_bad_input (test_v466.SqlPaginationTests.test_reject_bad_input) ... ok
+test_audit_tamper (test_v467.CursorTests.test_audit_tamper) ... ok
+test_cursor_invalid (test_v467.CursorTests.test_cursor_invalid) ... ok
+test_no_duplicates_and_complete (test_v467.CursorTests.test_no_duplicates_and_complete) ... ok
+test_reject_bool_limit (test_v467.CursorTests.test_reject_bool_limit) ... ok
+test_cursor_navigation_guards (test_v468.DesktopIntegration.test_cursor_navigation_guards) ... ok
+test_cursor_ui_wired (test_v468.DesktopIntegration.test_cursor_ui_wired) ... ok
+test_default_is_full_metrics (test_v468.DesktopIntegration.test_default_is_full_metrics) ... ok
+test_async_ui_contract (test_v469.AsyncReaderTests.test_async_ui_contract) ... ok
+test_no_worker_tk_access (test_v469.AsyncReaderTests.test_no_worker_tk_access) ... ok
+test_readonly_separate_connection (test_v469.AsyncReaderTests.test_readonly_separate_connection) ... ok
+test_async_filtered_ui_contract (test_v470.AsyncFilteredTests.test_async_filtered_ui_contract) ... ok
+test_filtered_snapshot_readonly (test_v470.AsyncFilteredTests.test_filtered_snapshot_readonly) ... ok
+test_invalid_mode (test_v470.AsyncFilteredTests.test_invalid_mode) ... ok
+test_bounded_and_unknown (test_v471.FastDashboardTests.test_bounded_and_unknown) ... ok
+test_counts_and_graph (test_v471.FastDashboardTests.test_counts_and_graph) ... ok
+test_empty (test_v471.FastDashboardTests.test_empty) ... ok
+test_sql_injection_not_possible (test_v471.FastDashboardTests.test_sql_injection_not_possible) ... ok
+test_bounded (test_v472.SearchGraphTests.test_bounded) ... /mnt/data/ss473/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f81087887c0>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss473/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f8108788c70>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss473/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f8108788d60>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss473/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f8108788f40>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss473/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f8108789030>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss473/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f8108789120>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss473/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f8108789210>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/mnt/data/ss473/test_v472.py:9: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f8108789300>
+  self.db.executemany('INSERT INTO decisions VALUES(?,?,?,?)',[(f'D-{i:04}',f'Architecture {i}','PROPOSED','Abdelhalim') for i in range(650)])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_empty (test_v472.SearchGraphTests.test_empty) ... ok
+test_exact_first (test_v472.SearchGraphTests.test_exact_first) ... ok
+test_invalid_limit (test_v472.SearchGraphTests.test_invalid_limit) ... ok
+test_literal_wildcards (test_v472.SearchGraphTests.test_literal_wildcards) ... ok
+test_search_beyond_picker_limit (test_v472.SearchGraphTests.test_search_beyond_picker_limit) ... ok
+
+----------------------------------------------------------------------
+Ran 91 tests in 0.238s
+
+OK

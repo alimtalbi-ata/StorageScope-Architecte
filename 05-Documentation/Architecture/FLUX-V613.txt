@@ -1,0 +1,4 @@
+UI Windows -> Dashboard lecture seule -> SQLite (connexion fermee explicitement)
+UI -> DecisionStore / CampaignHistory -> SQLite ClosingConnection
+  | initialisation PRAGMA reussie -> transactions auditees -> fermeture
+  | echec PRAGMA -> fermeture immediate -> exception remontee

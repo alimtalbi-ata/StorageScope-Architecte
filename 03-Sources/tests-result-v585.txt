@@ -1,0 +1,4 @@
+Tests Python Linux: 799 PASS
+Preflight build Windows: PASS (statique)
+Windows native build: NOT RUN
+Windows UI captures: NOT AVAILABLE

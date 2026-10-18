@@ -1,0 +1,79 @@
+{
+  "size": 10000,
+  "repeats": 3,
+  "measure": "Python filtering only; synthetic data; no GUI",
+  "results": [
+    {
+      "query": "",
+      "previous": {
+        "median_ms": 1.004,
+        "matches": 10000
+      },
+      "current": {
+        "median_ms": 0.957,
+        "matches": 10000
+      },
+      "ratio_current_previous": 0.953
+    },
+    {
+      "query": "status:blocked",
+      "previous": {
+        "median_ms": 11.163,
+        "matches": 1429
+      },
+      "current": {
+        "median_ms": 3.857,
+        "matches": 1429
+      },
+      "ratio_current_previous": 0.346
+    },
+    {
+      "query": "asset:netapp-000099",
+      "previous": {
+        "median_ms": 10.968,
+        "matches": 100
+      },
+      "current": {
+        "median_ms": 7.632,
+        "matches": 100
+      },
+      "ratio_current_previous": 0.696
+    },
+    {
+      "query": "site 4",
+      "previous": {
+        "median_ms": 37.552,
+        "matches": 4768
+      },
+      "current": {
+        "median_ms": 36.811,
+        "matches": 4768
+      },
+      "ratio_current_previous": 0.98
+    },
+    {
+      "query": "fabric 12",
+      "previous": {
+        "median_ms": 37.504,
+        "matches": 1164
+      },
+      "current": {
+        "median_ms": 38.48,
+        "matches": 1164
+      },
+      "ratio_current_previous": 1.026
+    },
+    {
+      "query": "key:K-00000099",
+      "previous": {
+        "median_ms": 11.778,
+        "matches": 1
+      },
+      "current": {
+        "median_ms": 3.04,
+        "matches": 1
+      },
+      "ratio_current_previous": 0.258
+    }
+  ]
+}

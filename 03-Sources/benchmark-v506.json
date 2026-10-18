@@ -1,0 +1,30 @@
+[
+  {
+    "nodes": 100,
+    "partial_seconds": 0.0021,
+    "full_seconds": 0.0926,
+    "validation_checks": 1200,
+    "validation_skips": 0
+  },
+  {
+    "nodes": 300,
+    "partial_seconds": 0.0069,
+    "full_seconds": 0.1359,
+    "validation_checks": 3600,
+    "validation_skips": 0
+  },
+  {
+    "nodes": 520,
+    "partial_seconds": 0.0081,
+    "full_seconds": 0.2989,
+    "validation_checks": 6240,
+    "validation_skips": 0
+  },
+  {
+    "nodes": 1000,
+    "partial_seconds": 0.0215,
+    "full_seconds": 1.1834,
+    "validation_checks": 12000,
+    "validation_skips": 0
+  }
+]

@@ -1,0 +1,1 @@
+241 tests réussis sous Linux (python -m unittest discover -q). Avertissements ResourceWarning hérités, non bloquants.

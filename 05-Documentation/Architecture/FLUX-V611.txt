@@ -1,0 +1,11 @@
+Tk UI -> Navigation -> Registre Governance -> SQLite
+                              |
+                      Ouverture connexion
+                              |
+                      Schéma / index / commit
+                         /           \
+                     Échec            Succès
+                       |                |
+                    close()        Opérations
+                       |                |
+                   Exception      with / close()

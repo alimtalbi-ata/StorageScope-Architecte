@@ -1,0 +1,39 @@
+{
+  "scope": "synthetic in-memory layout, routing, spatial query; excludes SQLite and Tk",
+  "runs": 3,
+  "sizes": {
+    "100": {
+      "cards": 100,
+      "routes": 100,
+      "visible_cards": 27,
+      "visible_routes": 100,
+      "median_ms": {
+        "layout": 0.028,
+        "routing": 97.585,
+        "index_and_query": 0.508
+      }
+    },
+    "500": {
+      "cards": 500,
+      "routes": 500,
+      "visible_cards": 27,
+      "visible_routes": 500,
+      "median_ms": {
+        "layout": 0.127,
+        "routing": 1218.693,
+        "index_and_query": 3.186
+      }
+    },
+    "1000": {
+      "cards": 1000,
+      "routes": 1000,
+      "visible_cards": 27,
+      "visible_routes": 1000,
+      "median_ms": {
+        "layout": 0.262,
+        "routing": 3941.777,
+        "index_and_query": 10.462
+      }
+    }
+  }
+}

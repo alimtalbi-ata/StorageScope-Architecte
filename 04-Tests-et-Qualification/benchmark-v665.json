@@ -1,0 +1,7 @@
+{
+  "environment": "Linux mock Treeview, not GUI",
+  "rows": 100,
+  "first_ms": 0.064,
+  "unchanged_ms": 0.233,
+  "writes_after_second": 100
+}

@@ -1,0 +1,59 @@
+name: Build and smoke-test StorageScope Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build complete Windows installer
+        shell: cmd
+        run: Construire-StorageScope.cmd
+      - name: Qualify upgrade gate negative paths (isolated fixtures)
+        shell: powershell
+        run: |
+          python upgrade_failure_qualification_v586.py --report build-logs/upgrade-failures-v6.10.json
+          if ($LASTEXITCODE -ne 0) { throw 'Upgrade negative-path qualification failed' }
+      - name: Smoke-test frozen executable
+        shell: powershell
+        run: ./qualifier-executable-windows.ps1
+      - name: Verify release manifest SHA256
+        shell: powershell
+        run: |
+          $manifest = Get-Content installer/release-manifest-v6.10.json -Raw | ConvertFrom-Json
+          if ($manifest.version -ne '6.10') { throw 'Incorrect release version' }
+          $expected = @('StorageScope.exe', 'StorageScope-UpgradeGate.exe', 'StorageScope-Setup-v6.10.exe')
+          $actual = @($manifest.artifacts | ForEach-Object { $_.filename })
+          if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Unexpected manifest artifacts' }
+          foreach ($item in $manifest.artifacts) {
+            $path = if ($item.filename -in @('StorageScope.exe','StorageScope-UpgradeGate.exe')) { "dist/$($item.filename)" } else { "installer/$($item.filename)" }
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing: $path" }
+            if ((Get-Item -LiteralPath $path).Length -ne $item.bytes) { throw "Size mismatch: $path" }
+            if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $item.sha256) { throw "SHA256 mismatch: $path" }
+          }
+      - name: Qualify installer rejection on corrupt user data (clean runner)
+        shell: powershell
+        run: ./qualifier-echec-installateur-windows.ps1
+      - name: Qualify silent install, update, uninstall on clean runner
+        shell: powershell
+        run: ./qualifier-installation-windows.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: StorageScope-Windows-v6.10
+          path: |
+            portable/StorageScope.exe
+            portable/portable-manifest-v6.10.json
+            dist/StorageScope.exe
+            dist/StorageScope-UpgradeGate.exe
+            installer/StorageScope-Setup-v6.10.exe
+            installer/release-manifest-v6.10.json
+            build-logs/*.log
+            build-logs/upgrade-failures-v6.10.json
+            build-logs/installer-rejected-v6.10.json
+            build-logs/installer-rejected-v6.10.log

@@ -1,0 +1,49 @@
+name: Build and qualify StorageScope Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build Windows release
+        shell: pwsh
+        run: |
+          if (Test-Path '02-Compilation-Windows/build-all-windows.ps1') {
+            & './02-Compilation-Windows/build-all-windows.ps1'
+          } else {
+            & './build-all-windows.ps1'
+          }
+          if (-not $?) { throw 'Build failed' }
+      - name: Qualify native binaries
+        shell: pwsh
+        run: |
+          $qualifier = if (Test-Path '02-Compilation-Windows/qualify-native-windows.ps1') { '02-Compilation-Windows/qualify-native-windows.ps1' } else { 'qualify-native-windows.ps1' }
+          & $qualifier
+          if (-not $?) { throw 'Native qualification failed' }
+          if (-not (Test-Path '02-Compilation-Windows/windows-qualification-report.json')) { throw 'Qualification evidence missing' }
+      - name: Install and uninstall smoke test
+        shell: pwsh
+        run: |
+          & './02-Compilation-Windows/qualify-installer-smoke-windows.ps1'
+          if (-not $?) { throw 'Installer smoke test failed' }
+          $reportPath = '02-Compilation-Windows/windows-installer-smoke-report.json'
+          if (-not (Test-Path $reportPath)) { throw 'Installer smoke report missing' }
+          $result = Get-Content -Raw $reportPath | ConvertFrom-Json
+          if ($result.status -ne 'PASS' -or -not $result.uninstalled) { throw 'Installer smoke evidence is not PASS' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: StorageScope-Windows
+          path: |
+            02-Compilation-Windows/dist/*
+            02-Compilation-Windows/installer/*
+            02-Compilation-Windows/portable/*
+            02-Compilation-Windows/build-logs/*
+            02-Compilation-Windows/windows-qualification-report.json
+            02-Compilation-Windows/windows-installer-smoke-report.json

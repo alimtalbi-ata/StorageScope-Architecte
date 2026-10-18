@@ -1,0 +1,9 @@
+test_no_production_activation_contract (test_policy_selector_v520.SelectorV520Tests.test_no_production_activation_contract) ... ok
+test_selector_is_deterministic (test_policy_selector_v520.SelectorV520Tests.test_selector_is_deterministic) ... ok
+test_small_sample_fails_closed (test_policy_selector_v520.SelectorV520Tests.test_small_sample_fails_closed) ... ok
+test_tie_keeps_default (test_policy_selector_v520.SelectorV520Tests.test_tie_keeps_default) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK

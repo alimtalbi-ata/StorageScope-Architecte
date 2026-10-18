@@ -1,0 +1,2 @@
+844 tests réussis sous Linux (unittest discover).
+Windows: compilation native et captures non effectuées.

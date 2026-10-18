@@ -1,0 +1,2 @@
+139 tests exécutés : OK (Linux).
+Avertissements ResourceWarning hérités de tests SQLite.

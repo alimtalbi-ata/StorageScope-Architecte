@@ -1,0 +1,4 @@
+python -m unittest discover -p test*.py -q
+Ran 940 tests
+OK
+Plateforme : Linux. Windows natif non testé.

@@ -1,0 +1,54 @@
+name: StorageScope two-version Windows upgrade qualification
+on:
+  workflow_dispatch:
+    inputs:
+      previous_ref:
+        description: 'Existing trusted Git tag or commit containing the previous Windows installer source'
+        required: true
+        type: string
+jobs:
+  upgrade:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout previous version
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.previous_ref }}
+          path: previous
+          persist-credentials: false
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build previous version
+        shell: cmd
+        working-directory: previous
+        run: Construire-StorageScope.cmd
+      - name: Build candidate version
+        shell: cmd
+        working-directory: candidate
+        run: Construire-StorageScope.cmd
+      - name: Qualify real two-version upgrade
+        shell: powershell
+        working-directory: candidate
+        run: |
+          $old = @(Get-ChildItem ../previous/installer/StorageScope-Setup-v*.exe -File)
+          $new = @(Get-ChildItem installer/StorageScope-Setup-v*.exe -File)
+          if ($old.Count -ne 1 -or $new.Count -ne 1) { throw 'Exactly one installer per version required' }
+          if ($old[0].Name -eq $new[0].Name) { throw 'Previous and new version must differ' }
+          ./qualifier-mise-a-jour-windows.ps1 -PreviousInstaller $old[0].FullName -NewInstaller $new[0].FullName
+      - name: Preserve logs and binaries, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: StorageScope-Upgrade-E2E-v5.89
+          path: |
+            previous/build-logs/*.log
+            candidate/build-logs/*.log
+            candidate/build-logs/upgrade-e2e-v5.89.json
+            candidate/installer/StorageScope-Setup-v5.89.exe
+            candidate/portable/StorageScope.exe

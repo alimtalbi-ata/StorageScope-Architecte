@@ -1,0 +1,1002 @@
+{
+  "purpose": "offline policy-decision comparison; not a performance benchmark",
+  "scenario_count": 48,
+  "comparison": [
+    {
+      "policy": "v5.18_default",
+      "full_routes": 6,
+      "partial_eligible": 42,
+      "decisions": [
+        {
+          "id": "s000",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s001",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s002",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s003",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s004",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s005",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s006",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s007",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s008",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s009",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s010",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s011",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s012",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s013",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s014",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s015",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s016",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s017",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s018",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s019",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s020",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s021",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s022",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s023",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s024",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s025",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s026",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s027",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s028",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s029",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s030",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s031",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s032",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s033",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s034",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s035",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s036",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s037",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s038",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s039",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s040",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s041",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s042",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s043",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s044",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s045",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s046",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s047",
+          "full_route": true,
+          "reason": "hard_limit"
+        }
+      ]
+    },
+    {
+      "policy": "density_05pct",
+      "full_routes": 6,
+      "partial_eligible": 42,
+      "decisions": [
+        {
+          "id": "s000",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s001",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s002",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s003",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s004",
+          "full_route": false,
+          "reason": "insufficient_measurements"
+        },
+        {
+          "id": "s005",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s006",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s007",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s008",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s009",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s010",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s011",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s012",
+          "full_route": false,
+          "reason": "insufficient_measurements"
+        },
+        {
+          "id": "s013",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s014",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s015",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s016",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s017",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s018",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s019",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s020",
+          "full_route": false,
+          "reason": "insufficient_measurements"
+        },
+        {
+          "id": "s021",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s022",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s023",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s024",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s025",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s026",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s027",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s028",
+          "full_route": false,
+          "reason": "insufficient_measurements"
+        },
+        {
+          "id": "s029",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s030",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s031",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s032",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s033",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s034",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s035",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s036",
+          "full_route": false,
+          "reason": "insufficient_measurements"
+        },
+        {
+          "id": "s037",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s038",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s039",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s040",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s041",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s042",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s043",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s044",
+          "full_route": false,
+          "reason": "insufficient_measurements"
+        },
+        {
+          "id": "s045",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s046",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s047",
+          "full_route": true,
+          "reason": "hard_limit"
+        }
+      ]
+    },
+    {
+      "policy": "conservative_6edits",
+      "full_routes": 18,
+      "partial_eligible": 30,
+      "decisions": [
+        {
+          "id": "s000",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s001",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s002",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s003",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s004",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s005",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s006",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s007",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s008",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s009",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s010",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s011",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s012",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s013",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s014",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s015",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s016",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s017",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s018",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s019",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s020",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s021",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s022",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s023",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s024",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s025",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s026",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s027",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s028",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s029",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s030",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s031",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s032",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s033",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s034",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s035",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s036",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s037",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s038",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s039",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s040",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s041",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s042",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s043",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s044",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s045",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s046",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s047",
+          "full_route": true,
+          "reason": "hard_limit"
+        }
+      ]
+    },
+    {
+      "policy": "cost_strict",
+      "full_routes": 6,
+      "partial_eligible": 42,
+      "decisions": [
+        {
+          "id": "s000",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s001",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s002",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s003",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s004",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s005",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s006",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s007",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s008",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s009",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s010",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s011",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s012",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s013",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s014",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s015",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s016",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s017",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s018",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s019",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s020",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s021",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s022",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s023",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s024",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s025",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s026",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s027",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s028",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s029",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s030",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s031",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s032",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s033",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s034",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s035",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s036",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s037",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s038",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s039",
+          "full_route": true,
+          "reason": "hard_limit"
+        },
+        {
+          "id": "s040",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s041",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s042",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s043",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s044",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s045",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s046",
+          "full_route": false,
+          "reason": "insufficient_edit_density"
+        },
+        {
+          "id": "s047",
+          "full_route": true,
+          "reason": "hard_limit"
+        }
+      ]
+    }
+  ],
+  "recommendation": {
+    "selected_policy": "v5.18_default",
+    "reason": "no_strict_improvement",
+    "sample_count": 48,
+    "full_routes": 6,
+    "default_full_routes": 6,
+    "recommendation_only": true
+  }
+}

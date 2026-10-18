@@ -1,0 +1,114 @@
+name: Build and qualify StorageScope Windows
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check release sources and binary workspace
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          if ($version -notmatch '^\d+\.\d+$') { throw 'Invalid release version' }
+          if (-not (Test-Path '02-Compilation-Windows/StorageScope.iss')) { throw 'Missing Inno Setup definition' }
+          if (-not (Test-Path '02-Compilation-Windows/StorageScope.spec')) { throw 'Missing PyInstaller specification' }
+          if (Test-Path (Join-Path 'binary' ('v' + $version))) { throw 'Already published release in source tree' }
+      - name: Remove stale qualification evidence
+        shell: pwsh
+        run: |
+          [DateTimeOffset]::UtcNow.ToUnixTimeSeconds() | Set-Content '02-Compilation-Windows/windows-qualification-start.txt'
+          foreach ($name in @('windows-qualification-report.json','windows-installer-smoke-report.json','windows-portable-smoke-report.json','windows-release-qualification.json')) {
+            $path = Join-Path '02-Compilation-Windows' $name
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force -ErrorAction Stop }
+          }
+      - name: Build Windows release
+        shell: pwsh
+        run: |
+          if (Test-Path '02-Compilation-Windows/build-all-windows.ps1') {
+            & './02-Compilation-Windows/build-all-windows.ps1'
+          } else {
+            & './build-all-windows.ps1'
+          }
+          if (-not $?) { throw 'Build failed' }
+      - name: Qualify native binaries
+        shell: pwsh
+        run: |
+          $qualifier = if (Test-Path '02-Compilation-Windows/qualify-native-windows.ps1') { '02-Compilation-Windows/qualify-native-windows.ps1' } else { 'qualify-native-windows.ps1' }
+          & $qualifier
+          if (-not $?) { throw 'Native qualification failed' }
+          if (-not (Test-Path '02-Compilation-Windows/windows-qualification-report.json')) { throw 'Qualification evidence missing' }
+          $native = Get-Content -Raw '02-Compilation-Windows/windows-qualification-report.json' | ConvertFrom-Json
+          if ($native.overall -ne 'PASS') { throw 'Native qualification report is not PASS' }
+      - name: Install and uninstall smoke test
+        shell: pwsh
+        run: |
+          & './02-Compilation-Windows/qualify-installer-smoke-windows.ps1'
+          if (-not $?) { throw 'Installer smoke test failed' }
+          $reportPath = '02-Compilation-Windows/windows-installer-smoke-report.json'
+          if (-not (Test-Path $reportPath)) { throw 'Installer smoke report missing' }
+          $result = Get-Content -Raw $reportPath | ConvertFrom-Json
+          if ($result.status -ne 'PASS' -or -not $result.installed -or -not $result.version_checked -or -not $result.uninstalled) { throw 'Installer smoke evidence is not PASS' }
+      - name: Run portable Windows smoke test
+        shell: pwsh
+        run: |
+          & './02-Compilation-Windows/qualify-portable-smoke-windows.ps1'
+          if (-not $?) { throw 'Portable smoke test failed' }
+          $reportPath = '02-Compilation-Windows/windows-portable-smoke-report.json'
+          if (-not (Test-Path $reportPath)) { throw 'Portable smoke report missing' }
+          $result = Get-Content -Raw $reportPath | ConvertFrom-Json
+          if ($result.status -ne 'PASS' -or -not $result.archive_present -or -not $result.extracted -or -not $result.version_checked -or -not $result.self_test -or -not $result.cleanup) { throw 'Portable smoke evidence is not PASS' }
+      - name: Validate published binary deliverables
+        shell: pwsh
+        run: |
+          $version = (Get-Content '07-Manifestes/VERSION' -Raw).Trim()
+          $folder = Join-Path 'binary' ('v' + $version)
+          if (-not (Test-Path -LiteralPath $folder -PathType Container)) { throw "Missing published binary directory: $folder" }
+          & python '02-Compilation-Windows/verify-binary-delivery.py' --folder $folder --version $version
+          if ($LASTEXITCODE -ne 0) { throw "Binary verification failed: $LASTEXITCODE" }
+          foreach ($filename in @('StorageScope.exe','StorageScope-UpgradeGate.exe',"StorageScope-Setup-v$version.exe","StorageScope-Portable-v$version-win-x64.zip",'BINARY-MANIFEST.json')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $folder $filename) -PathType Leaf)) { throw "Missing binary: $filename" }
+          }
+      - name: Consolidate native qualification evidence
+        if: always()
+        shell: pwsh
+        run: |
+          & python '02-Compilation-Windows/consolidate-qualification.py' --root . --output '02-Compilation-Windows/windows-release-qualification.json' --min-timestamp ([double](Get-Content '02-Compilation-Windows/windows-qualification-start.txt' -Raw).Trim())
+          if ($LASTEXITCODE -ne 0) { throw 'Consolidated qualification failed' }
+      - name: Gate release artifacts on complete qualification
+        shell: pwsh
+        run: |
+          $report = Get-Content -Raw '02-Compilation-Windows/windows-release-qualification.json' | ConvertFrom-Json
+          if ($report.status -ne 'PASS') { throw 'Native qualification is not PASS: binary release blocked' }
+          foreach ($evidence in @('windows-qualification-report.json','windows-installer-smoke-report.json','windows-portable-smoke-report.json')) {
+            $path = Join-Path '02-Compilation-Windows' $evidence
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing qualification evidence: $path" }
+            if ((Get-Item -LiteralPath $path).Length -eq 0) { throw "Empty qualification evidence: $path" }
+          }
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          & python '02-Compilation-Windows/verify-binary-delivery.py' --folder (Join-Path 'binary' ('v' + $version)) --version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Published binaries failed final verification' }
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: StorageScope-Windows-QUALIFIED
+          path: |
+            binary/v*/**
+            02-Compilation-Windows/windows-release-qualification.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: StorageScope-Windows-DIAGNOSTICS
+          path: |
+            02-Compilation-Windows/build-logs/*
+            02-Compilation-Windows/windows-qualification-report.json
+            02-Compilation-Windows/windows-installer-smoke-report.json
+            02-Compilation-Windows/windows-portable-smoke-report.json
+            02-Compilation-Windows/windows-release-qualification.json
+          if-no-files-found: warn

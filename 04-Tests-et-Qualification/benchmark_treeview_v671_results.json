@@ -1,0 +1,71 @@
+{
+  "environment": "Linux/Xvfb; real ttk.Treeview; not Windows",
+  "runs": [
+    {
+      "rows": 100,
+      "repeats": 5,
+      "results": {
+        "unchanged": {
+          "rebuild": 0.383,
+          "adaptive": 0.292
+        },
+        "single_change": {
+          "rebuild": 0.288,
+          "adaptive": 0.29
+        },
+        "mass_change": {
+          "rebuild": 0.304,
+          "adaptive": 0.553
+        },
+        "reverse": {
+          "rebuild": 0.291,
+          "adaptive": 0.402
+        }
+      }
+    },
+    {
+      "rows": 500,
+      "repeats": 5,
+      "results": {
+        "unchanged": {
+          "rebuild": 1.566,
+          "adaptive": 2.084
+        },
+        "single_change": {
+          "rebuild": 1.486,
+          "adaptive": 2.266
+        },
+        "mass_change": {
+          "rebuild": 1.415,
+          "adaptive": 2.102
+        },
+        "reverse": {
+          "rebuild": 1.422,
+          "adaptive": 2.132
+        }
+      }
+    },
+    {
+      "rows": 1000,
+      "repeats": 5,
+      "results": {
+        "unchanged": {
+          "rebuild": 2.763,
+          "adaptive": 5.216
+        },
+        "single_change": {
+          "rebuild": 2.888,
+          "adaptive": 5.135
+        },
+        "mass_change": {
+          "rebuild": 2.942,
+          "adaptive": 5.183
+        },
+        "reverse": {
+          "rebuild": 2.774,
+          "adaptive": 5.121
+        }
+      }
+    }
+  ]
+}

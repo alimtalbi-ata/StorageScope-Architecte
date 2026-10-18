@@ -1,0 +1,5 @@
+StorageScope v6.11
+1. Pour compiler sous Windows, exécuter 02-Compilation-Windows/Construire-StorageScope.cmd depuis un dossier où les sources sont regroupées.
+2. Le dossier 03-Sources contient le code Python cumulatif.
+3. Les binaires Windows ne sont pas inclus : build Windows non exécuté dans cet environnement.
+Auteur : Abdelhalim Talbi.

@@ -1,0 +1,302 @@
+[
+  {
+    "dense": false,
+    "edits": 1,
+    "run": 1,
+    "partial_s": 0.00302,
+    "full_s": 0.087736,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 1,
+    "run": 2,
+    "partial_s": 0.003631,
+    "full_s": 0.023798,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 1,
+    "run": 3,
+    "partial_s": 0.00327,
+    "full_s": 0.023375,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 1,
+    "run": 4,
+    "partial_s": 0.00336,
+    "full_s": 0.024926,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 1,
+    "run": 5,
+    "partial_s": 0.00329,
+    "full_s": 0.024251,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 3,
+    "run": 1,
+    "partial_s": 0.008036,
+    "full_s": 0.022434,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 3,
+    "run": 2,
+    "partial_s": 0.007949,
+    "full_s": 0.023776,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 3,
+    "run": 3,
+    "partial_s": 0.007827,
+    "full_s": 0.022011,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 3,
+    "run": 4,
+    "partial_s": 0.007562,
+    "full_s": 0.022999,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 3,
+    "run": 5,
+    "partial_s": 0.007709,
+    "full_s": 0.021994,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 8,
+    "run": 1,
+    "partial_s": 0.021983,
+    "full_s": 0.027393,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 8,
+    "run": 2,
+    "partial_s": 0.025848,
+    "full_s": 0.027135,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 8,
+    "run": 3,
+    "partial_s": 0.024889,
+    "full_s": 0.022381,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 8,
+    "run": 4,
+    "partial_s": 0.021107,
+    "full_s": 0.021988,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": false,
+    "edits": 8,
+    "run": 5,
+    "partial_s": 0.020908,
+    "full_s": 0.023397,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 1,
+    "run": 1,
+    "partial_s": 0.00308,
+    "full_s": 0.022467,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 1,
+    "run": 2,
+    "partial_s": 0.003516,
+    "full_s": 0.023553,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 1,
+    "run": 3,
+    "partial_s": 0.003295,
+    "full_s": 0.022674,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 1,
+    "run": 4,
+    "partial_s": 0.003175,
+    "full_s": 0.031655,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 1,
+    "run": 5,
+    "partial_s": 0.003238,
+    "full_s": 0.022599,
+    "reused": 76,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 3,
+    "run": 1,
+    "partial_s": 0.008473,
+    "full_s": 0.022569,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 3,
+    "run": 2,
+    "partial_s": 0.007854,
+    "full_s": 0.024134,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 3,
+    "run": 3,
+    "partial_s": 0.008757,
+    "full_s": 0.023051,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 3,
+    "run": 4,
+    "partial_s": 0.008515,
+    "full_s": 0.022206,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 3,
+    "run": 5,
+    "partial_s": 0.007565,
+    "full_s": 0.021541,
+    "reused": 60,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 8,
+    "run": 1,
+    "partial_s": 0.020863,
+    "full_s": 0.022107,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 8,
+    "run": 2,
+    "partial_s": 0.034308,
+    "full_s": 0.024843,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 8,
+    "run": 3,
+    "partial_s": 0.022341,
+    "full_s": 0.025313,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 8,
+    "run": 4,
+    "partial_s": 0.021612,
+    "full_s": 0.024431,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  },
+  {
+    "dense": true,
+    "edits": 8,
+    "run": 5,
+    "partial_s": 0.024264,
+    "full_s": 0.032649,
+    "reused": 20,
+    "probes": 0,
+    "skips": 0
+  }
+]

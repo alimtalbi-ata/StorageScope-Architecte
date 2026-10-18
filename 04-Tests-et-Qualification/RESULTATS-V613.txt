@@ -1,0 +1,3 @@
+Python unittest discover: 944 tests PASS (Linux).
+Windows installer: not built or tested.
+UI captures: not captured on Windows.
