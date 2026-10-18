@@ -27,3 +27,7 @@ jobs:
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_transactional_store_safety_v6115.py' -v
       - name: Run legacy transactional store tests
         run: python -m unittest discover -s 04-Tests-et-Qualification/v6.25 -p 'test_transactional_store.py' -v
+      - name: Verify release version alignment
+        run: python 03-Sources/release_version_guard.py
+      - name: Test release version guard
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_release_version_guard_v6115.py' -v
