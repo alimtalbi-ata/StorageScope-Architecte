@@ -58,6 +58,7 @@ class SnapshotSafetyTests(unittest.TestCase):
         import hashlib
         payload = store.canonical([{"id": "same"}, {"id": "same"}])
         key = hashlib.sha256(payload.encode()).hexdigest()
+        store.save_snapshot(self.db, [])  # Initialize schema before deliberate corruption.
         with sqlite3.connect(self.db) as conn:
             conn.execute("INSERT INTO snapshots VALUES (?,?,?)", (key, payload, "2026-01-01"))
             conn.execute("INSERT INTO snapshot_items VALUES (?,?,?)", (key, "same", '{"id":"same"}'))
