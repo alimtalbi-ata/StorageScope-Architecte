@@ -68,10 +68,20 @@ if ((Split-Path -Leaf $repositoryRoot) -eq '02-Compilation-Windows') {
 }
 $testFolder = Join-Path $repositoryRoot '04-Tests-et-Qualification'
 if (-not (Test-Path -LiteralPath $testFolder)) { throw "Test suite missing: $testFolder" }
+# unittest discovery adds only the test directory to sys.path. Historical tests
+# also import modules directly from 03-Sources and governance modules.
+# Keep the complete source roots importable without installing anything globally.
+$sourceRoot = Join-Path $repositoryRoot '03-Sources'
+$governanceRoot = Join-Path $sourceRoot 'governance'
+$oldPythonPath = $env:PYTHONPATH
+$env:PYTHONPATH = @($sourceRoot, $repositoryRoot, $testFolder, $oldPythonPath) -join [IO.Path]::PathSeparator
 Push-Location $repositoryRoot
 try {
     Invoke-Checked $builder @('-m','unittest','discover','-s',$testFolder,'-p','test_*.py','-q')
-} finally { Pop-Location }
+} finally {
+    Pop-Location
+    $env:PYTHONPATH = $oldPythonPath
+}
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','StorageScope.spec')
 # Independent console-mode gate: no Python required on the target PC.
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','--onefile','--console','--name','StorageScope-UpgradeGate','upgrade_gate_v581.py')
