@@ -1,7 +1,7 @@
 {
-  "version": "6.106",
+  "version": "6.108",
   "author": "Abdelhalim Talbi",
-  "tests_new": "6/6 PASS",
+  "restore_lock_diagnostic": "IMPLEMENTED_READ_ONLY",
   "native_windows_build": "NOT_RUN",
   "windows_binaries": "NOT_AVAILABLE"
 }

@@ -1,5 +1,5 @@
 ; Compile with Inno Setup 6 on Windows after build-windows.ps1
-#define AppVersion "6.106"
+#define AppVersion "6.108"
 [Setup]
 AppId={{A6B4A820-846E-497A-89D0-89BE0F617E63}
 AppName=StorageScope

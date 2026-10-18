@@ -1,4 +1,4 @@
-# StorageScope v6.106
+# StorageScope v6.108
 
 Restauration atomique dans un dossier nouveau, staging privé, contrôle SHA-256 des octets copiés et publication après vérification.
 

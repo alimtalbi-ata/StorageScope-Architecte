@@ -1,1 +1,1 @@
-v6.106: aucun executable Windows natif disponible; compilation Windows requise. Auteur: Abdelhalim Talbi.
+StorageScope v6.108 - Auteur Abdelhalim Talbi. Aucun binaire Windows natif compile dans cet environnement.

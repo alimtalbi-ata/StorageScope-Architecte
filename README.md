@@ -1,4 +1,4 @@
-# StorageScope Architecte — v6.106
+# StorageScope Architecte — v6.108
 
 Sources Python, tests métier et outils de fabrication Windows d'Abdelhalim Talbi.
 

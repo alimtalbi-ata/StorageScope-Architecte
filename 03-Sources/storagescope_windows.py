@@ -12,7 +12,7 @@ from uuid import uuid4
 from pathlib import Path
 
 APP_NAME = 'StorageScope'
-VERSION = '6.106'
+VERSION = '6.108'
 
 
 def user_data_dir(environ=None):
