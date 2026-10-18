@@ -1,0 +1,63 @@
+name: Windows binaries - installer and portable
+on:
+  push:
+    branches:
+      - 'feature/storagescope-v6.114-diagnostic-pagination'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check build dependencies and Python syntax
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python --version
+          python -m pip --version
+          python -m pip install -r '02-Compilation-Windows/requirements-build.txt'
+          python -m pip check
+          python -m PyInstaller --version
+          python -m compileall -q '03-Sources'
+          python -m unittest discover -s '04-Tests-et-Qualification' -p 'test_restore_lock_pagination_v6114.py' -v
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if (-not $iscc) {
+            $candidate = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
+            if (Test-Path $candidate) { $iscc = Get-Item $candidate }
+          }
+          if ($iscc) { Write-Host "Inno Setup found: $($iscc.Source ?? $iscc.FullName)" }
+          else { Write-Warning 'Inno Setup not detected: existing build engine must bootstrap it.' }
+      - name: Build installer and portable artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & './02-Compilation-Windows/build-all-windows.ps1'
+          if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { throw "Build failed: $LASTEXITCODE" }
+      - name: Verify deliverables and dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content '07-Manifestes/VERSION' -Raw).Trim()
+          $folder = Join-Path 'binary' ('v' + $version)
+          if (-not (Test-Path $folder -PathType Container)) { throw "Missing binary directory: $folder" }
+          & python '02-Compilation-Windows/verify-binary-delivery.py' --folder $folder --version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Binary verification failed' }
+          $installer = Get-ChildItem -Path $folder -Recurse -File -Filter "StorageScope-Setup-v$version.exe"
+          $portable = Get-ChildItem -Path $folder -Recurse -File -Filter "StorageScope-Portable-v$version-win-x64.zip"
+          if (-not $installer -or -not $portable) { throw 'Installer or portable archive missing' }
+          $installer | Get-FileHash -Algorithm SHA256 | Format-List
+          $portable | Get-FileHash -Algorithm SHA256 | Format-List
+      - name: Upload Windows binary package
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storagescope-windows-binaries
+          path: binary/v*/
+          if-no-files-found: error
+          retention-days: 14
