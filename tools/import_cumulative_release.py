@@ -9,6 +9,7 @@ import argparse
 import pathlib
 import subprocess
 import sys
+import stat
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -20,6 +21,8 @@ ROOT_FILES = ("README-DEMARRAGE.md",)
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("archive", type=pathlib.Path)
+    parser.add_argument("--max-uncompressed-mib", type=int, default=2048,
+                        help="Reject archives larger than this uncompressed size")
     parser.add_argument("--apply", action="store_true",
                         help="Write files; without this flag only show the import plan")
     args = parser.parse_args()
@@ -28,14 +31,27 @@ def main() -> int:
         parser.error("Working tree is not clean")
     with zipfile.ZipFile(args.archive) as zf:
         entries = []
+        seen = set()
+        total_size = 0
         for info in zf.infolist():
             if info.is_dir():
                 continue
             name = pathlib.PurePosixPath(info.filename)
             if name.is_absolute() or ".." in name.parts or "\\" in info.filename:
                 parser.error(f"Unsafe archive entry: {info.filename}")
-            if len(name.parts) < 1:
+            if len(name.parts) < 1 or name == pathlib.PurePosixPath("."):
                 continue
+            if name.as_posix() in seen:
+                parser.error(f"Duplicate archive entry: {info.filename}")
+            seen.add(name.as_posix())
+            unix_mode = (info.external_attr >> 16) & 0xFFFF
+            if stat.S_ISLNK(unix_mode):
+                parser.error(f"Symbolic links are not allowed: {info.filename}")
+            total_size += info.file_size
+            if total_size > args.max_uncompressed_mib * 1024 * 1024:
+                parser.error("Archive exceeds uncompressed size limit")
+            if info.file_size > 1024 * 1024 and info.compress_size and info.file_size / info.compress_size > 500:
+                parser.error(f"Suspicious compression ratio: {info.filename}")
             if name.parts[0] not in TRACKED and str(name) not in ROOT_FILES:
                 continue
             # Do not import binary executables into source control.
