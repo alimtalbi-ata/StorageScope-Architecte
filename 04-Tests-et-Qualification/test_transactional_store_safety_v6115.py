@@ -17,6 +17,22 @@ class SnapshotSafetyTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_missing_database_read_does_not_create_files(self):
+        with self.assertRaises(KeyError):
+            store.load_snapshot(self.db, "0" * 64)
+        self.assertFalse(self.db.exists())
+
+    def test_read_does_not_migrate_schema(self):
+        connection = sqlite3.connect(self.db)
+        connection.execute("PRAGMA user_version=0")
+        connection.commit()
+        connection.close()
+        with self.assertRaises(sqlite3.OperationalError):
+            store.load_snapshot(self.db, "0" * 64)
+        with sqlite3.connect(self.db) as check:
+            self.assertEqual(check.execute("PRAGMA user_version").fetchone()[0], 0)
+            self.assertEqual(check.execute("SELECT count(*) FROM sqlite_master WHERE name='snapshots'").fetchone()[0], 0)
+
     def test_trimmed_identifier_roundtrip(self):
         key = store.save_snapshot(self.db, [{"id": " b "}, {"id": "a"}])
         self.assertEqual(store.load_snapshot(self.db, key), [{"id": "a"}, {"id": "b"}])
