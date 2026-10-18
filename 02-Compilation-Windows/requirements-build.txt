@@ -1,2 +1,4 @@
 # Dependances de fabrication uniquement; aucune installation Python sur le poste cible.
 pyinstaller==6.16.0
+# Image export and graph tests require Pillow during qualification.
+Pillow==11.3.0
