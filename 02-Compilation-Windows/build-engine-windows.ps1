@@ -59,7 +59,19 @@ if (-not (Test-Path "$venv\Scripts\python.exe")) { Invoke-Checked $python.Execut
  $builder = "$venv\Scripts\python.exe"
 Invoke-Checked $builder @('verify-windows-build.py')
 Invoke-Checked $builder @('-m','pip','install','--disable-pip-version-check','--requirement','requirements-build.txt')
-Invoke-Checked $builder @('-m','unittest','discover','-s','.','-p','test_*.py','-q')
+# Tests must run against the complete repository layout, not the flattened build stage.
+# Historical tests resolve 03-Sources, 02-Compilation-Windows and manifests from
+# their parent directory. Running in the stage produces false path failures.
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+if ((Split-Path -Leaf $repositoryRoot) -eq '02-Compilation-Windows') {
+    $repositoryRoot = Split-Path -Parent $repositoryRoot
+}
+$testFolder = Join-Path $repositoryRoot '04-Tests-et-Qualification'
+if (-not (Test-Path -LiteralPath $testFolder)) { throw "Test suite missing: $testFolder" }
+Push-Location $repositoryRoot
+try {
+    Invoke-Checked $builder @('-m','unittest','discover','-s',$testFolder,'-p','test_*.py','-q')
+} finally { Pop-Location }
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','StorageScope.spec')
 # Independent console-mode gate: no Python required on the target PC.
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','--onefile','--console','--name','StorageScope-UpgradeGate','upgrade_gate_v581.py')
