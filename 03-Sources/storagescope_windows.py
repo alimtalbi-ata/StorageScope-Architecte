@@ -12,7 +12,7 @@ from uuid import uuid4
 from pathlib import Path
 
 APP_NAME = 'StorageScope'
-VERSION = '6.100'
+VERSION = '6.106'
 
 
 def user_data_dir(environ=None):
@@ -91,9 +91,9 @@ def backup_snapshot(paths, destination):
         manifest = {'format': 'storagescope-backup-v1', 'created_utc': datetime.now(timezone.utc).isoformat(),
                     'author': 'Abdelhalim Talbi', 'files': []}
         for file in files:
-            payload = Path(file).read_bytes()
-            manifest['files'].append({'name': Path(file).name, 'bytes': len(payload),
-                                      'sha256': hashlib.sha256(payload).hexdigest()})
+            size, digest = _hash_file_streaming(Path(file))
+            manifest['files'].append({'name': Path(file).name, 'bytes': size,
+                                      'sha256': digest})
         (folder / 'manifest.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
         if not verify_backup_snapshot(folder):
             raise ValueError('Vérification de sauvegarde échouée')
@@ -103,26 +103,53 @@ def backup_snapshot(paths, destination):
         raise
 
 
+def _hash_file_streaming(path, chunk_size=1024 * 1024):
+    """Bounded-memory hashing for multi-gigabyte SQLite snapshots."""
+    digest = hashlib.sha256()
+    total = 0
+    with open(path, 'rb') as stream:
+        while True:
+            chunk = stream.read(chunk_size)
+            if not chunk:
+                break
+            total += len(chunk)
+            digest.update(chunk)
+    return total, digest.hexdigest()
+
+
 def verify_backup_snapshot(folder):
     """Verify snapshot inventory and hashes; never modify user data."""
     folder = Path(folder)
     try:
-        manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
+        manifest_path = folder / 'manifest.json'
+        if manifest_path.is_symlink() or manifest_path.stat().st_size > 2 * 1024 * 1024:
+            return False
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
         entries = manifest['files']
         if manifest.get('format') != 'storagescope-backup-v1' or not entries:
             return False
         names = [item['name'] for item in entries]
         if len(set(names)) != len(names):
             return False
-        if set(names) != {p.name for p in folder.iterdir() if p.is_file() and p.name != 'manifest.json'}:
+        # Reject symlinks and nested entries: a snapshot must contain regular local files only.
+        if any(p.is_symlink() or not p.is_file() for p in folder.iterdir()):
+            return False
+        if set(names) != {p.name for p in folder.iterdir() if p.name != 'manifest.json'}:
             return False
         for item in entries:
             name = item['name']
-            if not isinstance(name, str) or name in ('.', '..') or Path(name).name != name:
+            if (not isinstance(name, str) or not name or name in ('.', '..')
+                    or '/' in name or '\\' in name or ':' in name or Path(name).name != name):
                 return False
             file = folder / name
-            data = file.read_bytes()
-            if len(data) != item['bytes'] or hashlib.sha256(data).hexdigest() != item['sha256']:
+            if file.is_symlink() or not file.is_file():
+                return False
+            if type(item['bytes']) is not int or item['bytes'] < 0 or not isinstance(item['sha256'], str):
+                return False
+            if file.stat().st_size != item['bytes']:
+                return False
+            size, digest = _hash_file_streaming(file)
+            if size != item['bytes'] or digest != item['sha256']:
                 return False
         return True
     except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):

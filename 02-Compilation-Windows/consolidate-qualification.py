@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Consolidate real Windows qualification evidence; never turn missing tests into PASS."""
 import argparse, json, pathlib, sys, datetime
+REQUIRED_NATIVE_CHECKS = ['release_version', 'build_launcher', 'release_manifest', 'compiled_executable', 'executable_version', 'executable_self_test', 'installer_present']
 NAMES = {"native": "windows-qualification-report.json", "installer": "windows-installer-smoke-report.json", "portable": "windows-portable-smoke-report.json"}
 
 def consolidate(root, min_timestamp=None):
@@ -21,7 +22,7 @@ def consolidate(root, min_timestamp=None):
             status = data.get("overall") if name == "native" else data.get("status")
             if not isinstance(data, dict) or status != "PASS" or data.get("version") != version:
                 reports[name] = {"status": "FAIL", "reason": "status/version mismatch"}
-            elif name == "native" and (not isinstance(data.get("checks"), list) or not data["checks"] or any(not isinstance(c, dict) or c.get("status") != "PASS" for c in data["checks"])):
+            elif name == "native" and (not isinstance(data.get("checks"), list) or not data["checks"] or any(not isinstance(c, dict) or c.get("status") != "PASS" for c in data["checks"]) or len({c.get("name") for c in data["checks"] if isinstance(c, dict)}) != len(data["checks"]) or not set(REQUIRED_NATIVE_CHECKS).issubset({c.get("name") for c in data["checks"] if isinstance(c, dict)})):
                 reports[name] = {"status": "FAIL", "reason": "incomplete native checks"}
             elif name == "installer" and not all(data.get(k) is True for k in ("installed", "version_checked", "uninstalled")):
                 reports[name] = {"status": "FAIL", "reason": "incomplete installer evidence"}

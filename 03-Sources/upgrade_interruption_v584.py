@@ -33,7 +33,7 @@ def rehearse(data_dir, backup_dir):
         def fail_copy(*args, **kwargs):
             raise OSError('INJECTED_COPY_FAILURE')
         try:
-            with patch.object(shutil, 'copyfileobj', side_effect=fail_copy):
+            with patch('snapshot_restore_v583.os.fsync', side_effect=fail_copy):
                 restore_to_empty(snapshot, interrupted)
         except OSError as exc:
             if str(exc) != 'INJECTED_COPY_FAILURE':

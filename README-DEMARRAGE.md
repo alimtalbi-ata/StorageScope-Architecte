@@ -1,7 +1,7 @@
-# StorageScope v6.100
+# StorageScope v6.106
+
+Restauration atomique dans un dossier nouveau, staging privé, contrôle SHA-256 des octets copiés et publication après vérification.
+
+Windows: lancer `02-Compilation-Windows/Construire-StorageScope.cmd`. Les exécutables ne sont pas précompilés.
 
 Auteur : Abdelhalim Talbi.
-
-Cette version empeche la reutilisation accidentelle de rapports de qualification Windows anterieurs. Le workflow supprime les anciennes preuves et enregistre un instant de depart ; le consolidateur refuse les rapports plus anciens.
-
-Compilation Windows : `02-Compilation-Windows/Construire-StorageScope.cmd`. Binaires attendus : `binary/v6.100/`. Aucun binaire natif precompile dans ce ZIP.

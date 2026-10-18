@@ -20,6 +20,11 @@ if (Test-Path $dist) {
 }
 if (-not $SkipInstaller) { Check 'installer_present' { if (-not (Test-Path $setup)) { throw 'Installer missing' }; if ((Get-Item $setup).Length -lt 1024) { throw 'Installer too small' } } }
 if ($InstallPath) { Check 'installed_executable' { $exe=Join-Path $InstallPath 'StorageScope.exe'; if (-not (Test-Path $exe)) { throw 'Installed executable missing' }; $probe = Join-Path $PSScriptRoot 'version-probe-installed.txt'; if (Test-Path $probe) { Remove-Item $probe -Force }; & $exe --version-file $probe; if ($LASTEXITCODE -ne 0 -or -not (Test-Path $probe)) { throw 'Installed version probe failed' }; $installedVersion = (Get-Content $probe -Raw).Trim(); Remove-Item $probe -Force; if ($installedVersion -ne $version) { throw "Installed version mismatch: $installedVersion" } } }
+$requiredChecks = @('release_version','build_launcher','release_manifest','compiled_executable','executable_version','executable_self_test','installer_present')
+$passedNames = @($report.checks | Where-Object { $_.status -eq 'PASS' } | ForEach-Object { $_.name })
+$missingChecks = @($requiredChecks | Where-Object { $_ -notin $passedNames })
+if ($SkipInstaller) { $missingChecks = @($missingChecks | Where-Object { $_ -notin @('release_manifest','installer_present') }) }
+if ($missingChecks.Count -gt 0) { $report.checks += @{name='required_checks';status='FAIL';error=('Missing required checks: ' + ($missingChecks -join ', '))} }
 if (@($report.checks | Where-Object status -eq 'FAIL').Count -eq 0) { $report.overall='PASS' }
 $out = Join-Path $PSScriptRoot 'windows-qualification-report.json'
 $report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $out -Encoding UTF8

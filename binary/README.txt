@@ -1,2 +1,1 @@
-StorageScope v6.100 | Abdelhalim Talbi
-Aucun EXE natif precompile. Construire sous Windows x64.
+v6.106: aucun executable Windows natif disponible; compilation Windows requise. Auteur: Abdelhalim Talbi.
