@@ -47,6 +47,23 @@ class SnapshotSafetyTests(unittest.TestCase):
         store.save_snapshot(self.db, assets)
         self.assertEqual(assets, [{"id": " a "}])
 
+    def test_corrupted_item_payload_rejected(self):
+        key = store.save_snapshot(self.db, [{"id": "a"}])
+        with sqlite3.connect(self.db) as conn:
+            conn.execute("UPDATE snapshot_items SET payload=? WHERE snapshot_id=?", ('{broken', key))
+        with self.assertRaisesRegex(ValueError, "Invalid snapshot item JSON"):
+            store.load_snapshot(self.db, key)
+
+    def test_duplicate_asset_identifiers_in_payload_rejected(self):
+        import hashlib
+        payload = store.canonical([{"id": "same"}, {"id": "same"}])
+        key = hashlib.sha256(payload.encode()).hexdigest()
+        with sqlite3.connect(self.db) as conn:
+            conn.execute("INSERT INTO snapshots VALUES (?,?,?)", (key, payload, "2026-01-01"))
+            conn.execute("INSERT INTO snapshot_items VALUES (?,?,?)", (key, "same", '{"id":"same"}'))
+        with self.assertRaisesRegex(ValueError, "Duplicate asset ids"):
+            store.load_snapshot(self.db, key)
+
     def test_write_connection_closes_on_success(self):
         actual = store.connect
         opened = []
