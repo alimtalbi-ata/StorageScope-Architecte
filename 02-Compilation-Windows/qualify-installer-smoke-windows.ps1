@@ -9,7 +9,10 @@ $target = Join-Path $env:TEMP "StorageScope-CI-$([guid]::NewGuid().ToString('N')
 $report = [ordered]@{version=$version; status='FAIL'; installed=$false; version_checked=$false; uninstalled=$false; error=$null}
 $failure = $null
 try {
-  $p = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$target") -Wait -PassThru
+  # Inno Setup returns exit code 7 for invalid command-line arguments.
+  # Quote the /DIR value as a single argument, including paths with spaces.
+  $installArgs = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="' + $target + '"'
+  $p = Start-Process -FilePath $installer -ArgumentList $installArgs -Wait -PassThru
   if ($p.ExitCode -ne 0) { throw "Installer exit $($p.ExitCode)" }
   $report.installed = $true
   $exe = Join-Path $target 'StorageScope.exe'
