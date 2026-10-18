@@ -11,9 +11,15 @@ $failure = $null
 try {
   # Inno Setup returns exit code 7 for invalid command-line arguments.
   # Quote the /DIR value as a single argument, including paths with spaces.
-  $installArgs = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="' + $target + '"'
+  $installerLog = Join-Path $env:TEMP ("storagescope-installer-" + [guid]::NewGuid().ToString('N') + ".log")
+  $installArgs = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="' + $target + '" /LOG="' + $installerLog + '"'
   $p = Start-Process -FilePath $installer -ArgumentList $installArgs -Wait -PassThru
-  if ($p.ExitCode -ne 0) { throw "Installer exit $($p.ExitCode)" }
+  if ($p.ExitCode -ne 0) {
+    $tail = if (Test-Path -LiteralPath $installerLog) { (Get-Content -LiteralPath $installerLog -Tail 45) -join [Environment]::NewLine } else { 'Inno log unavailable' }
+    Write-Host "Inno Setup diagnostic log: $installerLog"
+    Write-Host $tail
+    throw "Installer exit $($p.ExitCode); log: $installerLog"
+  }
   $report.installed = $true
   $exe = Join-Path $target 'StorageScope.exe'
   if (-not (Test-Path $exe)) { throw 'Installed EXE missing' }
