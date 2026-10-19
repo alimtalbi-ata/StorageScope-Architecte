@@ -139,9 +139,14 @@ def verify_backup_snapshot(folder):
             return False
         manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
         entries = manifest['files']
-        if manifest.get('format') != 'storagescope-backup-v1' or not entries:
+        if (manifest.get('format') != 'storagescope-backup-v1'
+                or not isinstance(entries, list) or not entries):
+            return False
+        if any(not isinstance(item, dict) or not isinstance(item.get('name'), str) for item in entries):
             return False
         names = [item['name'] for item in entries]
+        if not set(names).issubset({'campaigns.sqlite', 'architecture-decisions.sqlite', 'governance-views.json'}):
+            return False
         if len(set(names)) != len(names):
             return False
         # Reject symlinks and nested entries: a snapshot must contain regular local files only.
@@ -157,7 +162,9 @@ def verify_backup_snapshot(folder):
             file = folder / name
             if file.is_symlink() or not file.is_file():
                 return False
-            if type(item['bytes']) is not int or item['bytes'] < 0 or not isinstance(item['sha256'], str):
+            if (type(item['bytes']) is not int or item['bytes'] < 0
+                    or not isinstance(item['sha256'], str) or len(item['sha256']) != 64
+                    or any(c not in '0123456789abcdef' for c in item['sha256'])):
                 return False
             if file.stat().st_size != item['bytes']:
                 return False
