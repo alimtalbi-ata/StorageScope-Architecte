@@ -4,6 +4,7 @@ This module deliberately never overwrites active application files.
 """
 from __future__ import annotations
 import os
+import hashlib
 import shutil
 import tempfile
 from pathlib import Path
@@ -37,10 +38,19 @@ def stage_verified_restore(snapshot, data_root, *, confirm=False):
             if not file.exists():
                 continue
             output = stage / filename
+            if file.is_symlink() or not file.is_file():
+                raise ValueError(f"Unsafe snapshot member: {filename}")
+            source_digest = hashlib.sha256()
             with open(file, "rb") as inp, open(output, "xb") as out:
-                shutil.copyfileobj(inp, out, length=1024 * 1024)
+                while chunk := inp.read(1024 * 1024):
+                    source_digest.update(chunk)
+                    out.write(chunk)
                 out.flush()
                 os.fsync(out.fileno())
+            with open(output, "rb") as staged:
+                staged_digest = hashlib.file_digest(staged, "sha256")
+            if staged_digest.digest() != source_digest.digest():
+                raise ValueError(f"Staged copy integrity mismatch: {filename}")
         if not verify_backup_snapshot(source):
             raise ValueError("Snapshot changed while staging")
         return stage
