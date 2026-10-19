@@ -28,6 +28,30 @@ def _sqlite_state(path):
     except (OSError, sqlite3.Error, ValueError):
         return {"status": "ERROR", "reason": "SQLite unavailable or unreadable"}
 
+def classify_check(result):
+    """Severity and actionable guidance without altering stored data."""
+    status = result["status"]
+    reason = result.get("reason", "")
+    if status == "OK":
+        return {"severity": "INFO", "recommendation": "Aucune action nécessaire."}
+    if status == "MISSING":
+        return {"severity": "NOTICE", "recommendation": "Vérifier si cet espace a été initialisé ; sinon aucune action requise."}
+    if reason == "symbolic link":
+        advice = "Utiliser un fichier local régulier ; vérifier le chemin configuré."
+    elif reason == "not a regular file":
+        advice = "Vérifier le type de fichier et ses droits d'accès."
+    elif "integrity" in reason.lower():
+        advice = "Conserver une copie, puis envisager une restauration depuis une sauvegarde vérifiée."
+    else:
+        advice = "Vérifier les droits et l'espace disque avant toute intervention."
+    return {"severity": "ERROR", "recommendation": advice}
+
+def filter_checks(report, severity="ALL"):
+    if severity not in ("ALL", "ERROR", "NOTICE", "INFO"):
+        raise ValueError("Unsupported diagnostic severity")
+    return {name: value for name, value in report["checks"].items()
+            if severity == "ALL" or value["severity"] == severity}
+
 def collect(paths, version):
     """Return a structured report without exposing database records or absolute paths."""
     checks = {name: _sqlite_state(paths[name]) for name in ("decisions", "campaigns")}
@@ -38,6 +62,7 @@ def collect(paths, version):
         else {"status": "MISSING"} if not preferences.exists()
         else {"status": "ERROR", "reason": "not a regular file"}
     )
+    checks = {name: {**value, **classify_check(value)} for name, value in checks.items()}
     counts = {state: sum(1 for value in checks.values() if value["status"] == state)
               for state in ("OK", "MISSING", "ERROR")}
     return {
@@ -51,7 +76,7 @@ def collect(paths, version):
         "privacy": "No user paths, database records, usernames or environment variables collected.",
     }
 
-def render(report):
+def render(report, severity="ALL"):
     lines = [
         f"StorageScope {report['application']['version']} — Diagnostic support",
         f"Date UTC : {report['created_utc']}",
@@ -59,9 +84,11 @@ def render(report):
         f"Python : {report['runtime']['python']}",
         "",
     ]
-    for name, result in report["checks"].items():
+    for name, result in filter_checks(report, severity).items():
         suffix = f" ({result['reason']})" if "reason" in result else ""
-        lines.append(f"{name} : {result['status']}{suffix}")
+        lines.append(f"[{result['severity']}] {name} : {result['status']}{suffix}")
+        if result["status"] != "OK":
+            lines.append("  Conseil : " + result["recommendation"])
     summary = report["summary"]
     lines.extend(["", f"Contrôles : {summary['OK']} OK · {summary['MISSING']} absents · {summary['ERROR']} erreurs",
                   "Rapport local en lecture seule, sans données métier ni chemins personnels."])
