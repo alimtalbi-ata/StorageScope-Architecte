@@ -12,8 +12,8 @@ SOURCE = ROOT / "03-Sources" / "storagescope_windows.py"
 def audit(path=SOURCE):
     source = Path(path).read_text(encoding="utf-8")
     tree = ast.parse(source)
-    pages = sorted(set(re.findall(r"navigate_safely\\(['\\\"]([^'\\\"]+)['\\\"]\\)", source)))
-    bindings = re.findall(r"root\\.bind\\(['\\\"]([^'\\\"]+)['\\\"]", source)
+    pages = sorted(set(re.findall('navigate_safely\\\\([\\\'\"]([^\\\'\"]+)[\\\'\"]\\\\)', source)))
+    bindings = re.findall('root\\\\.bind\\\\([\\\'\"]([^\\\'\"]+)[\\\'\"]', source)
     shortcuts = sorted(set(bindings))
     functions = {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
     issues = [f"Missing {name} entrypoint" for name in ("main", "launch") if name not in functions]
