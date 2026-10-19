@@ -40,4 +40,30 @@ class ReleaseZipTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/"valid.zip";self.make_zip(p)
             self.assertFalse(module.verify(p,"6.118")["ok"])
+    def test_invalid_utf8_version_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "invalid-version.zip"
+            with zipfile.ZipFile(p, "w") as archive:
+                for name in module.VERSIONS:
+                    archive.writestr(name, b"\\xff" if name == module.VERSIONS[0] else b"6.117")
+            result = module.verify(p, "6.117")
+            self.assertFalse(result["ok"])
+            self.assertTrue(any("Invalid UTF-8 version" in e for e in result["errors"]))
+
+    def test_unsafe_path_rejected_before_decompression(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "unsafe.zip"
+            with zipfile.ZipFile(p, "w") as archive:
+                archive.writestr("../outside.txt", b"unsafe")
+            original = zipfile.ZipFile.testzip
+            def must_not_decompress(_archive):
+                raise AssertionError("testzip called on unsafe archive")
+            zipfile.ZipFile.testzip = must_not_decompress
+            try:
+                result = module.verify(p)
+            finally:
+                zipfile.ZipFile.testzip = original
+            self.assertFalse(result["ok"])
+            self.assertTrue(any("Unsafe archive path" in e for e in result["errors"]))
+
 if __name__ == "__main__":unittest.main()
