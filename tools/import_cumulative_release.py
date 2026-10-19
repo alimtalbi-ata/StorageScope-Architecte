@@ -11,6 +11,7 @@ import subprocess
 import sys
 import stat
 import zipfile
+import re
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TRACKED = ("01-Application", "02-Compilation-Windows", "03-Sources",
@@ -30,6 +31,22 @@ def main() -> int:
                       capture_output=True, text=True, check=True).stdout.strip():
         parser.error("Working tree is not clean")
     with zipfile.ZipFile(args.archive) as zf:
+        version_paths = ("01-Application/VERSION.txt", "03-Sources/VERSION", "07-Manifestes/VERSION")
+        archive_versions = {}
+        for version_path in version_paths:
+            try:
+                value = zf.read(version_path).decode("utf-8-sig").strip()
+            except (KeyError, UnicodeError) as exc:
+                parser.error(f"Missing or unreadable archive metadata: {version_path}: {exc}")
+            if not re.fullmatch(r"\\d+\\.\\d+", value):
+                parser.error(f"Invalid archive version in {version_path}: {value!r}")
+            archive_versions[version_path] = value
+        if len(set(archive_versions.values())) != 1:
+            parser.error(f"Archive version drift: {archive_versions}")
+        current_version = (ROOT / "07-Manifestes/VERSION").read_text(encoding="utf-8").strip()
+        archive_version = next(iter(archive_versions.values()))
+        if tuple(map(int, archive_version.split("."))) < tuple(map(int, current_version.split("."))):
+            parser.error(f"Archive version {archive_version} is older than repository {current_version}")
         entries = []
         seen = set()
         total_size = 0
@@ -52,6 +69,8 @@ def main() -> int:
                 parser.error("Archive exceeds uncompressed size limit")
             if info.file_size > 1024 * 1024 and info.compress_size and info.file_size / info.compress_size > 500:
                 parser.error(f"Suspicious compression ratio: {info.filename}")
+            if name.parts[0] == ".github":
+                continue  # Preserve CI/security policies maintained in GitHub.
             if name.parts[0] not in TRACKED and str(name) not in ROOT_FILES:
                 continue
             # Do not import binary executables into source control.
