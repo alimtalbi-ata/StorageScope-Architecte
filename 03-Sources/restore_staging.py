@@ -35,10 +35,12 @@ def stage_verified_restore(snapshot, data_root, *, confirm=False):
     try:
         for filename in ALLOWED:
             file = source / filename
+            if file.is_symlink():
+                raise ValueError(f"Unsafe snapshot member: {filename}")
             if not file.exists():
                 continue
             output = stage / filename
-            if file.is_symlink() or not file.is_file():
+            if not file.is_file():
                 raise ValueError(f"Unsafe snapshot member: {filename}")
             source_digest = hashlib.sha256()
             with open(file, "rb") as inp, open(output, "xb") as out:
