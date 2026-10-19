@@ -10,13 +10,14 @@ def validate(folder, version):
     if data.get('version')!=version or data.get('platform')!='windows-x64':raise ValueError('Incorrect version/platform')
     artifacts=data.get('artifacts')
     if not isinstance(artifacts,list) or len(artifacts)!=len(expected):raise ValueError('Incorrect artifact count')
-    names=[item.get('name') for item in artifacts]
+    if any(not isinstance(item,dict) or not isinstance(item.get('name'),str) for item in artifacts):raise ValueError('Malformed artifact entry')
+    names=[item['name'] for item in artifacts]
     if len(set(names))!=len(names) or set(names)!=expected:raise ValueError('Missing, unexpected or duplicate artifact')
     for item in artifacts:
         path=folder/item['name']
         if not path.is_file() or path.is_symlink():raise ValueError('Missing or linked artifact: '+item['name'])
         size=path.stat().st_size
-        if size<=0 or size!=item.get('bytes'):raise ValueError('Incorrect file size: '+item['name'])
+        if type(item.get('bytes')) is not int or size<=0 or size!=item.get('bytes'):raise ValueError('Incorrect file size: '+item['name'])
         with path.open('rb') as handle: digest=hashlib.file_digest(handle,'sha256').hexdigest().upper()
         if digest!=str(item.get('sha256','')).upper():raise ValueError('SHA256 mismatch: '+item['name'])
     if {p.name for p in folder.iterdir()}!=expected|{'BINARY-MANIFEST.json'}:raise ValueError('Unexpected files in delivery')
