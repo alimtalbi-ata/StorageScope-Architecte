@@ -23,6 +23,8 @@ class ReleaseGuardTests(unittest.TestCase):
             script = root / "02-Compilation-Windows/StorageScope.iss"
             script.parent.mkdir(parents=True, exist_ok=True)
             script.write_text('#define AppVersion "6.115"\n', encoding="utf-8")
+            app = root / "03-Sources/storagescope_windows.py"
+            app.write_text("VERSION = '6.108'\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "Version drift"):
                 guard.check_release_versions(root)
 
