@@ -55,9 +55,13 @@ jobs:
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_component_inventory_v6119.py' -v
       - name: Generate component architecture inventory
         run: python tools/audit_component_inventory.py --output component-inventory.json
+      - name: Prioritize architecture review candidates
+        run: python tools/review_component_risks.py component-inventory.json --output component-review.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: StorageScope-Component-Inventory
-          path: component-inventory.json
+          path: |
+            component-inventory.json
+            component-review.json
           if-no-files-found: warn
