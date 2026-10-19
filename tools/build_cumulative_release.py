@@ -35,6 +35,10 @@ def build(root, output, *, require_windows=True):
             if not (binary_dir / name).is_file():
                 raise ValueError("Missing qualified Windows deliverable: " + name)
     files = {}
+    if require_windows:
+        required_docs = list((root / "05-Documentation").rglob("*.docx")) + list((root / "05-Documentation").rglob("*.pdf"))
+        if not any(p.suffix == ".docx" for p in required_docs) or not any(p.suffix == ".pdf" for p in required_docs):
+            raise ValueError("Qualified cumulative release requires Word and PDF documentation")
     for file in root.rglob("*"):
         if not file.is_file() or file.is_symlink():
             continue
