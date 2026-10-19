@@ -164,8 +164,15 @@ def verify_backup_snapshot(folder):
             size, digest = _hash_file_streaming(file)
             if size != item['bytes'] or digest != item['sha256']:
                 return False
+            if name in ('campaigns.sqlite', 'architecture-decisions.sqlite'):
+                # A matching hash alone cannot prove a SQLite snapshot is readable.
+                # Immutable read-only URI avoids writing WAL or journal files.
+                uri = file.resolve().as_uri() + '?mode=ro&immutable=1'
+                with closing(sqlite3.connect(uri, uri=True, timeout=3)) as db:
+                    if db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+                        return False
         return True
-    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+    except (OSError, ValueError, KeyError, TypeError, sqlite3.DatabaseError, json.JSONDecodeError):
         return False
 
 
