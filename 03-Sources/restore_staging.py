@@ -53,6 +53,15 @@ def stage_verified_restore(snapshot, data_root, *, confirm=False):
                 raise ValueError(f"Staged copy integrity mismatch: {filename}")
         if not verify_backup_snapshot(source):
             raise ValueError("Snapshot changed while staging")
+        for filename in ALLOWED:
+            staged = stage / filename
+            original = source / filename
+            if staged.exists() != original.exists():
+                raise ValueError(f"Snapshot member changed during staging: {filename}")
+            if staged.exists():
+                with staged.open("rb") as copied, original.open("rb") as reference:
+                    if hashlib.file_digest(copied, "sha256").digest() != hashlib.file_digest(reference, "sha256").digest():
+                        raise ValueError(f"Snapshot member changed during staging: {filename}")
         return stage
     except Exception:
         shutil.rmtree(stage)
