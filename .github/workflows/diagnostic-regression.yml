@@ -44,3 +44,6 @@ jobs:
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_ui_navigation_audit_v6118.py' -v
       - name: Check desktop navigation audit
         run: python tools/audit_ui_navigation.py
+
+      - name: Run cumulative ZIP integrity regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cumulative_zip_integrity_v6118.py' -v
