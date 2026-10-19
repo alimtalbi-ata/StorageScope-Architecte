@@ -18,6 +18,11 @@ def verify(path, expected=None):
     with zipfile.ZipFile(path) as archive:
         members = archive.infolist()
         names = [m.filename for m in members if not m.is_dir()]
+        if len(members) > 10000:
+            errors.append("Archive exceeds safe member limit")
+        total_size = sum(m.file_size for m in members)
+        if total_size > 2 * 1024 * 1024 * 1024:
+            errors.append("Archive exceeds safe uncompressed size limit")
         if len(names) != len(set(names)):
             errors.append("Duplicate ZIP members")
         for member in members:
