@@ -39,3 +39,8 @@ jobs:
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_snapshot_schema_v61164.py' -v
       - name: Run safe restore staging regression
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_restore_staging_v61165.py' -v
+
+      - name: Run UI navigation audit regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_ui_navigation_audit_v6118.py' -v
+      - name: Check desktop navigation audit
+        run: python tools/audit_ui_navigation.py
