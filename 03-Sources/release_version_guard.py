@@ -21,6 +21,11 @@ def check_release_versions(root=ROOT):
     if not match:
         raise ValueError("Missing Inno Setup AppVersion")
     versions["Inno Setup AppVersion"] = match.group(1)
+    entrypoint = (root / "03-Sources/storagescope_windows.py").read_text(encoding="utf-8")
+    entry_version = re.search(r"""^VERSION\s*=\s*['"](\d+\.\d+)['"]""", entrypoint, re.MULTILINE)
+    if not entry_version:
+        raise ValueError("Missing Windows application VERSION")
+    versions["Windows application VERSION"] = entry_version.group(1)
     if len(set(versions.values())) != 1:
         raise ValueError(f"Version drift detected: {versions}")
     return next(iter(versions.values()))
