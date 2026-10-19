@@ -44,9 +44,17 @@ def database_health(path):
 def backup_databases(paths, destination):
     """Consistent SQLite backup, without copying active WAL files."""
     dest = Path(destination)
-    dest.mkdir(parents=True, exist_ok=True)
     if dest.resolve() == Path(paths['base']).resolve():
         raise ValueError('Le dossier de sauvegarde doit être distinct des données actives')
+    if Path(paths['base']).resolve() in dest.resolve().parents:
+        raise ValueError('Sauvegarde interdite dans les données actives')
+    sources = [Path(paths[name]) for name in ('decisions', 'campaigns', 'views')]
+    for source in sources:
+        if source.is_symlink():
+            raise ValueError('Source de sauvegarde symbolique interdite')
+        if source.exists() and (dest / source.name).exists():
+            raise FileExistsError('Sauvegarde existante : ' + source.name)
+    dest.mkdir(parents=True, exist_ok=True)
     created = []
     for name in ('decisions', 'campaigns'):
         source = Path(paths[name])
