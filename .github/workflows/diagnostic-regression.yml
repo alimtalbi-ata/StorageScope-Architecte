@@ -50,3 +50,14 @@ jobs:
 
       - name: Test cumulative release builder
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_build_cumulative_release_v6118.py' -v
+
+      - name: Run component inventory regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_component_inventory_v6119.py' -v
+      - name: Generate component architecture inventory
+        run: python tools/audit_component_inventory.py --output component-inventory.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: StorageScope-Component-Inventory
+          path: component-inventory.json
+          if-no-files-found: warn
