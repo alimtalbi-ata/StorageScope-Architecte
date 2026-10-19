@@ -31,3 +31,7 @@ jobs:
         run: python 03-Sources/release_version_guard.py
       - name: Test release version guard
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_release_version_guard_v6115.py' -v
+      - name: Run non-overwrite backup regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_backup_non_overwrite_v6116.py' -v
+      - name: Run atomic backup regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_backup_atomic_v61161.py' -v
