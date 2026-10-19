@@ -430,7 +430,24 @@ def launch():
             results.delete('1.0', 'end')
             results.insert('1.0', '\n'.join(lines))
             results.configure(state='disabled')
-        ttk.Button(page, text='Actualiser le diagnostic', command=refresh).pack(anchor='w', pady=12)
+        toolbar = ttk.Frame(page)
+        toolbar.pack(fill='x', pady=12)
+        ttk.Button(toolbar, text='Actualiser le diagnostic', command=refresh).pack(side='left')
+        def copy_diagnostic():
+            # Copy only the displayed report; never include database contents.
+            report = results.get('1.0', 'end-1c')
+            if not report.strip():
+                status.set('Diagnostic vide : actualisez avant de copier')
+                return
+            try:
+                root.clipboard_clear()
+                root.clipboard_append(report)
+                root.update_idletasks()
+                status.set('Diagnostic copié dans le presse-papiers')
+            except tk.TclError as exc:
+                status.set(f'Copie du diagnostic impossible : {exc}')
+                messagebox.showerror('Copie du diagnostic', str(exc), parent=root)
+        ttk.Button(toolbar, text='Copier le diagnostic', command=copy_diagnostic).pack(side='left', padx=(10, 0))
         refresh()
         return page
 
