@@ -27,6 +27,26 @@ class RestoreStagingTests(unittest.TestCase):
    source_hash=hashlib.sha256((snapshot/'governance-views.json').read_bytes()).hexdigest()
    stage_hash=hashlib.sha256((stage/'governance-views.json').read_bytes()).hexdigest()
    self.assertEqual(source_hash,stage_hash)
+ def test_corruption_during_copy_cleans_staging(self):
+  from unittest.mock import patch
+  import restore_staging
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);paths=application_paths(root/'original')
+   paths['views'].write_text('known-good',encoding='utf-8')
+   snapshot,_=backup_snapshot(paths,root/'archives')
+   active=root/'active'
+   real_digest=restore_staging.hashlib.file_digest
+   def corrupt_digest(handle,algorithm):
+    result=real_digest(handle,algorithm)
+    if 'storagescope-restore-' in str(getattr(handle,'name','')):
+     class BadDigest:
+      def digest(self):return bytes(32)
+     return BadDigest()
+    return result
+   with patch.object(restore_staging.hashlib,'file_digest',side_effect=corrupt_digest):
+    with self.assertRaisesRegex(ValueError,'integrity mismatch'):
+     stage_verified_restore(snapshot,active,confirm=True)
+   self.assertEqual(list(root.glob('storagescope-restore-*')),[])
  def test_rejects_invalid_snapshot(self):
   with tempfile.TemporaryDirectory() as tmp:
    root=Path(tmp);bad=root/"bad";bad.mkdir()
