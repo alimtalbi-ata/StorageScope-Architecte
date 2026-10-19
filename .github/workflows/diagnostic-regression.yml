@@ -47,3 +47,6 @@ jobs:
 
       - name: Run cumulative ZIP integrity regression
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cumulative_zip_integrity_v6118.py' -v
+
+      - name: Test cumulative release builder
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_build_cumulative_release_v6118.py' -v
