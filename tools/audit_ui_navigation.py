@@ -9,7 +9,8 @@ def audit(path=SOURCE):
     source = Path(path).read_text(encoding="utf-8")
     tree = ast.parse(source)
     pages = sorted(set(re.findall(r"navigate_safely\(['\"]([^'\"]+)['\"]\)", source)))
-    shortcuts = sorted(set(re.findall(r"root\.bind\(['\"]([^'\"]+)['\"]", source)))
+    bindings = re.findall(r"root\.bind\(['\"]([^'\"]+)['\"]", source)
+    shortcuts = sorted(set(bindings))
     functions = {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
     issues = [f"Missing {name} entrypoint" for name in ("main", "launch") if name not in functions]
     duplicates = sorted({key for key in bindings if bindings.count(key) > 1})
