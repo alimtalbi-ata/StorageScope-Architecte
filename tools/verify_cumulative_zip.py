@@ -31,6 +31,9 @@ def verify(path, expected=None):
                 errors.append("Unsafe archive path: " + member.filename)
             if (member.external_attr >> 16) & 0o170000 == 0o120000:
                 errors.append("Symlink archive member: " + member.filename)
+        # Never decompress an archive whose metadata already violates limits.
+        if errors:
+            return {"ok": False, "version": None, "files": len(names), "errors": errors}
         if archive.testzip() is not None:
             errors.append("Corrupted ZIP member")
         values = {}
@@ -38,7 +41,10 @@ def verify(path, expected=None):
             if name not in names:
                 errors.append("Missing version: " + name)
                 continue
-            values[name] = archive.read(name).decode("utf-8").strip()
+            try:
+                values[name] = archive.read(name).decode("utf-8").strip()
+            except UnicodeDecodeError:
+                errors.append("Invalid UTF-8 version: " + name)
         if len(set(values.values())) > 1:
             errors.append("Version mismatch: " + str(values))
         version = next(iter(values.values()), None)
