@@ -41,8 +41,18 @@ def verify(path, expected=None):
             errors.append(f"Expected {expected}, found {version}")
         manifest_name = f"07-Manifestes/SHA256-v{version}.json"
         if manifest_name in names:
-            manifest = json.loads(archive.read(manifest_name))
+            try:
+                manifest = json.loads(archive.read(manifest_name))
+            except (ValueError, UnicodeDecodeError) as exc:
+                errors.append("Invalid SHA256 manifest: " + str(exc))
+                manifest = {}
+            if not isinstance(manifest, dict):
+                errors.append("SHA256 manifest must be an object")
+                manifest = {}
             for name, digest in manifest.items():
+                if not isinstance(name, str) or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+                    errors.append("Invalid SHA256 manifest entry: " + str(name))
+                    continue
                 if name not in names:
                     errors.append("Missing manifest member: " + name)
                 elif hashlib.sha256(archive.read(name)).hexdigest() != digest:
