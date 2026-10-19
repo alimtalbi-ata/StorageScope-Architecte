@@ -56,25 +56,30 @@ def backup_databases(paths, destination):
             raise FileExistsError('Sauvegarde existante : ' + source.name)
     dest.mkdir(parents=True, exist_ok=True)
     created = []
-    for name in ('decisions', 'campaigns'):
-        source = Path(paths[name])
-        if not source.exists():
-            continue
-        target = dest / source.name
-        if source.resolve() == target.resolve():
-            raise ValueError('La sauvegarde ne peut écraser la base active')
-        with closing(sqlite3.connect(str(source), timeout=5)) as db:
-            with closing(sqlite3.connect(str(target), timeout=5)) as output:
-                db.backup(output)
-        created.append(target)
-    views = Path(paths['views'])
-    if views.exists():
-        target = dest / views.name
-        if views.resolve() == target.resolve():
-            raise ValueError('La sauvegarde ne peut écraser les vues actives')
-        shutil.copy2(views, target)
-        created.append(target)
-    return created
+    try:
+        for name in ('decisions', 'campaigns', 'views'):
+            source = Path(paths[name])
+            if not source.exists():
+                continue
+            target = dest / source.name
+            if source.resolve() == target.resolve():
+                raise ValueError('La sauvegarde ne peut écraser la base active')
+            # Exclusive creation prevents overwrites even during concurrent calls.
+            fd = os.open(str(target), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            os.close(fd)
+            created.append(target)
+            if name == 'views':
+                with open(source, 'rb') as inp, open(target, 'wb') as out:
+                    shutil.copyfileobj(inp, out, length=1024 * 1024)
+            else:
+                with closing(sqlite3.connect(str(source), timeout=5)) as db:
+                    with closing(sqlite3.connect(str(target), timeout=5)) as output:
+                        db.backup(output)
+        return created
+    except Exception:
+        for target in reversed(created):
+            target.unlink(missing_ok=True)
+        raise
 
 
 def backup_snapshot(paths, destination):
