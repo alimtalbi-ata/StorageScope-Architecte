@@ -27,6 +27,15 @@ class ReleaseZipTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/"tampered.zip";self.make_zip(p,tamper=True)
             self.assertFalse(module.verify(p,"6.117")["ok"])
+    def test_malformed_manifest_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p=Path(tmp)/"bad-manifest.zip"
+            with zipfile.ZipFile(p,"w") as archive:
+                for name in module.VERSIONS: archive.writestr(name,"6.117\n")
+                archive.writestr("07-Manifestes/SHA256-v6.117.json","{broken")
+            result=module.verify(p,"6.117")
+            self.assertFalse(result["ok"])
+            self.assertTrue(any("Invalid SHA256 manifest" in error for error in result["errors"]))
     def test_version_mismatch_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/"valid.zip";self.make_zip(p)
