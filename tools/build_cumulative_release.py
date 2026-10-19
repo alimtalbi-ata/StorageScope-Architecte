@@ -46,6 +46,8 @@ def build(root, output, *, require_windows=True):
         name = relative.as_posix()
         if name.startswith("07-Manifestes/SHA256-v"):
             continue
+        if name.startswith("dist-release/") or name.startswith("binary/v") and not name.startswith("binary/v" + version + "/"):
+            continue
         files[name] = file
     manifest_path = f"07-Manifestes/SHA256-v{version}.json"
     manifest = {name: hashlib.sha256(file.read_bytes()).hexdigest() for name, file in sorted(files.items())}
