@@ -110,6 +110,21 @@ jobs:
           $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
           & python '02-Compilation-Windows/verify-binary-delivery.py' --folder (Join-Path 'binary' ('v' + $version)) --version $version
           if ($LASTEXITCODE -ne 0) { throw 'Published binaries failed final verification' }
+      - name: Build qualified cumulative release from this exact commit
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          New-Item -ItemType Directory -Force -Path 'dist-release' | Out-Null
+          python tools/build_cumulative_release.py --root . --output ("dist-release/StorageScope-v" + $version + "-Windows-QUALIFIED-Cumulative.zip")
+          if ($LASTEXITCODE -ne 0) { throw 'Cumulative packaging failed' }
+          python tools/verify_cumulative_zip.py ("dist-release/StorageScope-v" + $version + "-Windows-QUALIFIED-Cumulative.zip") --version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Cumulative ZIP integrity verification failed' }
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: StorageScope-Windows-CUMULATIVE-QUALIFIED
+          path: dist-release/*.zip
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: success()
         with:
