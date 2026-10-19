@@ -45,7 +45,7 @@ class ReleaseZipTests(unittest.TestCase):
             p = Path(tmp) / "invalid-version.zip"
             with zipfile.ZipFile(p, "w") as archive:
                 for name in module.VERSIONS:
-                    archive.writestr(name, b"\\xff" if name == module.VERSIONS[0] else b"6.117")
+                    archive.writestr(name, bytes([255]) if name == module.VERSIONS[0] else b"6.117")
             result = module.verify(p, "6.117")
             self.assertFalse(result["ok"])
             self.assertTrue(any("Invalid UTF-8 version" in e for e in result["errors"]))
