@@ -1,0 +1,26 @@
+"""Restore staging safety tests. Author: Abdelhalim Talbi."""
+import sys,tempfile,unittest
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"03-Sources"))
+from storagescope_windows import application_paths,backup_snapshot
+from restore_staging import stage_verified_restore
+class RestoreStagingTests(unittest.TestCase):
+ def test_requires_confirmation(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   with self.assertRaises(PermissionError):
+    stage_verified_restore(Path(tmp)/"missing",Path(tmp)/"data")
+ def test_stage_preserves_active(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);paths=application_paths(root/"original")
+   paths["views"].write_text('{"saved":true}',encoding="utf-8")
+   snapshot,_=backup_snapshot(paths,root/"archives")
+   live=root/"active";live.mkdir();(live/"governance-views.json").write_text('{"live":true}')
+   stage=stage_verified_restore(snapshot,live,confirm=True)
+   self.assertEqual((stage/"governance-views.json").read_text(),'{"saved":true}')
+   self.assertEqual((live/"governance-views.json").read_text(),'{"live":true}')
+ def test_rejects_invalid_snapshot(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);bad=root/"bad";bad.mkdir()
+   with self.assertRaises(ValueError):
+    stage_verified_restore(bad,root/"active",confirm=True)
+if __name__=="__main__":unittest.main()
