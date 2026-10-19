@@ -413,28 +413,32 @@ def launch():
         return page
 
     def diagnostics():
+        from windows_support_diagnostic_v619 import collect, render, export_json
         page = ttk.Frame(content)
-        ttk.Label(page, text='Diagnostic local', style='Title.TLabel').pack(anchor='w', pady=(5, 18))
+        ttk.Label(page, text='Diagnostic local', style='Title.TLabel').pack(anchor='w', pady=(5, 8))
+        ttk.Label(page, text='Contrôles SQLite en lecture seule · Aucun chemin personnel dans le rapport exporté',
+                  style='Subtle.TLabel').pack(anchor='w', pady=(0, 10))
         results = tk.Text(page, height=15, wrap='word', font=('Consolas', 10), state='disabled')
         results.pack(fill='both', expand=True)
+        latest = {'report': None}
         def refresh():
-            lines = [f'StorageScope {VERSION}', f'Python : {sys.version.split()[0]}',
-                     f'Plateforme : {sys.platform}', f'Données : {paths["base"]}', '']
-            for key in ('decisions', 'campaigns'):
-                try:
-                    state = database_health(paths[key])
-                except (OSError, sqlite3.Error) as exc:
-                    state = f'ERREUR: {exc}'
-                lines.append(f'{key} : {state}')
+            try:
+                report = collect(paths, VERSION)
+                output = render(report)
+            except (OSError, ValueError, sqlite3.Error) as exc:
+                status.set(f'Diagnostic impossible : {exc}')
+                messagebox.showerror('Diagnostic', str(exc), parent=root)
+                return
+            latest['report'] = report
             results.configure(state='normal')
             results.delete('1.0', 'end')
-            results.insert('1.0', '\n'.join(lines))
+            results.insert('1.0', output)
             results.configure(state='disabled')
+            status.set('Diagnostic actualisé · lecture seule')
         toolbar = ttk.Frame(page)
         toolbar.pack(fill='x', pady=12)
-        ttk.Button(toolbar, text='Actualiser le diagnostic', command=refresh).pack(side='left')
+        ttk.Button(toolbar, text='Actualiser', command=refresh).pack(side='left')
         def copy_diagnostic():
-            # Copy only the displayed report; never include database contents.
             report = results.get('1.0', 'end-1c')
             if not report.strip():
                 status.set('Diagnostic vide : actualisez avant de copier')
@@ -445,9 +449,27 @@ def launch():
                 root.update_idletasks()
                 status.set('Diagnostic copié dans le presse-papiers')
             except tk.TclError as exc:
-                status.set(f'Copie du diagnostic impossible : {exc}')
                 messagebox.showerror('Copie du diagnostic', str(exc), parent=root)
-        ttk.Button(toolbar, text='Copier le diagnostic', command=copy_diagnostic).pack(side='left', padx=(10, 0))
+        ttk.Button(toolbar, text='Copier', command=copy_diagnostic).pack(side='left', padx=(10, 0))
+        def export_diagnostic():
+            if latest['report'] is None:
+                status.set('Actualisez le diagnostic avant export')
+                return
+            destination = filedialog.asksaveasfilename(
+                parent=root, title='Exporter le diagnostic support JSON',
+                defaultextension='.json', filetypes=[('JSON', '*.json')],
+                initialfile='StorageScope-Diagnostic.json')
+            if not destination:
+                return
+            try:
+                export_json(latest['report'], destination)
+                status.set('Rapport JSON exporté · données métier exclues')
+            except FileExistsError:
+                messagebox.showerror('Export du diagnostic',
+                                     'Ce fichier existe déjà. Choisissez un autre nom.', parent=root)
+            except (OSError, ValueError) as exc:
+                messagebox.showerror('Export du diagnostic', str(exc), parent=root)
+        ttk.Button(toolbar, text='Exporter JSON…', command=export_diagnostic).pack(side='left', padx=(10, 0))
         refresh()
         return page
 
