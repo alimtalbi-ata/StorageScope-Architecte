@@ -416,44 +416,57 @@ def launch():
         from windows_support_diagnostic_v619 import collect, render, export_json
         page = ttk.Frame(content)
         ttk.Label(page, text='Diagnostic local', style='Title.TLabel').pack(anchor='w', pady=(5, 8))
-        ttk.Label(page, text='Contrôles SQLite en lecture seule · Aucun chemin personnel dans le rapport exporté',
+        ttk.Label(page, text='Lecture seule · Rapport sans données métier ni chemins personnels',
                   style='Subtle.TLabel').pack(anchor='w', pady=(0, 10))
         results = tk.Text(page, height=15, wrap='word', font=('Consolas', 10), state='disabled')
         results.pack(fill='both', expand=True)
         latest = {'report': None}
-        def refresh():
-            try:
-                report = collect(paths, VERSION)
-                output = render(report)
-            except (OSError, ValueError, sqlite3.Error) as exc:
-                status.set(f'Diagnostic impossible : {exc}')
-                messagebox.showerror('Diagnostic', str(exc), parent=root)
+        severity = tk.StringVar(value='ALL')
+
+        def display():
+            if latest['report'] is None:
                 return
-            latest['report'] = report
+            output = render(latest['report'], severity.get())
             results.configure(state='normal')
             results.delete('1.0', 'end')
             results.insert('1.0', output)
             results.configure(state='disabled')
-            status.set('Diagnostic actualisé · lecture seule')
+
+        def refresh():
+            try:
+                latest['report'] = collect(paths, VERSION)
+                display()
+                status.set('Diagnostic actualisé · lecture seule')
+            except (OSError, ValueError, sqlite3.Error) as exc:
+                status.set('Diagnostic impossible')
+                messagebox.showerror('Diagnostic', str(exc), parent=root)
+
         toolbar = ttk.Frame(page)
         toolbar.pack(fill='x', pady=12)
         ttk.Button(toolbar, text='Actualiser', command=refresh).pack(side='left')
+        ttk.Label(toolbar, text='Gravité').pack(side='left', padx=(12, 4))
+        severity_selector = ttk.Combobox(toolbar, textvariable=severity,
+                                          values=('ALL', 'ERROR', 'NOTICE', 'INFO'),
+                                          state='readonly', width=9)
+        severity_selector.pack(side='left')
+        severity_selector.bind('<<ComboboxSelected>>', lambda event: display())
+
         def copy_diagnostic():
-            report = results.get('1.0', 'end-1c')
-            if not report.strip():
-                status.set('Diagnostic vide : actualisez avant de copier')
+            output = results.get('1.0', 'end-1c')
+            if not output.strip():
                 return
             try:
                 root.clipboard_clear()
-                root.clipboard_append(report)
+                root.clipboard_append(output)
                 root.update_idletasks()
-                status.set('Diagnostic copié dans le presse-papiers')
+                status.set('Diagnostic copié')
             except tk.TclError as exc:
                 messagebox.showerror('Copie du diagnostic', str(exc), parent=root)
+
         ttk.Button(toolbar, text='Copier', command=copy_diagnostic).pack(side='left', padx=(10, 0))
+
         def export_diagnostic():
             if latest['report'] is None:
-                status.set('Actualisez le diagnostic avant export')
                 return
             destination = filedialog.asksaveasfilename(
                 parent=root, title='Exporter le diagnostic support JSON',
@@ -463,12 +476,13 @@ def launch():
                 return
             try:
                 export_json(latest['report'], destination)
-                status.set('Rapport JSON exporté · données métier exclues')
+                status.set('Rapport JSON exporté')
             except FileExistsError:
                 messagebox.showerror('Export du diagnostic',
-                                     'Ce fichier existe déjà. Choisissez un autre nom.', parent=root)
+                                     'Le fichier existe déjà : choisissez un autre nom.', parent=root)
             except (OSError, ValueError) as exc:
                 messagebox.showerror('Export du diagnostic', str(exc), parent=root)
+
         ttk.Button(toolbar, text='Exporter JSON…', command=export_diagnostic).pack(side='left', padx=(10, 0))
         refresh()
         return page
