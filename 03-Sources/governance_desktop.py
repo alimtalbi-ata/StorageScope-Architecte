@@ -39,7 +39,7 @@ def parse_search(query):
             for m in re.finditer(r'"([^"]*)"|(\S+)', query.casefold())
             if (m.group(1) if m.group(1) is not None else m.group(2)).strip()]
 
-def filter_candidates(candidates, query="", state="ALL"):
+def filter_candidates(candidates, query="", state="ALL", risk="ALL"):
     """Multi-term AND search, preserving stable original indices.
 
     Prefixes asset:, key:, status: restrict a term to the relevant field.
@@ -47,7 +47,9 @@ def filter_candidates(candidates, query="", state="ALL"):
     """
     terms = parse_search(query)
     # Empty searches are common when paging large inventories: avoid JSON serialization.
-    if not terms and state == "ALL":
+    if risk not in ('ALL', 'HIGH', 'MEDIUM', 'LOW', 'UNASSESSED'):
+        raise ValueError('Invalid risk filter')
+    if not terms and state == "ALL" and risk == "ALL":
         return [(i, key, candidate) for i, (key, candidate) in enumerate(candidates)]
     # Compile the query once, not once per inventory record.
     qualified = []
@@ -64,6 +66,8 @@ def filter_candidates(candidates, query="", state="ALL"):
     for i, (key, candidate) in enumerate(candidates):
         eligibility = str(candidate.get("review_eligibility", "REVIEW_REQUIRED"))
         if state != "ALL" and eligibility != state:
+            continue
+        if risk != 'ALL' and candidate.get('risk', 'UNASSESSED') != risk:
             continue
         if not terms:
             result.append((i, key, candidate))
@@ -277,7 +281,7 @@ def launch(parent=None):
     header.columnconfigure(1,weight=1)
     summary=tk.StringVar(value='Chargez un inventaire pour commencer.');ttk.Label(root,textvariable=summary,padding=10).pack(anchor='w')
     filters=ttk.Frame(root,padding=(10,2));filters.pack(fill='x')
-    query=tk.StringVar(); state_filter=tk.StringVar(value='ALL')
+    query=tk.StringVar(); state_filter=tk.StringVar(value='ALL'); risk_filter=tk.StringVar(value='ALL')
     ttk.Label(filters,text='Rechercher (mots, asset:, key:, status:)' ).pack(side='left')
     search_entry=ttk.Entry(filters,textvariable=query,width=45);search_entry.pack(side='left',padx=5)
     def focus_search(event=None):
@@ -287,6 +291,8 @@ def launch(parent=None):
     root.bind('<Control-f>', focus_search)
     ttk.Label(filters,text='Statut').pack(side='left')
     ttk.Combobox(filters,textvariable=state_filter,values=['ALL','REVIEW_REQUIRED','BLOCKED_CONTRADICTION'],state='readonly',width=23).pack(side='left',padx=5)
+    ttk.Label(filters,text='Risque').pack(side='left')
+    ttk.Combobox(filters,textvariable=risk_filter,values=['ALL','HIGH','MEDIUM','LOW','UNASSESSED'],state='readonly',width=12).pack(side='left',padx=5)
     pager=ttk.Frame(root,padding=(10,2));pager.pack(fill='x')
     page_label=tk.StringVar(value='Page 1');ttk.Label(pager,textvariable=page_label).pack(side='left')
     table=ttk.Treeview(root,columns=('key','assets','risk','status'),show='headings',height=13)
@@ -314,7 +320,7 @@ def launch(parent=None):
     table.bind('<<TreeviewSelect>>',selected)
     def refresh(*args, refilter=True):
         if refilter:
-            report_state['matched'] = filter_candidates(report_state['candidates'],query.get(),state_filter.get())
+            report_state['matched'] = filter_candidates(report_state['candidates'],query.get(),state_filter.get(),risk_filter.get())
         matched=report_state['matched']
         total=len(matched)
         report_state['page'],max_page=page_bounds(total,report_state['page'])
@@ -355,6 +361,7 @@ def launch(parent=None):
         reset_page()
     query.trace_add('write',schedule_refresh)
     state_filter.trace_add('write',reset_page)
+    risk_filter.trace_add('write',reset_page)
     def load():
         if pending_refresh['id'] is not None:
             root.after_cancel(pending_refresh['id'])
