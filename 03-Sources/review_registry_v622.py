@@ -36,8 +36,9 @@ def decide(db, report, key, status, reviewer, reason):
             continue
         if (c.get('identity_disagreements') or c.get('risk') == 'HIGH'
                 or c.get('contradictions') or c.get('identity_conflicts')
-                or c.get('blocking_reasons')
-                or c.get('action') == 'BLOCKED'):
+                or c.get('blocking_reasons') or c.get('action') == 'BLOCKED'
+                or c.get('review_eligibility') not in ('ELIGIBLE', 'REVIEW_REQUIRED')
+                or c.get('review_key') != candidate_key(c)):
             continue
         try:
             computed_key = candidate_key(c)
