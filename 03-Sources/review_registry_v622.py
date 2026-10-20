@@ -28,20 +28,28 @@ CREATE TABLE IF NOT EXISTS audit (seq INTEGER PRIMARY KEY AUTOINCREMENT, candida
 def decide(db, report, key, status, reviewer, reason):
     if status not in ('APPROVED', 'REJECTED') or not isinstance(reviewer, str) or not reviewer.strip() or not isinstance(reason, str) or not reason.strip():
         raise ValueError('Valid status, reviewer and reason required')
-    # Never create keys for blocked/ambiguous candidates: a CLI caller must not
-    # bypass the governance eligibility gate enforced by the desktop UI.
+    # Recheck authorization at the persistence boundary: callers may bypass the UI.
     candidates = {}
-    for c in report['reconciliation']['candidates']:
-        if c.get('review_eligibility') in ('BLOCKED_CONTRADICTION', 'MISSING_OR_AMBIGUOUS_STABLE_ID'):
+    for candidate in report['reconciliation']['candidates']:
+        if not isinstance(candidate, dict):
             continue
-        if c.get('identity_disagreements') or c.get('risk') == 'HIGH':
+        if candidate.get('review_eligibility') not in (None, 'ELIGIBLE', 'REVIEW_REQUIRED'):
+            continue
+        if (candidate.get('action') == 'BLOCKED' or candidate.get('contradictions')
+                or candidate.get('identity_conflicts') or candidate.get('identity_disagreements')
+                or candidate.get('blocking_reasons') or candidate.get('risk') == 'HIGH'):
             continue
         try:
-            candidates[candidate_key(c)] = c
+            candidate_id = candidate_key(candidate)
         except (ValueError, TypeError, KeyError):
             continue
+        if candidate.get('review_key') not in (None, candidate_id):
+            continue
+        if candidate_id in candidates:
+            raise ValueError('Ambiguous candidate identity in report')
+        candidates[candidate_id] = candidate
     if key not in candidates:
-        raise ValueError('Candidate not found in report')
+        raise ValueError('Candidate not eligible for a review decision')
     db = Path(db)
     db.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db, timeout=15, isolation_level=None) as conn:
