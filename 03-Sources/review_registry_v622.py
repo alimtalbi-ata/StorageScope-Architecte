@@ -34,7 +34,10 @@ def decide(db, report, key, status, reviewer, reason):
     for c in report['reconciliation']['candidates']:
         if c.get('review_eligibility') in ('BLOCKED_CONTRADICTION', 'MISSING_OR_AMBIGUOUS_STABLE_ID'):
             continue
-        if c.get('identity_disagreements') or c.get('risk') == 'HIGH':
+        if (c.get('identity_disagreements') or c.get('risk') == 'HIGH'
+                or c.get('contradictions') or c.get('identity_conflicts')
+                or c.get('blocking_reasons')
+                or c.get('action') == 'BLOCKED'):
             continue
         try:
             candidates[candidate_key(c)] = c
