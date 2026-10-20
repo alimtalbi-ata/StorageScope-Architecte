@@ -123,7 +123,18 @@ def display_assets(candidate, max_chars=180):
     return text if len(text) <= max_chars else text[:max_chars-1] + '…'
 
 def can_decide(candidate):
-    return candidate.get('review_eligibility','REVIEW_REQUIRED') == 'REVIEW_REQUIRED' and bool(candidate.get('review_key'))
+    if not isinstance(candidate, dict):
+        return False
+    if candidate.get('review_eligibility') not in ('ELIGIBLE', 'REVIEW_REQUIRED'):
+        return False
+    if candidate.get('action') == 'BLOCKED' or candidate.get('risk') == 'HIGH':
+        return False
+    if any(candidate.get(k) for k in ('contradictions', 'identity_conflicts', 'identity_disagreements', 'blocking_reasons')):
+        return False
+    try:
+        return bool(candidate.get('review_key')) and candidate['review_key'] == candidate_key(candidate)
+    except (ValueError, TypeError, KeyError):
+        return False
 
 
 def explain_candidate(candidate):
