@@ -142,8 +142,12 @@ def explain_candidate(candidate):
     # Only fields explicitly present in the report are shown as evidence.
     conflict_fields = ('identity_conflicts', 'contradictions', 'conflicts', 'blocking_reasons')
     conflicts = {key: candidate[key] for key in conflict_fields if candidate.get(key)}
+    if candidate.get('identity_disagreements'):
+        conflicts['identity_disagreements'] = candidate['identity_disagreements']
     return {
         'status': eligibility,
+        'risk': candidate.get('risk', 'UNASSESSED'),
+        'same_source': candidate.get('same_source', False),
         'decision_allowed': can_decide(candidate),
         'assets': [str(asset) for asset in assets],
         'identity_evidence': evidence,
