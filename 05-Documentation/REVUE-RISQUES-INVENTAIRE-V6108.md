@@ -36,3 +36,7 @@ Le test `test_authorized_decision_is_durable_and_auditable` vérifie une approba
 ## Historique et preuve d'intégrité
 
 Les tests de la console de gouvernance couvrent désormais la consultation d'un historique d'audit en lecture seule, son filtrage par clé de candidat et la restitution de l'empreinte complète. Un scénario de falsification SQLite modifie volontairement un réviseur et confirme que la vérification de chaîne échoue et que la consultation est refusée. Les tests restent exécutés hors interface graphique réelle : une capture et une recette interactive Windows sont encore nécessaires.
+
+## Affichage de la revue humaine
+
+Le tableau Tkinter de gouvernance comporte désormais une colonne `risk` entre les équipements et leur statut d'éligibilité, afin de rendre les risques HIGH/MEDIUM/LOW visibles sans ouvrir chaque fiche. Les contradictions détaillées restent disponibles dans le panneau d'explication. Cette modification de source n'est pas une preuve de capture réelle ou de recette interactive Windows.
