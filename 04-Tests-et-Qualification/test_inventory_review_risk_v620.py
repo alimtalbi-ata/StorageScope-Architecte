@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "03-Sources"))
 from inventory_review_risk_v620 import review_inventory
 from governance_service import assess
 from governance_desktop import explain_candidate
-from review_registry_v622 import decide, candidate_key
+from review_registry_v622 import decide, candidate_key, verify
 import tempfile
 from pathlib import Path
 
@@ -55,6 +55,28 @@ class InventoryRiskTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 decide(Path(folder) / "audit.sqlite", report, candidate_key(candidate),
                        "APPROVED", "reviewer", "test")
+
+    def test_authorized_decision_is_durable_and_auditable(self):
+        rows = [
+            {"source": "A", "id": "asset-a", "name": "one", "type": "array", "serial": "S1"},
+            {"source": "B", "id": "asset-b", "name": "one", "type": "array", "serial": "S1"},
+        ]
+        report = assess(rows)
+        candidate = report["reconciliation"]["candidates"][0]
+        self.assertNotEqual(candidate["review_eligibility"], "BLOCKED_CONTRADICTION")
+        with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder) / "audit.sqlite"
+            result = decide(db, report, candidate_key(candidate),
+                            "APPROVED", "reviewer", "validated inventory evidence")
+            self.assertFalse(result["inventory_changed"])
+            self.assertTrue(db.is_file())
+            self.assertTrue(verify(db)["valid"])
+            self.assertEqual(verify(db)["decisions"], 1)
+            with self.assertRaises(ValueError):
+                decide(db, report, candidate_key(candidate),
+                       "REJECTED", "reviewer", "duplicate immutable decision")
+            self.assertTrue(verify(db)["valid"])
+            self.assertEqual(verify(db)["decisions"], 1)
 
     def test_clean_cross_source_candidate(self):
         rows = [{"source": "A", "serial": "X"}, {"source": "B", "serial": "x"}]
