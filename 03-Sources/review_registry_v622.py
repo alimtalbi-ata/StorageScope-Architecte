@@ -5,6 +5,7 @@ import hashlib
 import json
 import sqlite3
 from pathlib import Path
+from contextlib import closing
 
 def canonical(value):
     return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
@@ -57,7 +58,7 @@ def decide(db, report, key, status, reviewer, reason):
     return {'candidate_key': key, 'status': status, 'inventory_changed': False, 'audit_hash': h}
 
 def verify(db):
-    with sqlite3.connect(db) as conn:
+    with closing(sqlite3.connect(db)) as conn:
         rows = conn.execute('SELECT candidate_key,action,reviewer,at,payload_json,previous_hash,event_hash FROM audit ORDER BY seq').fetchall()
         prev = '0'*64
         for i, row in enumerate(rows, 1):
