@@ -28,7 +28,18 @@ CREATE TABLE IF NOT EXISTS audit (seq INTEGER PRIMARY KEY AUTOINCREMENT, candida
 def decide(db, report, key, status, reviewer, reason):
     if status not in ('APPROVED', 'REJECTED') or not isinstance(reviewer, str) or not reviewer.strip() or not isinstance(reason, str) or not reason.strip():
         raise ValueError('Valid status, reviewer and reason required')
-    candidates = {candidate_key(c): c for c in report['reconciliation']['candidates']}
+    # Never create keys for blocked/ambiguous candidates: a CLI caller must not
+    # bypass the governance eligibility gate enforced by the desktop UI.
+    candidates = {}
+    for c in report['reconciliation']['candidates']:
+        if c.get('review_eligibility') in ('BLOCKED_CONTRADICTION', 'MISSING_OR_AMBIGUOUS_STABLE_ID'):
+            continue
+        if c.get('identity_disagreements') or c.get('risk') == 'HIGH':
+            continue
+        try:
+            candidates[candidate_key(c)] = c
+        except (ValueError, TypeError, KeyError):
+            continue
     if key not in candidates:
         raise ValueError('Candidate not found in report')
     db = Path(db)
