@@ -174,6 +174,36 @@ class InventoryRiskTests(unittest.TestCase):
             self.assertEqual(len(history_for_selection(db, key)), 1)
             self.assertTrue(verify(db)["valid"])
 
+    def test_registry_rejects_forged_review_key(self):
+        rows = [
+            {"source": "A", "id": "asset-a", "name": "one", "type": "array", "serial": "S1"},
+            {"source": "B", "id": "asset-b", "name": "one", "type": "array", "serial": "S1"},
+        ]
+        report = assess(rows)
+        candidate = report["reconciliation"]["candidates"][0]
+        legitimate_key = candidate_key(candidate)
+        candidate["review_key"] = "forged-key"
+        with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder) / "review.sqlite"
+            with self.assertRaises(ValueError):
+                decide(db, report, legitimate_key, "APPROVED", "reviewer", "invalid")
+            self.assertFalse(db.exists())
+
+    def test_registry_rejects_ambiguous_duplicate_review_identity(self):
+        import copy
+        rows = [
+            {"source": "A", "id": "asset-a", "name": "one", "type": "array", "serial": "S1"},
+            {"source": "B", "id": "asset-b", "name": "one", "type": "array", "serial": "S1"},
+        ]
+        report = assess(rows)
+        candidate = report["reconciliation"]["candidates"][0]
+        report["reconciliation"]["candidates"].append(copy.deepcopy(candidate))
+        with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder) / "review.sqlite"
+            with self.assertRaises(ValueError):
+                decide(db, report, candidate_key(candidate), "APPROVED", "reviewer", "invalid")
+            self.assertFalse(db.exists())
+
     def test_clean_cross_source_candidate(self):
         rows = [{"source": "A", "serial": "X"}, {"source": "B", "serial": "x"}]
         candidate = review_inventory(rows)["candidates"][0]
