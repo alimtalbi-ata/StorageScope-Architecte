@@ -44,3 +44,7 @@ Le tableau Tkinter de gouvernance comporte désormais une colonne `risk` entre l
 ## Filtre par criticité dans la console
 
 La console Tkinter propose un filtre `Risque` (`ALL`, `HIGH`, `MEDIUM`, `LOW`, `UNASSESSED`) combinable avec la recherche et le filtre de statut. Le changement de filtre réinitialise la pagination et conserve les indices d'origine des propositions. Le test `test_risk_filter_combines_with_status_and_preserves_indices` couvre la combinaison des filtres et les valeurs invalides. L'interface doit toujours faire l'objet d'une recette visuelle Windows réelle.
+
+## Correction de la décision depuis l'interface
+
+La gouvernance attribue le statut `ELIGIBLE` aux propositions dotées d'identités stables, tandis que la console exigeait précédemment `REVIEW_REQUIRED` pour activer la décision. Le contrôle `can_decide` accepte désormais les deux statuts admissibles lorsque la clé de revue existe, et rejette toujours les contradictions d'identité, le risque `HIGH` et les propositions bloquées. Le test `test_desktop_allows_eligible_review_but_never_high_risk` prévient cette régression. Aucun rapprochement automatique n'est effectué.
