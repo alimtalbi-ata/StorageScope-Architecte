@@ -48,3 +48,7 @@ La console Tkinter propose un filtre `Risque` (`ALL`, `HIGH`, `MEDIUM`, `LOW`, `
 ## Correction de la décision depuis l'interface
 
 La gouvernance attribue le statut `ELIGIBLE` aux propositions dotées d'identités stables, tandis que la console exigeait précédemment `REVIEW_REQUIRED` pour activer la décision. Le contrôle `can_decide` accepte désormais les deux statuts admissibles lorsque la clé de revue existe, et rejette toujours les contradictions d'identité, le risque `HIGH` et les propositions bloquées. Le test `test_desktop_allows_eligible_review_but_never_high_risk` prévient cette régression. Aucun rapprochement automatique n'est effectué.
+
+## Défense en profondeur des décisions
+
+Le registre SQLite rejette désormais les rapports importés contenant `contradictions`, `identity_conflicts`, `blocking_reasons` ou `action=BLOCKED`, même si les champs de risque et d'éligibilité sont incohérents ou incomplets. Deux tests supplémentaires couvrent un refus sans création de base et le parcours applicatif analyse → sélection → décision → historique → intégrité. Ce dernier test exerce les fonctions métiers utilisées par Tkinter ; il ne simule pas des clics réels sur Windows.
