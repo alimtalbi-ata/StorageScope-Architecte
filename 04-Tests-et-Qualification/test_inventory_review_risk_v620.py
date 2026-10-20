@@ -1,5 +1,4 @@
 """Regression tests for non-destructive inventory identity review."""
-import importlib.util
 import sys
 import unittest
 from pathlib import Path
@@ -7,10 +6,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "03-Sources"))
 from inventory_review_risk_v620 import review_inventory
 from governance_service import assess
-from governance_desktop import explain_candidate
+from governance_desktop import explain_candidate, read_audit_history, history_for_selection, format_audit_event
 from review_registry_v622 import decide, candidate_key, verify
 import tempfile
-from pathlib import Path
 
 class InventoryRiskTests(unittest.TestCase):
     def test_conflicting_wwn_is_high_risk(self):
@@ -79,6 +77,41 @@ class InventoryRiskTests(unittest.TestCase):
                        "REJECTED", "reviewer", "duplicate immutable decision")
             self.assertTrue(verify(db)["valid"])
             self.assertEqual(verify(db)["decisions"], 1)
+
+    def test_audit_history_read_only_and_selection_scoped(self):
+        rows = [
+            {"source": "NetApp", "id": "na-1", "name": "array", "type": "array", "serial": "SER-1"},
+            {"source": "CMDB", "id": "cmdb-1", "name": "array", "type": "array", "serial": "SER-1"},
+        ]
+        report = assess(rows)
+        key = candidate_key(report["reconciliation"]["candidates"][0])
+        with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder) / "review.sqlite"
+            decide(db, report, key, "APPROVED", "architect", "validated by inventory owner")
+            events = read_audit_history(db)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0]["candidate_key"], key)
+            self.assertEqual(history_for_selection(db, key), events)
+            self.assertEqual(history_for_selection(db, "unrelated-candidate"), [])
+            self.assertIn(events[0]["event_hash"], format_audit_event(events[0]))
+            self.assertTrue(verify(db)["valid"])
+
+    def test_audit_history_rejects_tampered_chain(self):
+        import sqlite3
+        rows = [
+            {"source": "NetApp", "id": "na-1", "name": "array", "type": "array", "serial": "SER-1"},
+            {"source": "CMDB", "id": "cmdb-1", "name": "array", "type": "array", "serial": "SER-1"},
+        ]
+        report = assess(rows)
+        key = candidate_key(report["reconciliation"]["candidates"][0])
+        with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder) / "review.sqlite"
+            decide(db, report, key, "APPROVED", "architect", "validated")
+            with sqlite3.connect(db) as connection:
+                connection.execute("UPDATE audit SET reviewer=? WHERE candidate_key=?", ("tampered", key))
+            self.assertFalse(verify(db)["valid"])
+            with self.assertRaises(ValueError):
+                read_audit_history(db)
 
     def test_clean_cross_source_candidate(self):
         rows = [{"source": "A", "serial": "X"}, {"source": "B", "serial": "x"}]
