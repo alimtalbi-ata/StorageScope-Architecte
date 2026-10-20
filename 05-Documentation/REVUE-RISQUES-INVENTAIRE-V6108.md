@@ -52,3 +52,7 @@ La gouvernance attribue le statut `ELIGIBLE` aux propositions dotées d'identit�
 ## Défense en profondeur des décisions
 
 Le registre SQLite rejette désormais les rapports importés contenant `contradictions`, `identity_conflicts`, `blocking_reasons` ou `action=BLOCKED`, même si les champs de risque et d'éligibilité sont incohérents ou incomplets. Deux tests supplémentaires couvrent un refus sans création de base et le parcours applicatif analyse → sélection → décision → historique → intégrité. Ce dernier test exerce les fonctions métiers utilisées par Tkinter ; il ne simule pas des clics réels sur Windows.
+
+## Protection des identités de revue
+
+Le registre recalcule les clés de revue et rejette les rapports dont `review_key` diffère de l'identité recalculée. Il refuse les clés dupliquées entre propositions et les valeurs d'éligibilité inconnues. Les rapports historiques sans champ `review_eligibility` restent pris en charge, sous réserve des autres vérifications. Les tests `test_registry_rejects_forged_review_key` et `test_registry_rejects_ambiguous_duplicate_review_identity` couvrent ces cas et vérifient l'absence de création SQLite en cas de refus.
