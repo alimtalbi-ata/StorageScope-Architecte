@@ -41,13 +41,13 @@ def decide(db, report, key, status, reviewer, reason):
             continue
         try:
             computed_key = candidate_key(c)
-            if c.get('review_key') is not None and c['review_key'] != computed_key:
-                continue
-            if computed_key in candidates:
-                raise ValueError('Ambiguous duplicate review identity in report')
-            candidates[computed_key] = c
         except (ValueError, TypeError, KeyError):
             continue
+        if c.get('review_key') is not None and c['review_key'] != computed_key:
+            continue
+        if computed_key in candidates:
+            raise ValueError('Ambiguous duplicate review identity in report')
+        candidates[computed_key] = c
     if key not in candidates:
         raise ValueError('Candidate not found in report')
     db = Path(db)
