@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "03-Sources"))
 from inventory_review_risk_v620 import review_inventory
 from governance_service import assess
-from governance_desktop import explain_candidate, read_audit_history, history_for_selection, format_audit_event
+from governance_desktop import explain_candidate, read_audit_history, history_for_selection, format_audit_event, filter_candidates
 from review_registry_v622 import decide, candidate_key, verify
 import tempfile
 
@@ -112,6 +112,19 @@ class InventoryRiskTests(unittest.TestCase):
             self.assertFalse(verify(db)["valid"])
             with self.assertRaises(ValueError):
                 read_audit_history(db)
+
+    def test_risk_filter_combines_with_status_and_preserves_indices(self):
+        candidates = [
+            ("one", {"risk": "HIGH", "review_eligibility": "BLOCKED_CONTRADICTION"}),
+            ("two", {"risk": "MEDIUM", "review_eligibility": "REVIEW_REQUIRED"}),
+            ("three", {"risk": "LOW", "review_eligibility": "REVIEW_REQUIRED"}),
+        ]
+        self.assertEqual([i for i, _, _ in filter_candidates(candidates, risk="HIGH")], [0])
+        self.assertEqual([i for i, _, _ in filter_candidates(
+            candidates, state="REVIEW_REQUIRED", risk="MEDIUM")], [1])
+        self.assertEqual(filter_candidates(candidates, state="REVIEW_REQUIRED", risk="HIGH"), [])
+        with self.assertRaises(ValueError):
+            filter_candidates(candidates, risk="INVALID")
 
     def test_clean_cross_source_candidate(self):
         rows = [{"source": "A", "serial": "X"}, {"source": "B", "serial": "x"}]
