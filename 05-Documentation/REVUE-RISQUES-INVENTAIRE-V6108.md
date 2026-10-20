@@ -24,3 +24,7 @@ Les tests `test_inventory_review_risk_v620.py` couvrent la contradiction WWN, le
 ## Suites prioritaires
 
 Intégrer le risque dans l'interface de revue, vérifier les scénarios multi-vendeurs et les identifiants manquants, mesurer les performances sur de grands inventaires, puis documenter les preuves d'exécution Windows. Les résultats de CI doivent être consultés avant publication de la release.
+
+## Contrôle du registre de décisions
+
+La fonction `review_registry_v622.decide` rejette désormais les candidats explicitement bloqués par la politique d'identité, ceux sans identité stable et ceux classés `HIGH` ou portant des contradictions matérielles. Ce contrôle s'applique aussi aux appels CLI, indépendamment de l'interface graphique. Le test `test_cli_cannot_approve_blocked_identity` vérifie le refus de décision. Une vérification de bout en bout du registre et de l'interface reste nécessaire.
