@@ -40,3 +40,7 @@ Les tests de la console de gouvernance couvrent désormais la consultation d'un 
 ## Affichage de la revue humaine
 
 Le tableau Tkinter de gouvernance comporte désormais une colonne `risk` entre les équipements et leur statut d'éligibilité, afin de rendre les risques HIGH/MEDIUM/LOW visibles sans ouvrir chaque fiche. Les contradictions détaillées restent disponibles dans le panneau d'explication. Cette modification de source n'est pas une preuve de capture réelle ou de recette interactive Windows.
+
+## Filtre par criticité dans la console
+
+La console Tkinter propose un filtre `Risque` (`ALL`, `HIGH`, `MEDIUM`, `LOW`, `UNASSESSED`) combinable avec la recherche et le filtre de statut. Le changement de filtre réinitialise la pagination et conserve les indices d'origine des propositions. Le test `test_risk_filter_combines_with_status_and_preserves_indices` couvre la combinaison des filtres et les valeurs invalides. L'interface doit toujours faire l'objet d'une recette visuelle Windows réelle.
