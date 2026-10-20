@@ -19,7 +19,7 @@ Le module `03-Sources/inventory_review_risk_v620.py` enrichit le résultat de `i
 
 Les tests `test_inventory_review_risk_v620.py` couvrent la contradiction WWN, le doublon interne et la correspondance compatible. Le workflow `diagnostic-regression.yml` les exécute.
 
-**Limite actuelle :** ce module est disponible pour les intégrations métier, mais il n'est pas encore relié à tous les écrans de revue d'inventaire. Une qualification UI complète reste à effectuer.
+**Intégration :** le service `governance_service.assess` enrichit désormais les candidats avec le risque, les contradictions et l'origine ; `governance_desktop.explain_candidate` transmet ces données à la couche de présentation. Les tests d'intégration sont ajoutés à la CI. **Limite :** l'affichage graphique effectif, les actions de revue et la recette Windows interactive doivent encore être qualifiés ; cette évolution ne prouve pas à elle seule un parcours UI complet.
 
 ## Suites prioritaires
 
