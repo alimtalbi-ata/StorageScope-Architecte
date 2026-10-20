@@ -65,8 +65,29 @@ def verify(db):
             if event['previous_hash'] != prev or digest(event) != row[6]:
                 return {'valid': False, 'failed_event': i, 'events_checked': i-1}
             prev = row[6]
-        decisions = conn.execute('SELECT COUNT(*) FROM decisions').fetchone()[0]
-    return {'valid': decisions == len(rows), 'events_checked': len(rows), 'decisions': decisions, 'warning': 'Hash chain is not externally anchored; full database replacement cannot be detected'}
+        stored = conn.execute('SELECT candidate_key,status,reviewer,reason,decided_at,evidence_json FROM decisions').fetchall()
+        decisions = len(stored)
+        if decisions != len(rows):
+            return {'valid': False, 'failed_event': None, 'events_checked': len(rows), 'decisions': decisions, 'reason': 'decision_audit_count_mismatch'}
+        events_by_key = {}
+        for row in rows:
+            if row[0] in events_by_key:
+                return {'valid': False, 'events_checked': len(rows), 'decisions': decisions, 'reason': 'duplicate_audit_candidate'}
+            events_by_key[row[0]] = row
+        for key, status, reviewer, reason, decided_at, evidence_json in stored:
+            event = events_by_key.get(key)
+            if event is None:
+                return {'valid': False, 'events_checked': len(rows), 'decisions': decisions, 'reason': 'missing_audit_event'}
+            try:
+                payload = json.loads(event[4])  # audit row payload_json
+                stored_evidence = json.loads(evidence_json)
+            except (ValueError, TypeError):
+                return {'valid': False, 'events_checked': len(rows), 'decisions': decisions, 'reason': 'invalid_decision_payload'}
+            if (event[1] != status or event[2] != reviewer or event[3] != decided_at
+                or payload.get('status') != status or payload.get('reason') != reason
+                or payload.get('evidence') != stored_evidence):
+                return {'valid': False, 'events_checked': len(rows), 'decisions': decisions, 'reason': 'decision_audit_mismatch'}
+    return {'valid': True, 'events_checked': len(rows), 'decisions': decisions, 'warning': 'Hash chain is not externally anchored; full database replacement cannot be detected'}
 
 def main():
     p=argparse.ArgumentParser()
