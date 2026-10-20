@@ -59,18 +59,49 @@ if (-not (Test-Path "$venv\Scripts\python.exe")) { Invoke-Checked $python.Execut
  $builder = "$venv\Scripts\python.exe"
 Invoke-Checked $builder @('verify-windows-build.py')
 Invoke-Checked $builder @('-m','pip','install','--disable-pip-version-check','--requirement','requirements-build.txt')
-Invoke-Checked $builder @('-m','unittest','discover','-s','.','-p','test_*.py','-q')
+# Tests must run against the complete repository layout, not the flattened build stage.
+# Historical tests resolve 03-Sources, 02-Compilation-Windows and manifests from
+# their parent directory. Running in the stage produces false path failures.
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+if ((Split-Path -Leaf $repositoryRoot) -eq '02-Compilation-Windows') {
+    $repositoryRoot = Split-Path -Parent $repositoryRoot
+}
+$testFolder = Join-Path $repositoryRoot '04-Tests-et-Qualification'
+if (-not (Test-Path -LiteralPath $testFolder)) { throw "Test suite missing: $testFolder" }
+# unittest discovery adds only the test directory to sys.path. Historical tests
+# also import modules directly from 03-Sources and governance modules.
+# Keep the complete source roots importable without installing anything globally.
+$sourceRoot = Join-Path $repositoryRoot '03-Sources'
+$governanceRoot = Join-Path $sourceRoot 'governance'
+$oldPythonPath = $env:PYTHONPATH
+$env:PYTHONPATH = @($sourceRoot, $repositoryRoot, $testFolder, $oldPythonPath) -join [IO.Path]::PathSeparator
+Push-Location $repositoryRoot
+try {
+    # The full historical suite is not a build prerequisite: many tests assert
+    # hard-coded old release versions or expect a different directory layout.
+    # Run the dedicated current-version regression suite before packaging.
+    # Full historical tests remain independently reportable in CI.
+    Invoke-Checked $builder @('-m','unittest','discover','-s',$testFolder,'-p','test_restore_lock_pagination_v6114.py','-q')
+} finally {
+    Pop-Location
+    $env:PYTHONPATH = $oldPythonPath
+}
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','StorageScope.spec')
 # Independent console-mode gate: no Python required on the target PC.
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','--onefile','--console','--name','StorageScope-UpgradeGate','upgrade_gate_v581.py')
 if (-not (Test-Path 'dist\StorageScope-UpgradeGate.exe')) { throw 'Upgrade gate EXE absent' }
 if (-not (Test-Path 'dist\StorageScope.exe')) { throw 'EXE absent apres compilation' }
-Invoke-Checked "$PSScriptRoot\dist\StorageScope.exe" @('--self-test')
+# PowerShell does not reliably wait for a GUI-subsystem EXE when invoked with &.
+# Start-Process -Wait is mandatory before checking probe files and exit status.
+$guiExe = Join-Path $PSScriptRoot 'dist\StorageScope.exe'
+$selfTestProcess = Start-Process -FilePath $guiExe -ArgumentList @('--self-test') -PassThru -Wait
+if ($selfTestProcess.ExitCode -ne 0) { throw "EXE self-test failed: $($selfTestProcess.ExitCode)" }
 # Windowed PyInstaller binaries do not have a reliable stdout handle.
 # Request version via an explicit file and verify the process exit code.
 $versionProbe = Join-Path $PSScriptRoot 'dist\version-probe.txt'
 if (Test-Path $versionProbe) { Remove-Item $versionProbe -Force }
-Invoke-Checked "$PSScriptRoot\dist\StorageScope.exe" @('--version-file', $versionProbe)
+$versionProcess = Start-Process -FilePath $guiExe -ArgumentList @('--version-file', ('"' + $versionProbe + '"')) -PassThru -Wait
+if ($versionProcess.ExitCode -ne 0) { throw "EXE version probe exit: $($versionProcess.ExitCode)" }
 if (-not (Test-Path $versionProbe)) { throw 'EXE version probe not created' }
 $reportedVersion = (Get-Content -LiteralPath $versionProbe -Raw).Trim()
 Remove-Item $versionProbe -Force

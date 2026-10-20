@@ -28,7 +28,27 @@ CREATE TABLE IF NOT EXISTS audit (seq INTEGER PRIMARY KEY AUTOINCREMENT, candida
 def decide(db, report, key, status, reviewer, reason):
     if status not in ('APPROVED', 'REJECTED') or not isinstance(reviewer, str) or not reviewer.strip() or not isinstance(reason, str) or not reason.strip():
         raise ValueError('Valid status, reviewer and reason required')
-    candidates = {candidate_key(c): c for c in report['reconciliation']['candidates']}
+    # Never create keys for blocked/ambiguous candidates: a CLI caller must not
+    # bypass the governance eligibility gate enforced by the desktop UI.
+    candidates = {}
+    for c in report['reconciliation']['candidates']:
+        if c.get('review_eligibility') not in (None, 'ELIGIBLE', 'REVIEW_REQUIRED'):
+            continue
+        if (c.get('identity_disagreements') or c.get('risk') == 'HIGH'
+                or c.get('contradictions') or c.get('identity_conflicts')
+                or c.get('blocking_reasons') or c.get('action') == 'BLOCKED'
+                or c.get('review_eligibility') not in ('ELIGIBLE', 'REVIEW_REQUIRED')
+                or c.get('review_key') != candidate_key(c)):
+            continue
+        try:
+            computed_key = candidate_key(c)
+        except (ValueError, TypeError, KeyError):
+            continue
+        if c.get('review_key') is not None and c['review_key'] != computed_key:
+            continue
+        if computed_key in candidates:
+            raise ValueError('Ambiguous duplicate review identity in report')
+        candidates[computed_key] = c
     if key not in candidates:
         raise ValueError('Candidate not found in report')
     db = Path(db)

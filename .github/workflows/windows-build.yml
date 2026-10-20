@@ -2,7 +2,7 @@ name: Build and qualify StorageScope Windows
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, 'integration/**', 'feature/**']
 jobs:
   windows:
     runs-on: windows-latest
@@ -11,6 +11,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Enforce single release version across sources and installer
+        shell: pwsh
+        run: |
+          python '03-Sources/release_version_guard.py'
+          if ($LASTEXITCODE -ne 0) { throw 'Release version metadata disagree; refusing to build' }
       - name: Check release sources and binary workspace
         shell: pwsh
         run: |
@@ -41,10 +46,17 @@ jobs:
         run: |
           $qualifier = if (Test-Path '02-Compilation-Windows/qualify-native-windows.ps1') { '02-Compilation-Windows/qualify-native-windows.ps1' } else { 'qualify-native-windows.ps1' }
           & $qualifier
-          if (-not $?) { throw 'Native qualification failed' }
+          if (-not $?) {
+            $reportPath = '02-Compilation-Windows/windows-qualification-report.json'
+            if (Test-Path $reportPath) { Get-Content -Raw $reportPath | Write-Host }
+            throw 'Native qualification failed'
+          }
           if (-not (Test-Path '02-Compilation-Windows/windows-qualification-report.json')) { throw 'Qualification evidence missing' }
           $native = Get-Content -Raw '02-Compilation-Windows/windows-qualification-report.json' | ConvertFrom-Json
-          if ($native.overall -ne 'PASS') { throw 'Native qualification report is not PASS' }
+          if ($native.overall -ne 'PASS') {
+            $native.checks | Where-Object { $_.status -ne 'PASS' } | ConvertTo-Json -Depth 8 | Write-Host
+            throw 'Native qualification report is not PASS'
+          }
       - name: Install and uninstall smoke test
         shell: pwsh
         run: |
@@ -63,6 +75,11 @@ jobs:
           if (-not (Test-Path $reportPath)) { throw 'Portable smoke report missing' }
           $result = Get-Content -Raw $reportPath | ConvertFrom-Json
           if ($result.status -ne 'PASS' -or -not $result.archive_present -or -not $result.extracted -or -not $result.version_checked -or -not $result.self_test -or -not $result.cleanup) { throw 'Portable smoke evidence is not PASS' }
+      - name: Verify packaged source version after build
+        shell: pwsh
+        run: |
+          python '03-Sources/release_version_guard.py'
+          if ($LASTEXITCODE -ne 0) { throw 'Release version metadata drifted during build' }
       - name: Validate published binary deliverables
         shell: pwsh
         run: |
@@ -93,6 +110,21 @@ jobs:
           $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
           & python '02-Compilation-Windows/verify-binary-delivery.py' --folder (Join-Path 'binary' ('v' + $version)) --version $version
           if ($LASTEXITCODE -ne 0) { throw 'Published binaries failed final verification' }
+      - name: Build qualified cumulative release from this exact commit
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          New-Item -ItemType Directory -Force -Path 'dist-release' | Out-Null
+          python tools/build_cumulative_release.py --root . --output ("dist-release/StorageScope-v" + $version + "-Windows-QUALIFIED-Cumulative.zip")
+          if ($LASTEXITCODE -ne 0) { throw 'Cumulative packaging failed' }
+          python tools/verify_cumulative_zip.py ("dist-release/StorageScope-v" + $version + "-Windows-QUALIFIED-Cumulative.zip") --version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Cumulative ZIP integrity verification failed' }
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: StorageScope-Windows-CUMULATIVE-QUALIFIED
+          path: dist-release/*.zip
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: success()
         with:

@@ -39,7 +39,7 @@ def parse_search(query):
             for m in re.finditer(r'"([^"]*)"|(\S+)', query.casefold())
             if (m.group(1) if m.group(1) is not None else m.group(2)).strip()]
 
-def filter_candidates(candidates, query="", state="ALL"):
+def filter_candidates(candidates, query="", state="ALL", risk="ALL"):
     """Multi-term AND search, preserving stable original indices.
 
     Prefixes asset:, key:, status: restrict a term to the relevant field.
@@ -47,7 +47,9 @@ def filter_candidates(candidates, query="", state="ALL"):
     """
     terms = parse_search(query)
     # Empty searches are common when paging large inventories: avoid JSON serialization.
-    if not terms and state == "ALL":
+    if risk not in ('ALL', 'HIGH', 'MEDIUM', 'LOW', 'UNASSESSED'):
+        raise ValueError('Invalid risk filter')
+    if not terms and state == "ALL" and risk == "ALL":
         return [(i, key, candidate) for i, (key, candidate) in enumerate(candidates)]
     # Compile the query once, not once per inventory record.
     qualified = []
@@ -64,6 +66,8 @@ def filter_candidates(candidates, query="", state="ALL"):
     for i, (key, candidate) in enumerate(candidates):
         eligibility = str(candidate.get("review_eligibility", "REVIEW_REQUIRED"))
         if state != "ALL" and eligibility != state:
+            continue
+        if risk != 'ALL' and candidate.get('risk', 'UNASSESSED') != risk:
             continue
         if not terms:
             result.append((i, key, candidate))
@@ -123,7 +127,13 @@ def display_assets(candidate, max_chars=180):
     return text if len(text) <= max_chars else text[:max_chars-1] + '…'
 
 def can_decide(candidate):
-    return candidate.get('review_eligibility','REVIEW_REQUIRED') == 'REVIEW_REQUIRED' and bool(candidate.get('review_key'))
+    """Only stable, unblocked review keys are actionable; never merge automatically."""
+    if not isinstance(candidate, dict):
+        return False
+    return (candidate.get('review_eligibility') in ('ELIGIBLE', 'REVIEW_REQUIRED')
+            and bool(candidate.get('review_key'))
+            and not candidate.get('identity_disagreements')
+            and candidate.get('risk') != 'HIGH')
 
 
 def explain_candidate(candidate):
@@ -142,8 +152,12 @@ def explain_candidate(candidate):
     # Only fields explicitly present in the report are shown as evidence.
     conflict_fields = ('identity_conflicts', 'contradictions', 'conflicts', 'blocking_reasons')
     conflicts = {key: candidate[key] for key in conflict_fields if candidate.get(key)}
+    if candidate.get('identity_disagreements'):
+        conflicts['identity_disagreements'] = candidate['identity_disagreements']
     return {
         'status': eligibility,
+        'risk': candidate.get('risk', 'UNASSESSED'),
+        'same_source': candidate.get('same_source', False),
         'decision_allowed': can_decide(candidate),
         'assets': [str(asset) for asset in assets],
         'identity_evidence': evidence,
@@ -273,7 +287,7 @@ def launch(parent=None):
     header.columnconfigure(1,weight=1)
     summary=tk.StringVar(value='Chargez un inventaire pour commencer.');ttk.Label(root,textvariable=summary,padding=10).pack(anchor='w')
     filters=ttk.Frame(root,padding=(10,2));filters.pack(fill='x')
-    query=tk.StringVar(); state_filter=tk.StringVar(value='ALL')
+    query=tk.StringVar(); state_filter=tk.StringVar(value='ALL'); risk_filter=tk.StringVar(value='ALL')
     ttk.Label(filters,text='Rechercher (mots, asset:, key:, status:)' ).pack(side='left')
     search_entry=ttk.Entry(filters,textvariable=query,width=45);search_entry.pack(side='left',padx=5)
     def focus_search(event=None):
@@ -283,10 +297,12 @@ def launch(parent=None):
     root.bind('<Control-f>', focus_search)
     ttk.Label(filters,text='Statut').pack(side='left')
     ttk.Combobox(filters,textvariable=state_filter,values=['ALL','REVIEW_REQUIRED','BLOCKED_CONTRADICTION'],state='readonly',width=23).pack(side='left',padx=5)
+    ttk.Label(filters,text='Risque').pack(side='left')
+    ttk.Combobox(filters,textvariable=risk_filter,values=['ALL','HIGH','MEDIUM','LOW','UNASSESSED'],state='readonly',width=12).pack(side='left',padx=5)
     pager=ttk.Frame(root,padding=(10,2));pager.pack(fill='x')
     page_label=tk.StringVar(value='Page 1');ttk.Label(pager,textvariable=page_label).pack(side='left')
-    table=ttk.Treeview(root,columns=('key','assets','status'),show='headings',height=13)
-    for name,width in [('key',270),('assets',530),('status',180)]:table.heading(name,text=name);table.column(name,width=width)
+    table=ttk.Treeview(root,columns=('key','assets','risk','status'),show='headings',height=13)
+    for name,width in [('key',245),('assets',430),('risk',90),('status',170)]:table.heading(name,text=name);table.column(name,width=width)
     table_frame=ttk.Frame(root,padding=(10,0,10,0));table_frame.pack(fill='both',expand=True)
     table.pack(in_=table_frame,side='left',fill='both',expand=True)
     table_scroll=ttk.Scrollbar(table_frame,orient='vertical',command=table.yview)
@@ -310,14 +326,14 @@ def launch(parent=None):
     table.bind('<<TreeviewSelect>>',selected)
     def refresh(*args, refilter=True):
         if refilter:
-            report_state['matched'] = filter_candidates(report_state['candidates'],query.get(),state_filter.get())
+            report_state['matched'] = filter_candidates(report_state['candidates'],query.get(),state_filter.get(),risk_filter.get())
         matched=report_state['matched']
         total=len(matched)
         report_state['page'],max_page=page_bounds(total,report_state['page'])
         page_label.set(page_summary(total,report_state['page']))
         previous_button.configure(state='normal' if report_state['page'] > 0 else 'disabled')
         next_button.configure(state='normal' if report_state['page'] < max_page else 'disabled')
-        rows = [(str(i), (key if len(key)<=36 else key[:35]+'…', display_assets(c), c.get('review_eligibility','REVIEW_REQUIRED'))) for i,key,c in paginate_candidates(matched,report_state['page'])]
+        rows = [(str(i), (key if len(key)<=36 else key[:35]+'…', display_assets(c), c.get('risk','UNASSESSED'), c.get('review_eligibility','REVIEW_REQUIRED'))) for i,key,c in paginate_candidates(matched,report_state['page'])]
         reconcile_tree_rows(table, rows)
         selected()  # Re-render details for the retained selection; clear if no longer present.
         summary.set(f'{len(matched)} trouvée(s) sur {len(report_state["candidates"])} proposition(s), conflits bloqués inclus. Aucune fusion automatique.')
@@ -351,6 +367,7 @@ def launch(parent=None):
         reset_page()
     query.trace_add('write',schedule_refresh)
     state_filter.trace_add('write',reset_page)
+    risk_filter.trace_add('write',reset_page)
     def load():
         if pending_refresh['id'] is not None:
             root.after_cancel(pending_refresh['id'])

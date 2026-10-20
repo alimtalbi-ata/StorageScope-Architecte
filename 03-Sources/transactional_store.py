@@ -1,5 +1,6 @@
 """StorageScope transactional store v6.25. Non-destructive governance snapshots."""
 import sqlite3, json, hashlib, datetime
+from contextlib import closing
 from pathlib import Path
 SCHEMA_VERSION = 1
 
@@ -35,9 +36,11 @@ def save_snapshot(path, assets):
         if not isinstance(asset,dict) or not isinstance(asset.get("id"),str) or not asset["id"].strip(): raise ValueError("Each asset needs a stable id")
         ids.append(asset["id"].strip())
     if len(set(ids))!=len(ids): raise ValueError("Duplicate asset ids")
-    ordered=sorted(assets,key=lambda a:a["id"])
+    # Normalize stable identifiers before hashing and writing the snapshot.
+    # Without this, ' x ' passes validation but roundtrip checks can diverge.
+    ordered=sorted(({**asset, "id": asset["id"].strip()} for asset in assets),key=lambda a:a["id"])
     payload=canonical(ordered); key=hashlib.sha256(payload.encode()).hexdigest()
-    with connect(path) as conn:
+    with closing(connect(path)) as conn:
         migrate(conn)
         conn.execute("BEGIN IMMEDIATE")
         try:
@@ -51,13 +54,34 @@ def save_snapshot(path, assets):
     return key
 
 def load_snapshot(path,key):
-    with connect(path) as conn:
-        migrate(conn)
+    # A read must not create a database or apply schema migrations.
+    # Open with SQLite mode=ro to keep diagnostics non-destructive.
+    from urllib.parse import quote
+    db_path = Path(path)
+    if not db_path.is_file():
+        raise KeyError(key)
+    uri = "file:" + quote(str(db_path.resolve()), safe="/") + "?mode=ro"
+    with closing(sqlite3.connect(uri, uri=True, timeout=15)) as conn:
+        version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version > SCHEMA_VERSION:
+            raise ValueError("Database schema newer than application")
         row=conn.execute("SELECT payload FROM snapshots WHERE id=?",(key,)).fetchone()
         if row is None: raise KeyError(key)
         payload=row[0]
         if hashlib.sha256(payload.encode()).hexdigest()!=key: raise ValueError("Snapshot hash mismatch")
         assets=json.loads(payload)
+        if not isinstance(assets, list):
+            raise ValueError("Snapshot payload must be a list")
+        if any(not isinstance(a, dict) or not isinstance(a.get("id"), str) for a in assets):
+            raise ValueError("Snapshot assets must have string identifiers")
+        asset_ids = [a["id"] for a in assets]
+        if len(set(asset_ids)) != len(asset_ids):
+            raise ValueError("Duplicate asset ids in snapshot payload")
         items=conn.execute("SELECT asset_id,payload FROM snapshot_items WHERE snapshot_id=?",(key,)).fetchall()
-        if len(items)!=len(assets) or {i[0]:json.loads(i[1]) for i in items}!={a['id']:a for a in assets}: raise ValueError("Snapshot item mismatch")
+        try:
+            decoded_items = {item_id: json.loads(item_payload) for item_id, item_payload in items}
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Invalid snapshot item JSON") from exc
+        if len(items)!=len(assets) or decoded_items!={a["id"]:a for a in assets}:
+            raise ValueError("Snapshot item mismatch")
         return assets

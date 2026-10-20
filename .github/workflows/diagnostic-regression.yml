@@ -1,0 +1,75 @@
+name: Python diagnostic regression
+on:
+  push:
+    branches:
+      - main
+      - 'integration/**'
+      - 'feature/**'
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile diagnostic module
+        run: python -m py_compile 03-Sources/restore_lock_pagination.py
+      - name: Run pagination regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_restore_lock_pagination_v6114.py' -v
+      - name: Compile transactional store
+        run: python -m py_compile 03-Sources/transactional_store.py
+      - name: Run SQLite safety regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_transactional_store_safety_v6115.py' -v
+      - name: Run legacy transactional store tests
+        run: python -m unittest discover -s 04-Tests-et-Qualification/v6.25 -p 'test_transactional_store.py' -v
+      - name: Verify release version alignment
+        run: python 03-Sources/release_version_guard.py
+      - name: Test release version guard
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_release_version_guard_v6115.py' -v
+      - name: Run non-overwrite backup regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_backup_non_overwrite_v6116.py' -v
+      - name: Run atomic backup regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_backup_atomic_v61161.py' -v
+      - name: Run snapshot schema validation regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_snapshot_schema_v61164.py' -v
+      - name: Run safe restore staging regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_restore_staging_v61165.py' -v
+
+      - name: Compile Windows support diagnostic and shell
+        run: python -m py_compile 03-Sources/windows_support_diagnostic_v619.py 03-Sources/storagescope_windows.py
+      - name: Run Windows support diagnostic functional regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_windows_support_diagnostic_v619.py' -v
+
+      - name: Run inventory identity risk regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_review_risk_v620.py' -v
+
+      - name: Run UI navigation audit regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_ui_navigation_audit_v6118.py' -v
+      - name: Check desktop navigation audit
+        run: python tools/audit_ui_navigation.py
+
+      - name: Run cumulative ZIP integrity regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cumulative_zip_integrity_v6118.py' -v
+
+      - name: Test cumulative release builder
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_build_cumulative_release_v6118.py' -v
+
+      - name: Run component inventory regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_component_inventory_v6119.py' -v
+      - name: Generate component architecture inventory
+        run: python tools/audit_component_inventory.py --output component-inventory.json
+      - name: Prioritize architecture review candidates
+        run: python tools/review_component_risks.py component-inventory.json --output component-review.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: StorageScope-Component-Inventory
+          path: |
+            component-inventory.json
+            component-review.json
+          if-no-files-found: warn

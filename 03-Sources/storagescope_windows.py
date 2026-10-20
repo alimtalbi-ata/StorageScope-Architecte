@@ -44,29 +44,42 @@ def database_health(path):
 def backup_databases(paths, destination):
     """Consistent SQLite backup, without copying active WAL files."""
     dest = Path(destination)
-    dest.mkdir(parents=True, exist_ok=True)
     if dest.resolve() == Path(paths['base']).resolve():
         raise ValueError('Le dossier de sauvegarde doit être distinct des données actives')
+    if Path(paths['base']).resolve() in dest.resolve().parents:
+        raise ValueError('Sauvegarde interdite dans les données actives')
+    sources = [Path(paths[name]) for name in ('decisions', 'campaigns', 'views')]
+    for source in sources:
+        if source.is_symlink():
+            raise ValueError('Source de sauvegarde symbolique interdite')
+        if source.exists() and (dest / source.name).exists():
+            raise FileExistsError('Sauvegarde existante : ' + source.name)
+    dest.mkdir(parents=True, exist_ok=True)
     created = []
-    for name in ('decisions', 'campaigns'):
-        source = Path(paths[name])
-        if not source.exists():
-            continue
-        target = dest / source.name
-        if source.resolve() == target.resolve():
-            raise ValueError('La sauvegarde ne peut écraser la base active')
-        with closing(sqlite3.connect(str(source), timeout=5)) as db:
-            with closing(sqlite3.connect(str(target), timeout=5)) as output:
-                db.backup(output)
-        created.append(target)
-    views = Path(paths['views'])
-    if views.exists():
-        target = dest / views.name
-        if views.resolve() == target.resolve():
-            raise ValueError('La sauvegarde ne peut écraser les vues actives')
-        shutil.copy2(views, target)
-        created.append(target)
-    return created
+    try:
+        for name in ('decisions', 'campaigns', 'views'):
+            source = Path(paths[name])
+            if not source.exists():
+                continue
+            target = dest / source.name
+            if source.resolve() == target.resolve():
+                raise ValueError('La sauvegarde ne peut écraser la base active')
+            # Exclusive creation prevents overwrites even during concurrent calls.
+            fd = os.open(str(target), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            os.close(fd)
+            created.append(target)
+            if name == 'views':
+                with open(source, 'rb') as inp, open(target, 'wb') as out:
+                    shutil.copyfileobj(inp, out, length=1024 * 1024)
+            else:
+                with closing(sqlite3.connect(str(source), timeout=5)) as db:
+                    with closing(sqlite3.connect(str(target), timeout=5)) as output:
+                        db.backup(output)
+        return created
+    except Exception:
+        for target in reversed(created):
+            target.unlink(missing_ok=True)
+        raise
 
 
 def backup_snapshot(paths, destination):
@@ -126,9 +139,14 @@ def verify_backup_snapshot(folder):
             return False
         manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
         entries = manifest['files']
-        if manifest.get('format') != 'storagescope-backup-v1' or not entries:
+        if (manifest.get('format') != 'storagescope-backup-v1'
+                or not isinstance(entries, list) or not entries):
+            return False
+        if any(not isinstance(item, dict) or not isinstance(item.get('name'), str) for item in entries):
             return False
         names = [item['name'] for item in entries]
+        if not set(names).issubset({'campaigns.sqlite', 'architecture-decisions.sqlite', 'governance-views.json'}):
+            return False
         if len(set(names)) != len(names):
             return False
         # Reject symlinks and nested entries: a snapshot must contain regular local files only.
@@ -144,15 +162,24 @@ def verify_backup_snapshot(folder):
             file = folder / name
             if file.is_symlink() or not file.is_file():
                 return False
-            if type(item['bytes']) is not int or item['bytes'] < 0 or not isinstance(item['sha256'], str):
+            if (type(item['bytes']) is not int or item['bytes'] < 0
+                    or not isinstance(item['sha256'], str) or len(item['sha256']) != 64
+                    or any(c not in '0123456789abcdef' for c in item['sha256'])):
                 return False
             if file.stat().st_size != item['bytes']:
                 return False
             size, digest = _hash_file_streaming(file)
             if size != item['bytes'] or digest != item['sha256']:
                 return False
+            if name in ('campaigns.sqlite', 'architecture-decisions.sqlite'):
+                # A matching hash alone cannot prove a SQLite snapshot is readable.
+                # Immutable read-only URI avoids writing WAL or journal files.
+                uri = file.resolve().as_uri() + '?mode=ro&immutable=1'
+                with closing(sqlite3.connect(uri, uri=True, timeout=3)) as db:
+                    if db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+                        return False
         return True
-    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+    except (OSError, ValueError, KeyError, TypeError, sqlite3.DatabaseError, json.JSONDecodeError):
         return False
 
 
@@ -386,24 +413,77 @@ def launch():
         return page
 
     def diagnostics():
+        from windows_support_diagnostic_v619 import collect, render, export_json
         page = ttk.Frame(content)
-        ttk.Label(page, text='Diagnostic local', style='Title.TLabel').pack(anchor='w', pady=(5, 18))
+        ttk.Label(page, text='Diagnostic local', style='Title.TLabel').pack(anchor='w', pady=(5, 8))
+        ttk.Label(page, text='Lecture seule · Rapport sans données métier ni chemins personnels',
+                  style='Subtle.TLabel').pack(anchor='w', pady=(0, 10))
         results = tk.Text(page, height=15, wrap='word', font=('Consolas', 10), state='disabled')
         results.pack(fill='both', expand=True)
-        def refresh():
-            lines = [f'StorageScope {VERSION}', f'Python : {sys.version.split()[0]}',
-                     f'Plateforme : {sys.platform}', f'Données : {paths["base"]}', '']
-            for key in ('decisions', 'campaigns'):
-                try:
-                    state = database_health(paths[key])
-                except (OSError, sqlite3.Error) as exc:
-                    state = f'ERREUR: {exc}'
-                lines.append(f'{key} : {state}')
+        latest = {'report': None}
+        severity = tk.StringVar(value='ALL')
+
+        def display():
+            if latest['report'] is None:
+                return
+            output = render(latest['report'], severity.get())
             results.configure(state='normal')
             results.delete('1.0', 'end')
-            results.insert('1.0', '\n'.join(lines))
+            results.insert('1.0', output)
             results.configure(state='disabled')
-        ttk.Button(page, text='Actualiser le diagnostic', command=refresh).pack(anchor='w', pady=12)
+
+        def refresh():
+            try:
+                latest['report'] = collect(paths, VERSION)
+                display()
+                status.set('Diagnostic actualisé · lecture seule')
+            except (OSError, ValueError, sqlite3.Error) as exc:
+                status.set('Diagnostic impossible')
+                messagebox.showerror('Diagnostic', str(exc), parent=root)
+
+        toolbar = ttk.Frame(page)
+        toolbar.pack(fill='x', pady=12)
+        ttk.Button(toolbar, text='Actualiser', command=refresh).pack(side='left')
+        ttk.Label(toolbar, text='Gravité').pack(side='left', padx=(12, 4))
+        severity_selector = ttk.Combobox(toolbar, textvariable=severity,
+                                          values=('ALL', 'ERROR', 'NOTICE', 'INFO'),
+                                          state='readonly', width=9)
+        severity_selector.pack(side='left')
+        severity_selector.bind('<<ComboboxSelected>>', lambda event: display())
+
+        def copy_diagnostic():
+            output = results.get('1.0', 'end-1c')
+            if not output.strip():
+                return
+            try:
+                root.clipboard_clear()
+                root.clipboard_append(output)
+                root.update_idletasks()
+                status.set('Diagnostic copié')
+            except tk.TclError as exc:
+                messagebox.showerror('Copie du diagnostic', str(exc), parent=root)
+
+        ttk.Button(toolbar, text='Copier', command=copy_diagnostic).pack(side='left', padx=(10, 0))
+
+        def export_diagnostic():
+            if latest['report'] is None:
+                return
+            destination = filedialog.asksaveasfilename(
+                parent=root, title='Exporter le diagnostic support JSON',
+                defaultextension='.json', filetypes=[('JSON', '*.json')],
+                initialfile='StorageScope-Diagnostic.json')
+            if not destination:
+                return
+            try:
+                export_json(latest['report'], destination)
+                status.set('Rapport JSON exporté')
+            except FileExistsError:
+                messagebox.showerror('Export du diagnostic',
+                                     'Le fichier existe déjà : choisissez un autre nom.', parent=root)
+            except (OSError, ValueError) as exc:
+                messagebox.showerror('Export du diagnostic', str(exc), parent=root)
+
+        ttk.Button(toolbar, text='Exporter JSON…', command=export_diagnostic).pack(side='left', padx=(10, 0))
         refresh()
         return page
 

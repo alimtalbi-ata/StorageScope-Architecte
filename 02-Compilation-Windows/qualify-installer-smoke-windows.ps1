@@ -8,9 +8,28 @@ if (-not (Test-Path $installer)) { throw "Installer missing: $installer" }
 $target = Join-Path $env:TEMP "StorageScope-CI-$([guid]::NewGuid().ToString('N'))"
 $report = [ordered]@{version=$version; status='FAIL'; installed=$false; version_checked=$false; uninstalled=$false; error=$null}
 $failure = $null
+# A fresh-install smoke must start without a pre-existing user profile.
+# CI runners may retain StorageScope data created by earlier self-tests.
+# Preserve it byte-for-byte outside the profile and restore it after the test.
+$existingData = Join-Path $env:LOCALAPPDATA 'StorageScope'
+$quarantine = Join-Path $env:TEMP ("storagescope-ci-preserved-" + [guid]::NewGuid().ToString('N'))
+$hadExistingData = Test-Path -LiteralPath $existingData
+if ($hadExistingData) {
+  if ((Get-Item -LiteralPath $existingData).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Refusing to move reparse-point user data' }
+  Move-Item -LiteralPath $existingData -Destination $quarantine
+}
 try {
-  $p = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$target") -Wait -PassThru
-  if ($p.ExitCode -ne 0) { throw "Installer exit $($p.ExitCode)" }
+  # Inno Setup returns exit code 7 for invalid command-line arguments.
+  # Quote the /DIR value as a single argument, including paths with spaces.
+  $installerLog = Join-Path $env:TEMP ("storagescope-installer-" + [guid]::NewGuid().ToString('N') + ".log")
+  $installArgs = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="' + $target + '" /LOG="' + $installerLog + '"'
+  $p = Start-Process -FilePath $installer -ArgumentList $installArgs -Wait -PassThru
+  if ($p.ExitCode -ne 0) {
+    $tail = if (Test-Path -LiteralPath $installerLog) { (Get-Content -LiteralPath $installerLog -Tail 45) -join [Environment]::NewLine } else { 'Inno log unavailable' }
+    Write-Host "Inno Setup diagnostic log: $installerLog"
+    Write-Host $tail
+    throw "Installer exit $($p.ExitCode); log: $installerLog"
+  }
   $report.installed = $true
   $exe = Join-Path $target 'StorageScope.exe'
   if (-not (Test-Path $exe)) { throw 'Installed EXE missing' }
@@ -33,6 +52,15 @@ try {
     } elseif ($report.installed -and -not $failure) { $failure = 'Uninstaller missing' }
   } catch {
     if (-not $failure) { $failure = "Cleanup failed: $($_.Exception.Message)" }
+  }
+  # Restore the original runner data even if the installer or uninstaller failed.
+  if ($hadExistingData) {
+    if (Test-Path -LiteralPath $existingData) {
+      if (-not $failure) { $failure = 'Fresh install created a data directory; cannot restore original data safely' }
+      Write-Warning "Original profile preserved at $quarantine; manual recovery required"
+    } else {
+      Move-Item -LiteralPath $quarantine -Destination $existingData
+    }
   }
   $report.status = if ($report.installed -and $report.version_checked -and $report.uninstalled -and -not $failure) { 'PASS' } else { 'FAIL' }
   $report.error = $failure

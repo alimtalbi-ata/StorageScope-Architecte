@@ -1,0 +1,69 @@
+name: Windows deployment portability gate
+on:
+  push:
+    branches:
+      - 'feature/storagescope-v6.114-diagnostic-pagination'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  standalone:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build both native distributions
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & './02-Compilation-Windows/build-all-windows.ps1'
+          if (-not $?) { throw 'Build failed' }
+      - name: Run installed and portable smoke tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & './02-Compilation-Windows/qualify-installer-smoke-windows.ps1'
+          if (-not $?) { throw 'Installer smoke test failed' }
+          & './02-Compilation-Windows/qualify-portable-smoke-windows.ps1'
+          if (-not $?) { throw 'Portable smoke test failed' }
+      - name: Test portable executable outside source tree
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content '07-Manifestes/VERSION' -Raw).Trim()
+          $archive = Join-Path '02-Compilation-Windows/portable' "StorageScope-Portable-v$version-win-x64.zip"
+          $temp = Join-Path $env:RUNNER_TEMP ("ss-independent-" + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $temp | Out-Null
+          try {
+            Expand-Archive -LiteralPath $archive -DestinationPath $temp
+            $exes = @(Get-ChildItem $temp -Recurse -File -Filter StorageScope.exe)
+            if ($exes.Count -ne 1) { throw "Expected one portable executable; found $($exes.Count)" }
+            $probe = Join-Path $temp 'version.txt'
+            Push-Location $env:RUNNER_TEMP
+            try {
+              $oldPythonPath = $env:PYTHONPATH
+              $env:PYTHONPATH = ''
+              $p = Start-Process -FilePath $exes[0].FullName -ArgumentList @('--version-file', ('"' + $probe + '"')) -Wait -PassThru
+              if ($p.ExitCode -ne 0) { throw "Standalone executable exit code $($p.ExitCode)" }
+              if ((Get-Content $probe -Raw).Trim() -ne $version) { throw 'Standalone version mismatch' }
+            } finally {
+              $env:PYTHONPATH = $oldPythonPath
+              Pop-Location
+            }
+          } finally { Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue }
+      - name: Verify native binary delivery
+        shell: pwsh
+        run: |
+          $version = (Get-Content '07-Manifestes/VERSION' -Raw).Trim()
+          python '02-Compilation-Windows/verify-binary-delivery.py' --folder (Join-Path 'binary' ('v' + $version)) --version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Binary verification failed' }
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: storagescope-windows-standalone
+          path: binary/v*/
+          if-no-files-found: error
+          retention-days: 14
