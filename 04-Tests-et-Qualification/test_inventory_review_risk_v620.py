@@ -8,6 +8,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "03-Sources"))
 from inventory_review_risk_v620 import review_inventory
 from governance_service import assess
 from governance_desktop import explain_candidate
+from review_registry_v622 import decide, candidate_key
+import tempfile
+from pathlib import Path
 
 class InventoryRiskTests(unittest.TestCase):
     def test_conflicting_wwn_is_high_risk(self):
@@ -40,6 +43,18 @@ class InventoryRiskTests(unittest.TestCase):
         self.assertEqual(candidate["identity_disagreements"], ["wwn"])
         self.assertEqual(explain_candidate(candidate)["risk"], "HIGH")
         self.assertEqual(report["automatic_merges"], 0)
+
+    def test_cli_cannot_approve_blocked_identity(self):
+        rows = [
+            {"source": "A", "id": "asset-a", "name": "one", "type": "array", "serial": "S1", "wwn": "500a"},
+            {"source": "B", "id": "asset-b", "name": "two", "type": "array", "serial": "S1", "wwn": "500b"},
+        ]
+        report = assess(rows)
+        candidate = report["reconciliation"]["candidates"][0]
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(ValueError):
+                decide(Path(folder) / "audit.sqlite", report, candidate_key(candidate),
+                       "APPROVED", "reviewer", "test")
 
     def test_clean_cross_source_candidate(self):
         rows = [{"source": "A", "serial": "X"}, {"source": "B", "serial": "x"}]
