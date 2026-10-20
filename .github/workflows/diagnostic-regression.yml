@@ -40,6 +40,11 @@ jobs:
       - name: Run safe restore staging regression
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_restore_staging_v61165.py' -v
 
+      - name: Compile Windows support diagnostic and shell
+        run: python -m py_compile 03-Sources/windows_support_diagnostic_v619.py 03-Sources/storagescope_windows.py
+      - name: Run Windows support diagnostic functional regression
+        run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_windows_support_diagnostic_v619.py' -v
+
       - name: Run UI navigation audit regression
         run: python -m unittest discover -s 04-Tests-et-Qualification -p 'test_ui_navigation_audit_v6118.py' -v
       - name: Check desktop navigation audit
