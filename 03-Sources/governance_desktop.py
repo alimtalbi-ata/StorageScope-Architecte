@@ -127,7 +127,13 @@ def display_assets(candidate, max_chars=180):
     return text if len(text) <= max_chars else text[:max_chars-1] + '…'
 
 def can_decide(candidate):
-    return candidate.get('review_eligibility','REVIEW_REQUIRED') == 'REVIEW_REQUIRED' and bool(candidate.get('review_key'))
+    """Only stable, unblocked review keys are actionable; never merge automatically."""
+    if not isinstance(candidate, dict):
+        return False
+    return (candidate.get('review_eligibility') in ('ELIGIBLE', 'REVIEW_REQUIRED')
+            and bool(candidate.get('review_key'))
+            and not candidate.get('identity_disagreements')
+            and candidate.get('risk') != 'HIGH')
 
 
 def explain_candidate(candidate):
