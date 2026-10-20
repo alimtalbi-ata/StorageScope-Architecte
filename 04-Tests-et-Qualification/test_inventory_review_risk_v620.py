@@ -52,9 +52,11 @@ class InventoryRiskTests(unittest.TestCase):
         report = assess(rows)
         candidate = report["reconciliation"]["candidates"][0]
         with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder) / "audit.sqlite"
             with self.assertRaises(ValueError):
-                decide(Path(folder) / "audit.sqlite", report, candidate_key(candidate),
+                decide(db, report, candidate_key(candidate),
                        "APPROVED", "reviewer", "test")
+            self.assertFalse(db.exists(), "Blocked decision must not create an audit database")
 
     def test_authorized_decision_is_durable_and_auditable(self):
         rows = [
