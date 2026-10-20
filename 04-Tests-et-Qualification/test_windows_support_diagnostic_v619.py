@@ -37,6 +37,23 @@ class SupportDiagnosticTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 module.export_json(report, target)
 
+    def test_severity_and_filtered_recommendations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            corrupt = root / "broken.sqlite"
+            corrupt.write_bytes(b"invalid database")
+            paths = {"decisions": corrupt, "campaigns": root / "missing.sqlite",
+                     "preferences": root / "prefs.json"}
+            report = module.collect(paths, "6.108")
+            self.assertEqual(report["checks"]["decisions"]["severity"], "ERROR")
+            self.assertEqual(report["checks"]["campaigns"]["severity"], "NOTICE")
+            self.assertEqual(set(module.filter_checks(report, "ERROR")), {"decisions"})
+            self.assertEqual(set(module.filter_checks(report, "NOTICE")), {"campaigns", "preferences"})
+            self.assertIn("Conseil", module.render(report, "ERROR"))
+            self.assertNotIn("[NOTICE]", module.render(report, "ERROR"))
+            with self.assertRaises(ValueError):
+                module.filter_checks(report, "UNKNOWN")
+
     def test_corrupt_sqlite_and_symlink(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
