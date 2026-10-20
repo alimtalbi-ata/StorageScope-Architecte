@@ -32,7 +32,7 @@ def decide(db, report, key, status, reviewer, reason):
     # bypass the governance eligibility gate enforced by the desktop UI.
     candidates = {}
     for c in report['reconciliation']['candidates']:
-        if c.get('review_eligibility') in ('BLOCKED_CONTRADICTION', 'MISSING_OR_AMBIGUOUS_STABLE_ID'):
+        if c.get('review_eligibility') not in (None, 'ELIGIBLE', 'REVIEW_REQUIRED'):
             continue
         if (c.get('identity_disagreements') or c.get('risk') == 'HIGH'
                 or c.get('contradictions') or c.get('identity_conflicts')
@@ -40,7 +40,12 @@ def decide(db, report, key, status, reviewer, reason):
                 or c.get('action') == 'BLOCKED'):
             continue
         try:
-            candidates[candidate_key(c)] = c
+            computed_key = candidate_key(c)
+            if c.get('review_key') is not None and c['review_key'] != computed_key:
+                continue
+            if computed_key in candidates:
+                raise ValueError('Ambiguous duplicate review identity in report')
+            candidates[computed_key] = c
         except (ValueError, TypeError, KeyError):
             continue
     if key not in candidates:
