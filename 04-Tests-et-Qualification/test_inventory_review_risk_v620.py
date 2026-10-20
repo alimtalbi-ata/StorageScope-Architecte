@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "03-Sources"))
 from inventory_review_risk_v620 import review_inventory
 from governance_service import assess
-from governance_desktop import explain_candidate, read_audit_history, history_for_selection, format_audit_event, filter_candidates
+from governance_desktop import explain_candidate, read_audit_history, history_for_selection, format_audit_event, filter_candidates, can_decide
 from review_registry_v622 import decide, candidate_key, verify
 import tempfile
 
@@ -125,6 +125,19 @@ class InventoryRiskTests(unittest.TestCase):
         self.assertEqual(filter_candidates(candidates, state="REVIEW_REQUIRED", risk="HIGH"), [])
         with self.assertRaises(ValueError):
             filter_candidates(candidates, risk="INVALID")
+
+    def test_desktop_allows_eligible_review_but_never_high_risk(self):
+        rows = [
+            {"source": "NetApp", "id": "asset-a", "name": "array", "type": "array", "serial": "S1"},
+            {"source": "CMDB", "id": "asset-b", "name": "array", "type": "array", "serial": "S1"},
+        ]
+        candidate = assess(rows)["reconciliation"]["candidates"][0]
+        self.assertEqual(candidate["review_eligibility"], "ELIGIBLE")
+        self.assertTrue(can_decide(candidate))
+        self.assertFalse(can_decide({**candidate, "risk": "HIGH"}))
+        self.assertFalse(can_decide({**candidate, "identity_disagreements": ["wwn"]}))
+        self.assertFalse(can_decide({**candidate, "review_key": None}))
+        self.assertFalse(can_decide({**candidate, "review_eligibility": "BLOCKED_CONTRADICTION"}))
 
     def test_clean_cross_source_candidate(self):
         rows = [{"source": "A", "serial": "X"}, {"source": "B", "serial": "x"}]
