@@ -28,3 +28,7 @@ Intégrer le risque dans l'interface de revue, vérifier les scénarios multi-ve
 ## Contrôle du registre de décisions
 
 La fonction `review_registry_v622.decide` rejette désormais les candidats explicitement bloqués par la politique d'identité, ceux sans identité stable et ceux classés `HIGH` ou portant des contradictions matérielles. Ce contrôle s'applique aussi aux appels CLI, indépendamment de l'interface graphique. Le test `test_cli_cannot_approve_blocked_identity` vérifie le refus de décision. Une vérification de bout en bout du registre et de l'interface reste nécessaire.
+
+## Qualification du cycle de décision
+
+Le test `test_authorized_decision_is_durable_and_auditable` vérifie une approbation admissible, la création durable du registre SQLite, la validité de la chaîne d'audit, le refus d'une seconde décision et la conservation de l'intégrité après ce refus. Le test `test_cli_cannot_approve_blocked_identity` confirme en outre que le rejet d'une décision interdite ne crée pas de fichier SQLite. Ces scénarios sont exécutés par le workflow de régression ; leur succès ne remplace pas une recette interactive de l'application Windows.
