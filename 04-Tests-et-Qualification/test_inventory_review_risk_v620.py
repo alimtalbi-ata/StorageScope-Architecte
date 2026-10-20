@@ -139,6 +139,41 @@ class InventoryRiskTests(unittest.TestCase):
         self.assertFalse(can_decide({**candidate, "review_key": None}))
         self.assertFalse(can_decide({**candidate, "review_eligibility": "BLOCKED_CONTRADICTION"}))
 
+    def test_registry_rejects_contradiction_in_imported_report(self):
+        rows = [
+            {"source": "A", "id": "asset-a", "name": "one", "type": "array", "serial": "S1"},
+            {"source": "B", "id": "asset-b", "name": "one", "type": "array", "serial": "S1"},
+        ]
+        report = assess(rows)
+        candidate = report["reconciliation"]["candidates"][0]
+        key = candidate_key(candidate)
+        self.assertTrue(can_decide(candidate))
+        candidate["contradictions"] = ["vendor"]
+        with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder) / "review.sqlite"
+            with self.assertRaises(ValueError):
+                decide(db, report, key, "APPROVED", "reviewer", "invalid evidence")
+            self.assertFalse(db.exists())
+
+    def test_full_governance_decision_path(self):
+        rows = [
+            {"source": "A", "id": "asset-a", "name": "one", "type": "array", "serial": "S1"},
+            {"source": "B", "id": "asset-b", "name": "one", "type": "array", "serial": "S1"},
+        ]
+        report = assess(rows)
+        from governance_desktop import eligible_candidates
+        entries = eligible_candidates(report)
+        self.assertEqual(len(entries), 1)
+        key, candidate = entries[0]
+        self.assertTrue(can_decide(candidate))
+        self.assertEqual(key, candidate["review_key"])
+        with tempfile.TemporaryDirectory() as folder:
+            db = Path(folder) / "review.sqlite"
+            result = decide(db, report, key, "APPROVED", "reviewer", "evidence checked")
+            self.assertFalse(result["inventory_changed"])
+            self.assertEqual(len(history_for_selection(db, key)), 1)
+            self.assertTrue(verify(db)["valid"])
+
     def test_clean_cross_source_candidate(self):
         rows = [{"source": "A", "serial": "X"}, {"source": "B", "serial": "x"}]
         candidate = review_inventory(rows)["candidates"][0]
