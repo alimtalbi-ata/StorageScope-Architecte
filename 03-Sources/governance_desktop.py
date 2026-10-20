@@ -289,8 +289,8 @@ def launch(parent=None):
     ttk.Combobox(filters,textvariable=state_filter,values=['ALL','REVIEW_REQUIRED','BLOCKED_CONTRADICTION'],state='readonly',width=23).pack(side='left',padx=5)
     pager=ttk.Frame(root,padding=(10,2));pager.pack(fill='x')
     page_label=tk.StringVar(value='Page 1');ttk.Label(pager,textvariable=page_label).pack(side='left')
-    table=ttk.Treeview(root,columns=('key','assets','status'),show='headings',height=13)
-    for name,width in [('key',270),('assets',530),('status',180)]:table.heading(name,text=name);table.column(name,width=width)
+    table=ttk.Treeview(root,columns=('key','assets','risk','status'),show='headings',height=13)
+    for name,width in [('key',245),('assets',430),('risk',90),('status',170)]:table.heading(name,text=name);table.column(name,width=width)
     table_frame=ttk.Frame(root,padding=(10,0,10,0));table_frame.pack(fill='both',expand=True)
     table.pack(in_=table_frame,side='left',fill='both',expand=True)
     table_scroll=ttk.Scrollbar(table_frame,orient='vertical',command=table.yview)
@@ -321,7 +321,7 @@ def launch(parent=None):
         page_label.set(page_summary(total,report_state['page']))
         previous_button.configure(state='normal' if report_state['page'] > 0 else 'disabled')
         next_button.configure(state='normal' if report_state['page'] < max_page else 'disabled')
-        rows = [(str(i), (key if len(key)<=36 else key[:35]+'…', display_assets(c), c.get('review_eligibility','REVIEW_REQUIRED'))) for i,key,c in paginate_candidates(matched,report_state['page'])]
+        rows = [(str(i), (key if len(key)<=36 else key[:35]+'…', display_assets(c), c.get('risk','UNASSESSED'), c.get('review_eligibility','REVIEW_REQUIRED'))) for i,key,c in paginate_candidates(matched,report_state['page'])]
         reconcile_tree_rows(table, rows)
         selected()  # Re-render details for the retained selection; clear if no longer present.
         summary.set(f'{len(matched)} trouvée(s) sur {len(report_state["candidates"])} proposition(s), conflits bloqués inclus. Aucune fusion automatique.')
