@@ -32,3 +32,7 @@ La fonction `review_registry_v622.decide` rejette désormais les candidats expli
 ## Qualification du cycle de décision
 
 Le test `test_authorized_decision_is_durable_and_auditable` vérifie une approbation admissible, la création durable du registre SQLite, la validité de la chaîne d'audit, le refus d'une seconde décision et la conservation de l'intégrité après ce refus. Le test `test_cli_cannot_approve_blocked_identity` confirme en outre que le rejet d'une décision interdite ne crée pas de fichier SQLite. Ces scénarios sont exécutés par le workflow de régression ; leur succès ne remplace pas une recette interactive de l'application Windows.
+
+## Historique et preuve d'intégrité
+
+Les tests de la console de gouvernance couvrent désormais la consultation d'un historique d'audit en lecture seule, son filtrage par clé de candidat et la restitution de l'empreinte complète. Un scénario de falsification SQLite modifie volontairement un réviseur et confirme que la vérification de chaîne échoue et que la consultation est refusée. Les tests restent exécutés hors interface graphique réelle : une capture et une recette interactive Windows sont encore nécessaires.
