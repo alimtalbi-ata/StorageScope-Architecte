@@ -1,6 +1,7 @@
 """Regression tests for cross-table audit integrity and the read-only Windows view."""
 import json
 import sqlite3
+from contextlib import closing
 import sys
 import tempfile
 import unittest
@@ -46,8 +47,9 @@ class ReviewAuditIntegrityTests(unittest.TestCase):
     def test_tampered_decision_status_detected(self):
         with tempfile.TemporaryDirectory() as d:
             db, _ = self.create_registry(d)
-            with sqlite3.connect(db) as conn:
-                conn.execute("UPDATE decisions SET status='REJECTED'")
+            with closing(sqlite3.connect(db)) as conn:
+                with conn:
+                    conn.execute("UPDATE decisions SET status='REJECTED'")
             self.assertFalse(verify(db)['valid'])
             with self.assertRaises(ValueError):
                 history_for_selection(db)
@@ -55,9 +57,21 @@ class ReviewAuditIntegrityTests(unittest.TestCase):
     def test_tampered_decision_reason_detected(self):
         with tempfile.TemporaryDirectory() as d:
             db, _ = self.create_registry(d)
-            with sqlite3.connect(db) as conn:
-                conn.execute("UPDATE decisions SET reason='forged'")
+            with closing(sqlite3.connect(db)) as conn:
+                with conn:
+                    conn.execute("UPDATE decisions SET reason='forged'")
             self.assertFalse(verify(db)['valid'])
+
+    def test_tampered_registry_can_be_deleted_immediately(self):
+        # On Windows an unclosed SQLite handle prevents deletion (WinError 32).
+        with tempfile.TemporaryDirectory() as d:
+            db, _ = self.create_registry(d)
+            with closing(sqlite3.connect(db)) as conn:
+                with conn:
+                    conn.execute("UPDATE decisions SET reason='tampered'")
+            self.assertFalse(verify(db)['valid'])
+            db.unlink()
+            self.assertFalse(db.exists())
 
     def test_duplicate_decision_rejected_without_audit_change(self):
         with tempfile.TemporaryDirectory() as d:
