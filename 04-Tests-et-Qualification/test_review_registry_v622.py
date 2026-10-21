@@ -1,4 +1,5 @@
 import importlib.util, pathlib, tempfile, unittest, sqlite3
+from contextlib import closing
 p=pathlib.Path(__file__).resolve().parents[1]/'03-Sources'/'review_registry_v622.py'
 s=importlib.util.spec_from_file_location('registry622',p); m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 C={'asset_ids':['SERIAL-B','SERIAL-A'],'indices':[3,9],'identity_evidence':['serial'],'conflicts':[]}
@@ -21,7 +22,8 @@ class RegistryTests(unittest.TestCase):
  def test_tamper_detected(self):
   with tempfile.TemporaryDirectory() as d:
    db=pathlib.Path(d)/'db.sqlite';m.decide(db,R,m.candidate_key(C),'APPROVED','reviewer','verified')
-   with sqlite3.connect(db) as conn:conn.execute("UPDATE audit SET action='REJECTED'")
+   with closing(sqlite3.connect(db)) as conn:
+    with conn: conn.execute("UPDATE audit SET action='REJECTED'")
    self.assertFalse(m.verify(db)['valid'])
  def test_missing_reason(self):
   with tempfile.TemporaryDirectory() as d:
