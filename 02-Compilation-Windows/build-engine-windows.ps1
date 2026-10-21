@@ -59,7 +59,22 @@ if (-not (Test-Path "$venv\Scripts\python.exe")) { Invoke-Checked $python.Execut
  $builder = "$venv\Scripts\python.exe"
 Invoke-Checked $builder @('verify-windows-build.py')
 Invoke-Checked $builder @('-m','pip','install','--disable-pip-version-check','--requirement','requirements-build.txt')
-Invoke-Checked $builder @('-m','unittest','discover','-s','.','-p','test_*.py','-q')
+# Run the full regression suite from the repository root, not the reduced build stage.
+# Historical tests use repository-relative paths, fixtures and workflow definitions.
+$repoRoot = Split-Path -Parent $PSScriptRoot
+if ((Split-Path -Leaf $repoRoot) -eq '02-Compilation-Windows') {
+    $repoRoot = Split-Path -Parent $repoRoot
+}
+$testsRoot = Join-Path $repoRoot '04-Tests-et-Qualification'
+if (-not (Test-Path -LiteralPath $testsRoot -PathType Container)) {
+    throw "Repository qualification directory missing: $testsRoot"
+}
+Push-Location $repoRoot
+try {
+    Invoke-Checked $builder @('-m','unittest','discover','-s',$testsRoot,'-p','test_*.py','-q')
+} finally {
+    Pop-Location
+}
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','StorageScope.spec')
 # Independent console-mode gate: no Python required on the target PC.
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','--onefile','--console','--name','StorageScope-UpgradeGate','upgrade_gate_v581.py')
