@@ -1,0 +1,39 @@
+name: Governance review qualification
+on:
+  push:
+    branches: [feature/audit-coherence-review-20261020]
+  pull_request:
+    paths:
+      - '03-Sources/**'
+      - '04-Tests-et-Qualification/**'
+      - '.github/workflows/governance-review-qualification.yml'
+  workflow_dispatch:
+jobs:
+  review-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Qualify audit and multi-vendor review
+        run: |
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_v622.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_integrity_v687.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_review_e2e_v688.py' -v
+  review-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Qualify Windows review logic
+        shell: pwsh
+        run: |
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_v622.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Registry tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_integrity_v687.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Integrity tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_review_e2e_v688.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Inventory E2E failed' }
