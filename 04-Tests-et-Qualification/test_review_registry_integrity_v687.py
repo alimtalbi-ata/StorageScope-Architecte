@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import closing
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / '03-Sources'))
 from review_registry_v622 import candidate_key, decide, verify
@@ -46,8 +47,9 @@ class ReviewAuditIntegrityTests(unittest.TestCase):
     def test_tampered_decision_status_detected(self):
         with tempfile.TemporaryDirectory() as d:
             db, _ = self.create_registry(d)
-            with sqlite3.connect(db) as conn:
-                conn.execute("UPDATE decisions SET status='REJECTED'")
+            with closing(sqlite3.connect(db)) as conn:
+                with conn:
+                    conn.execute("UPDATE decisions SET status='REJECTED'")
             self.assertFalse(verify(db)['valid'])
             with self.assertRaises(ValueError):
                 history_for_selection(db)
@@ -55,8 +57,9 @@ class ReviewAuditIntegrityTests(unittest.TestCase):
     def test_tampered_decision_reason_detected(self):
         with tempfile.TemporaryDirectory() as d:
             db, _ = self.create_registry(d)
-            with sqlite3.connect(db) as conn:
-                conn.execute("UPDATE decisions SET reason='forged'")
+            with closing(sqlite3.connect(db)) as conn:
+                with conn:
+                    conn.execute("UPDATE decisions SET reason='forged'")
             self.assertFalse(verify(db)['valid'])
 
     def test_duplicate_decision_rejected_without_audit_change(self):
