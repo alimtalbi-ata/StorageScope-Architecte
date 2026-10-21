@@ -34,7 +34,7 @@ def decide(db, report, key, status, reviewer, reason):
         raise ValueError('Candidate not found in report')
     db = Path(db)
     db.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(db, timeout=15, isolation_level=None) as conn:
+    with closing(sqlite3.connect(db, timeout=15, isolation_level=None)) as conn:
         conn.execute('PRAGMA busy_timeout=15000')
         conn.execute('BEGIN IMMEDIATE')
         try:
