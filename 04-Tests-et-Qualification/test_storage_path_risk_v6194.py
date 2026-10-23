@@ -49,6 +49,12 @@ class RiskTests(unittest.TestCase):
         self.assertIn('DUPLICATE_PATH_EVIDENCE', self.codes(report))
         self.assertEqual(report['validated_paths'], 1)
 
+    def test_conflicting_duplicate_state_never_counts_as_active(self):
+        report = mod.assess(topo([HOST, ARRAY], [path('A', 'up'), path('A', 'down')]))
+        self.assertIn('CONFLICTING_PATH_STATE', self.codes(report))
+        self.assertIn('NO_VERIFIED_ACTIVE_PATH', self.codes(report))
+        self.assertEqual(report['validated_paths'], 1)
+
     def test_down_paths_and_no_active(self):
         report = mod.assess(topo([HOST, ARRAY], [path('A', 'down')]))
         self.assertIn('NO_VERIFIED_ACTIVE_PATH', self.codes(report))
