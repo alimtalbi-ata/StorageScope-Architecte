@@ -13,7 +13,10 @@ class BuildV578(unittest.TestCase):
             self.assertIn('build-all-windows.ps1', (ROOT/name).read_text())
     def test_ci_installer(self):
         ci=(ROOT/'.github/workflows/windows-build.yml').read_text()
-        self.assertIn('StorageScope-Setup-v6.17.exe',ci)
+        self.assertIn('Gate release artifacts on complete qualification', ci)
+        self.assertIn('verify-binary-delivery.py', ci)
+        self.assertIn('StorageScope-Windows-QUALIFIED', ci)
+        self.assertIn('binary/v*/**', ci)
     def test_build_preflight(self):
         self.assertIn('verify-windows-build.py',(ROOT/'build-all-windows.ps1').read_text())
     def test_install_data_protection(self):
