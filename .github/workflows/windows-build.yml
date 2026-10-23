@@ -4,7 +4,7 @@ on:
   pull_request:
     # Include the stacked SAN/NAS review branch so feature changes receive
     # a full native Windows qualification, not governance-only CI.
-    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023, feature/storagescope-v6.195-identity-quarantine-20261023, feature/storagescope-v6.196-desktop-san-nas-review-20261023, feature/storagescope-v6.197-cmdb-provenance-20261023]
+    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023, feature/storagescope-v6.195-identity-quarantine-20261023, feature/storagescope-v6.196-desktop-san-nas-review-20261023, feature/storagescope-v6.197-cmdb-provenance-20261023, feature/storagescope-v6.198-cmdb-desktop-20261023]
   push:
     branches: [main]
 jobs:
@@ -69,6 +69,10 @@ jobs:
           $codes = @($report.findings | ForEach-Object { $_.code })
           if ($report.schema -ne 'storagescope.storage-risk.v1' -or $report.assessment -ne 'RISKS_FOUND' -or $report.automatic_changes -ne 0) { throw 'Frozen SAN/NAS report contract invalid' }
           if ('CAPACITY_CRITICAL' -notin $codes -or 'SINGLE_ACTIVE_FABRIC' -notin $codes) { throw 'Frozen SAN/NAS risks not detected' }
+          $dependencies = $report.dependency_impact
+          if ($null -eq $dependencies -or $dependencies.schema -ne 'storagescope.storage-dependencies.v1') { throw 'Frozen dependency report missing' }
+          if ($dependencies.verified_host_relationships -ne 1 -or $dependencies.unverified_host_relationships -ne 0 -or $dependencies.automatic_changes -ne 0) { throw 'Frozen host-array dependency evidence invalid' }
+          if (@($dependencies.assets).Count -ne 1 -or $dependencies.assets[0].asset_id -ne 'array1') { throw 'Frozen dependency asset scope invalid' }
           [IO.File]::WriteAllText($badInput, '{"schema":"storagescope.storage-topology.v1","assets":[],"assets":[],"paths":[],"shares":[]}', [Text.UTF8Encoding]::new($false))
           $badArgs = @('--storage-risk-file', ('"{0}"' -f $badInput), ('"{0}"' -f $badOutput))
           $rejected = Start-Process -FilePath $exe -ArgumentList $badArgs -Wait -PassThru
