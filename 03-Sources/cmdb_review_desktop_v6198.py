@@ -54,6 +54,12 @@ def format_cmdb_report(report, limit=100):
              f"Enregistrements invalides : {len(report['invalid_records'])}",
              f"Indices en quarantaine : {len(report['quarantined_indices'])}",
              'Lecture seule · Aucune fusion ni modification CMDB automatique', '']
+    quarantined = report['quarantined_indices']
+    if quarantined:
+        lines.append(f"Indices en quarantaine (maximum {limit} affichés) : "
+                     + ', '.join(str(index) for index in quarantined[:limit]))
+        if len(quarantined) > limit:
+            lines.append(f"… {len(quarantined) - limit} indices en quarantaine supplémentaires non affichés")
     for invalid in report['invalid_records'][:limit]:
         lines.append(f"[INVALIDE] index={invalid['index']} motif={invalid['reason']}")
     if len(report['invalid_records']) > limit:
