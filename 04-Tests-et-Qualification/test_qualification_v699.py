@@ -7,7 +7,7 @@ class QualificationV699(unittest.TestCase):
   self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
   self.root=pathlib.Path(self.tmp.name);(self.root/'07-Manifestes').mkdir();(self.root/'07-Manifestes/VERSION').write_text('6.99')
   self.base=self.root/'02-Compilation-Windows';self.base.mkdir()
-  self.native={'version':'6.99','overall':'PASS','checks':[{'name':'app','status':'PASS'}]}
+  self.native={'version':'6.99','overall':'PASS','checks':[{'name':name,'status':'PASS'} for name in MOD.REQUIRED_NATIVE_CHECKS]}
   self.installer={'version':'6.99','status':'PASS','installed':True,'version_checked':True,'uninstalled':True}
   self.portable={'version':'6.99','status':'PASS','archive_present':True,'extracted':True,'version_checked':True,'self_test':True,'cleanup':True}
   self.save()
@@ -17,6 +17,8 @@ class QualificationV699(unittest.TestCase):
  def test_real_native_schema_passes(self):self.assertEqual(MOD.consolidate(self.root)['status'],'PASS')
  def test_native_failed_check_rejected(self):
   self.native['checks'][0]['status']='FAIL';self.save();self.assertEqual(MOD.consolidate(self.root)['status'],'FAIL')
+ def test_missing_required_native_check_rejected(self):
+  self.native['checks'].pop();self.save();self.assertEqual(MOD.consolidate(self.root)['status'],'FAIL')
  def test_empty_native_checks_rejected(self):
   self.native['checks']=[];self.save();self.assertEqual(MOD.consolidate(self.root)['status'],'FAIL')
  def test_missing_version_rejected(self):
