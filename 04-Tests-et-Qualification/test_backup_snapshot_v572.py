@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,7 +13,7 @@ class SnapshotTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.paths = application_paths(self.root / 'data')
-        with sqlite3.connect(self.paths['decisions']) as con:
+        with closing(sqlite3.connect(self.paths['decisions'])) as con, con:
             con.execute('create table sample (x text)')
             con.execute('insert into sample values (?)', ('important',))
         self.paths['views'].write_text('{"views": []}', encoding='utf-8')
@@ -21,7 +22,7 @@ class SnapshotTests(unittest.TestCase):
         folder, files = backup_snapshot(self.paths, self.root / 'backups')
         self.assertTrue(verify_backup_snapshot(folder))
         self.assertEqual(len(files), 2)
-        with sqlite3.connect(folder / 'architecture-decisions.sqlite') as con:
+        with closing(sqlite3.connect(folder / 'architecture-decisions.sqlite')) as con, con:
             self.assertEqual(con.execute('select x from sample').fetchone()[0], 'important')
 
     def test_two_snapshots_never_overwrite(self):
