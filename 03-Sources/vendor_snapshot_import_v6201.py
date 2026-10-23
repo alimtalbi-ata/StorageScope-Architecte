@@ -162,14 +162,20 @@ def main(argv=None):
     args = parser.parse_args(argv)
     report = normalize(load_snapshot(args.input))
     target = Path(args.output)
-    with target.open('x', encoding='utf-8') as stream:
-        try:
+    stream = target.open('x', encoding='utf-8')
+    try:
+        with stream:
             json.dump(report, stream, indent=2, sort_keys=True, ensure_ascii=False)
             stream.write('\n')
-        except BaseException:
-            stream.close()
+            stream.flush()
+    except BaseException:
+        # The output was exclusively created by this invocation. Do not leave
+        # truncated evidence after write, flush or close failures.
+        try:
             target.unlink(missing_ok=True)
-            raise
+        except OSError:
+            pass
+        raise
     return 0
 
 
