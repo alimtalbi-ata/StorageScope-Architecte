@@ -47,6 +47,17 @@ jobs:
           if (-not (Test-Path '02-Compilation-Windows/windows-qualification-report.json')) { throw 'Qualification evidence missing' }
           $native = Get-Content -Raw '02-Compilation-Windows/windows-qualification-report.json' | ConvertFrom-Json
           if ($native.overall -ne 'PASS') { throw 'Native qualification report is not PASS' }
+      - name: Qualify installer rejection
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Installer rejection requires an ephemeral GitHub-hosted runner' }
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          & './02-Compilation-Windows/qualifier-echec-installateur-windows.ps1' -Version $version
+          if (-not $?) { throw 'Installer rejection qualification failed' }
+          $reportPath = Join-Path '02-Compilation-Windows/build-logs' ("installer-rejected-v{0}.json" -f $version)
+          if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) { throw 'Installer rejection evidence missing' }
+          $rejection = Get-Content -Raw $reportPath | ConvertFrom-Json
+          if (-not $rejection.passed -or -not $rejection.source_unchanged -or $rejection.installed_binary_present) { throw 'Unsafe installer rejection outcome' }
       - name: Install and uninstall smoke test
         shell: pwsh
         run: |
