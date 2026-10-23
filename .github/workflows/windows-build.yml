@@ -4,7 +4,7 @@ on:
   pull_request:
     # Include the stacked SAN/NAS review branch so feature changes receive
     # a full native Windows qualification, not governance-only CI.
-    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023, feature/storagescope-v6.195-identity-quarantine-20261023, feature/storagescope-v6.196-desktop-san-nas-review-20261023, feature/storagescope-v6.197-cmdb-provenance-20261023, feature/storagescope-v6.198-cmdb-desktop-20261023, feature/storagescope-v6.199-dependency-impact-20261023, feature/storagescope-v6.200-path-evidence-quarantine-20261023, feature/storagescope-v6.201-offline-vendor-snapshots-20261023, feature/storagescope-v6.202-frozen-vendor-cli-20261023]
+    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023, feature/storagescope-v6.195-identity-quarantine-20261023, feature/storagescope-v6.196-desktop-san-nas-review-20261023, feature/storagescope-v6.197-cmdb-provenance-20261023, feature/storagescope-v6.198-cmdb-desktop-20261023, feature/storagescope-v6.199-dependency-impact-20261023, feature/storagescope-v6.200-path-evidence-quarantine-20261023, feature/storagescope-v6.201-offline-vendor-snapshots-20261023, feature/storagescope-v6.202-frozen-vendor-cli-20261023, feature/storagescope-v6.203-vendor-share-evidence-quarantine-20261024]
   push:
     branches: [main]
 jobs:
@@ -200,6 +200,7 @@ jobs:
           if ($conflictProcess.ExitCode -ne 0) { throw 'Frozen duplicate share regression CLI failed' }
           $conflictReport = Get-Content -Raw -LiteralPath $conflictOutput | ConvertFrom-Json
           if ($conflictReport.assessment -ne 'INCOMPLETE' -or @($conflictReport.topology.shares).Count -ne 0 -or $conflictReport.automatic_changes -ne 0) { throw 'Frozen executable certified ambiguous duplicate share evidence' }
+          if (@($conflictReport.quarantined_share_asset_ids).Count -ne 1 -or $conflictReport.quarantined_share_asset_ids[0] -ne 'netapp_ontap:SN-CONFLICT') { throw 'Frozen executable did not expose quarantined NAS identity' }
           if (-not (@($conflictReport.rejected) | Where-Object { $_ -match 'conflicting duplicate share evidence' })) { throw 'Frozen duplicate share conflict reason missing' }
           Write-Host 'Frozen offline vendor CLI PASS: 3 vendors, exclusive output, ambiguous JSON and share conflicts rejected'
       - name: Qualify native binaries
