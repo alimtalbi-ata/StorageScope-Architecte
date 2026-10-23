@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,7 +12,7 @@ class UpgradeGuardTests(unittest.TestCase):
     def test_valid(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d)/'a.db'
-            with sqlite3.connect(path) as c:
+            with closing(sqlite3.connect(path)) as c, c:
                 c.execute('CREATE TABLE a (id INTEGER)')
                 c.execute('PRAGMA user_version=4')
             result = inspect_database(path)
@@ -31,7 +32,7 @@ class UpgradeGuardTests(unittest.TestCase):
     def test_read_only(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d)/'a.db'
-            with sqlite3.connect(path) as c: c.execute('CREATE TABLE a (id INTEGER)')
+            with closing(sqlite3.connect(path)) as c, c: c.execute('CREATE TABLE a (id INTEGER)')
             before = path.read_bytes(); inspect_database(path)
             self.assertEqual(path.read_bytes(), before)
     def test_upgrade_script_present(self):
