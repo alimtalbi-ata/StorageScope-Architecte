@@ -89,6 +89,43 @@ class CMDBDesktopTests(unittest.TestCase):
             export_cmdb_report(self.source, output)
         self.assertEqual(before, output.read_bytes())
 
+    def test_export_write_failure_cleans_incomplete_report(self):
+        from unittest.mock import patch
+        self.put('[{"source":"a","serial":"S"}]')
+        output = self.source.parent / 'partial.json'
+        original_open = Path.open
+
+        class FailingStream:
+            def __init__(self, stream):
+                self.stream = stream
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+
+            def write(self, payload):
+                self.stream.write(payload[:8])
+                raise OSError('simulated disk full')
+
+            def flush(self):
+                return self.stream.flush()
+
+            def close(self):
+                return self.stream.close()
+
+        def patched_open(path, *args, **kwargs):
+            stream = original_open(path, *args, **kwargs)
+            if Path(path) == output:
+                return FailingStream(stream)
+            return stream
+
+        with patch.object(Path, 'open', patched_open):
+            with self.assertRaisesRegex(OSError, 'simulated disk full'):
+                export_cmdb_report(self.source, output)
+        self.assertFalse(output.exists())
+
     def test_export_refuses_input_as_output(self):
         self.put('[{"source":"a","serial":"S"}]')
         before = self.source.read_bytes()
