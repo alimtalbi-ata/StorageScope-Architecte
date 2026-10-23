@@ -48,6 +48,24 @@ def classify(output: str) -> dict[str, int]:
     return dict(sorted(result.items()))
 
 
+def stage_historical_upgrade_workflow(sources: Path, tests: Path) -> None:
+    """Restore the archived v5.89 workflow as a test fixture, not live CI.
+
+    The active workflow remains in the checkout root. Never replace an
+    existing test fixture with different bytes.
+    """
+    archived = sources / "Ressources" / ".github" / "workflows" / "windows-upgrade-e2e.yml"
+    if not archived.is_file():
+        raise FileNotFoundError("Missing archived Windows upgrade workflow fixture: " + str(archived))
+    target = tests / ".github" / "workflows" / archived.name
+    if target.exists():
+        if target.read_bytes() != archived.read_bytes():
+            raise RuntimeError("Historical workflow fixture collision: " + str(target))
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(archived, target)
+
+
 def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
               minimum: int, label: str) -> dict:
     command = [sys.executable, "-B", "-m", "unittest", "discover",
@@ -97,6 +115,7 @@ def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
             shutil.copy2(source, target)
         if (checkout / ".github").is_dir():
             shutil.copytree(checkout / ".github", tests / ".github", dirs_exist_ok=True)
+        stage_historical_upgrade_workflow(sources, tests)
         version = checkout / "07-Manifestes" / "VERSION"
         if version.is_file():
             dest = tests / "VERSION"
