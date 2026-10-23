@@ -1,5 +1,6 @@
 """Transactional, auditable review of reconciliation proposals; no inventory mutation."""
 import argparse, datetime, hashlib, json, sqlite3
+from contextlib import closing
 from pathlib import Path
 
 SCHEMA='''CREATE TABLE IF NOT EXISTS decisions (candidate_key TEXT PRIMARY KEY, status TEXT NOT NULL CHECK(status IN ('APPROVED','REJECTED')), reviewer TEXT NOT NULL, reason TEXT NOT NULL, decided_at TEXT NOT NULL, evidence_json TEXT NOT NULL); CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, candidate_key TEXT NOT NULL, event TEXT NOT NULL, reviewer TEXT NOT NULL, at TEXT NOT NULL, payload_json TEXT NOT NULL);'''
@@ -13,7 +14,9 @@ def decide(db, report, key, status, reviewer, reason):
         raise ValueError('Status, reviewer and reason required')
     candidates={candidate_key(c):c for c in report['reconciliation']['candidates']}
     if key not in candidates: raise ValueError('Candidate not found in supplied report')
-    with sqlite3.connect(db) as conn:
+    # sqlite3.Connection.__exit__ commits/rolls back but does NOT close on Windows.
+    # Close deterministically after the transaction, including duplicate-decision errors.
+    with closing(sqlite3.connect(db)) as conn, conn:
         conn.executescript(SCHEMA)
         existing=conn.execute('SELECT status FROM decisions WHERE candidate_key=?',(key,)).fetchone()
         if existing: raise ValueError('Candidate already decided; immutable decision')
