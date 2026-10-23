@@ -75,5 +75,16 @@ class FrozenVendorCLIContractTests(unittest.TestCase):
             self.assertFalse(out.exists())
 
 
+    def test_unsupported_vendor_fails_without_output(self):
+        with tempfile.TemporaryDirectory() as td:
+            src, out = Path(td) / 'snapshot.json', Path(td) / 'report.json'
+            data = snapshot()
+            data['vendor'] = 'unrecognized_vendor'
+            src.write_text(json.dumps(data), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'Unsupported vendor'):
+                main(['--vendor-snapshot-file', str(src), str(out)])
+            self.assertFalse(out.exists())
+
+
 if __name__ == '__main__':
     unittest.main()
