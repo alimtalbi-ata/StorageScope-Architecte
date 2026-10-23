@@ -63,6 +63,24 @@ class VendorSnapshotTests(unittest.TestCase):
         self.assertEqual(result['topology']['assets'], [])
         self.assertEqual(result['assessment'], 'INCOMPLETE')
 
+    def test_one_byte_system_capacity_overrun_is_quarantined(self):
+        data = sample('netapp_ontap')
+        data['systems'][0]['capacity_used_bytes'] = 100 * GIB + 1
+        data['systems'][0]['capacity_total_bytes'] = 100 * GIB
+        result = normalize(data)
+        self.assertEqual(result['topology']['assets'], [])
+        self.assertEqual(result['assessment'], 'INCOMPLETE')
+        self.assertTrue(any('inconsistent capacity' in item for item in result['rejected']))
+
+    def test_one_byte_share_quota_overrun_is_quarantined(self):
+        data = sample('pure_flashblade')
+        data['systems'][0]['shares'][0]['used_bytes'] = 20 * GIB + 1
+        data['systems'][0]['shares'][0]['quota_bytes'] = 20 * GIB
+        result = normalize(data)
+        self.assertEqual(result['topology']['shares'], [])
+        self.assertEqual(result['assessment'], 'INCOMPLETE')
+        self.assertTrue(any('inconsistent quota' in item for item in result['rejected']))
+
     def test_duplicate_share_poisoned(self):
         data = sample('netapp_ontap')
         data['systems'][0]['volumes'].append(copy.deepcopy(data['systems'][0]['volumes'][0]))
