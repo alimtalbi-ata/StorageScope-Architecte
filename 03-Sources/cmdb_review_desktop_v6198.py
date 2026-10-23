@@ -79,6 +79,15 @@ def export_cmdb_report(source, destination):
     """Create one JSON evidence report exclusively; refuse overwrites."""
     report = review_cmdb_file(source)
     payload = json.dumps(report, indent=2, ensure_ascii=False, allow_nan=False) + '\n'
-    with Path(destination).open('x', encoding='utf-8', newline='\n') as stream:
-        stream.write(payload)
+    # Reserve the destination exclusively; never overwrite an existing report.
+    # Remove our own incomplete output if encoding, writing or closing fails.
+    destination = Path(destination)
+    with destination.open('x', encoding='utf-8', newline='\n') as stream:
+        try:
+            stream.write(payload)
+            stream.flush()
+        except BaseException:
+            stream.close()
+            destination.unlink(missing_ok=True)
+            raise
     return report
