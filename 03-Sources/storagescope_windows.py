@@ -575,6 +575,44 @@ def launch():
                 f"{len(report['rejected'])} rejet(s) · source : {report['source_ref']}")
             status.set(f"Infrastructure · {len(rows)} équipement(s) observé(s)")
 
+        def export_inventory_csv():
+            from csv import writer
+            from tempfile import NamedTemporaryFile
+            if not tree.get_children():
+                messagebox.showinfo('Export infrastructure', 'Importez d’abord un inventaire NAS.', parent=root)
+                return
+            target = filedialog.asksaveasfilename(
+                parent=root, title='Exporter l’inventaire NAS en CSV',
+                defaultextension='.csv', filetypes=[('CSV', '*.csv')])
+            if not target:
+                return
+            destination = Path(target)
+            if destination.exists():
+                messagebox.showerror('Export infrastructure', 'Le fichier existe déjà : export non écrasant.', parent=root)
+                return
+            temporary = None
+            try:
+                with NamedTemporaryFile(mode='w', newline='', encoding='utf-8-sig',
+                                        dir=destination.parent, prefix='.storagescope-',
+                                        suffix='.tmp', delete=False) as output:
+                    temporary = Path(output.name)
+                    csv = writer(output, delimiter=';')
+                    csv.writerow(('Fournisseur', 'Système', 'Identifiant', 'Utilisé GiB', 'Total GiB', 'Partages'))
+                    for item in tree.get_children():
+                        csv.writerow(tree.item(item, 'values'))
+                # Exclusive creation prevents accidental overwriting of existing exports.
+                with temporary.open('rb') as source, destination.open('xb') as output:
+                    shutil.copyfileobj(source, output)
+                status.set(f'Infrastructure · export CSV créé : {destination}')
+                messagebox.showinfo('Export infrastructure', f'Export créé : {destination}', parent=root)
+            except (OSError, ValueError) as exc:
+                messagebox.showerror('Export infrastructure', str(exc), parent=root)
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+
+        ttk.Button(page, text='Exporter le tableau en CSV…',
+                   command=export_inventory_csv).pack(anchor='w', pady=(0, 12))
         ttk.Button(page, text='Importer un snapshot NetApp / PowerScale / FlashBlade…',
                    command=import_snapshot).pack(anchor='w', pady=(0, 12))
         return page
