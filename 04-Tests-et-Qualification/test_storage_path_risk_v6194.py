@@ -33,7 +33,57 @@ class RiskTests(unittest.TestCase):
         return {f['code'] for f in report['findings']}
 
     def test_empty_assessment_is_not_claimed_safe(self):
-        self.assertEqual(mod.assess(topo())['assessment'], 'NO_FINDINGS_IN_ASSESSED_SCOPE')
+        self.assertEqual(mod.assess(topo())['assessment'], 'INCOMPLETE')
+        self.assertIn('TOPOLOGY_EMPTY', self.codes(mod.assess(topo())))
+
+    def test_conflicting_host_identity_quarantines_path_evidence(self):
+        assets = [HOST, {'id': 'h1', 'kind': 'san_switch'}, ARRAY]
+        report = mod.assess(topo(assets, [path('A'), path('B')]))
+        self.assertIn('DUPLICATE_ASSET', self.codes(report))
+        self.assertIn('ORPHAN_PATH', self.codes(report))
+        self.assertEqual(report['verified_active_paths'], 0)
+        self.assertEqual(report['quarantined_asset_ids'], ['h1'])
+        self.assertEqual(report['assessment'], 'INCOMPLETE')
+
+    def test_invalid_duplicate_record_still_quarantines_valid_identity(self):
+        records = [HOST, {'id': 'h1', 'kind': ['invalid']}, ARRAY]
+        report = mod.assess(topo(records, [path('A'), path('B')]))
+        self.assertIn('DUPLICATE_ASSET', self.codes(report))
+        self.assertIn('ORPHAN_PATH', self.codes(report))
+        self.assertEqual(report['quarantined_asset_ids'], ['h1'])
+        self.assertEqual(report['verified_active_paths'], 0)
+
+    def test_conflicting_array_identity_does_not_report_first_capacity(self):
+        a = dict(ARRAY, used_gib=99)
+        b = dict(ARRAY, used_gib=20)
+        for records in ([a, b], [b, a]):
+            with self.subTest(records=records):
+                report = mod.assess(topo([HOST] + records, [path('A'), path('B')]))
+                self.assertIn('DUPLICATE_ASSET', self.codes(report))
+                self.assertIn('ORPHAN_PATH', self.codes(report))
+                self.assertNotIn('CAPACITY_CRITICAL', self.codes(report))
+                self.assertEqual(report['verified_active_paths'], 0)
+
+    def test_duplicate_share_identity_quarantines_quota(self):
+        shares = [{'id': 's1', 'nas_id': 'n1', 'protocol': 'NFS', 'used_gib': 99, 'quota_gib': 100},
+                  {'id': 's1', 'nas_id': 'n1', 'protocol': 'SMB', 'used_gib': 10, 'quota_gib': 100}]
+        report = mod.assess(topo([NAS], shares=shares))
+        self.assertIn('DUPLICATE_SHARE', self.codes(report))
+        self.assertNotIn('SHARE_QUOTA_CRITICAL', self.codes(report))
+        self.assertEqual(report['quarantined_share_ids'], ['s1'])
+        self.assertEqual(report['assessment'], 'INCOMPLETE')
+
+    def test_nonduplicated_share_still_checks_quota(self):
+        report = mod.assess(topo([NAS], shares=[{'id': 's1', 'nas_id': 'n1',
+                                                 'protocol': 'NFS', 'used_gib': 99, 'quota_gib': 100}]))
+        self.assertIn('SHARE_QUOTA_CRITICAL', self.codes(report))
+        self.assertEqual(report['quarantined_share_ids'], [])
+
+    def test_active_paths_count_excludes_unknown(self):
+        report = mod.assess(topo([HOST, ARRAY], [path('A'), path('B', 'unknown')]))
+        self.assertEqual(report['validated_paths'], 2)
+        self.assertEqual(report['verified_active_paths'], 1)
+        self.assertIn('SINGLE_ACTIVE_FABRIC', self.codes(report))
 
     def test_two_independent_fabrics(self):
         report = mod.assess(topo([HOST, ARRAY], [path('A'), path('B')]))
@@ -79,7 +129,8 @@ class RiskTests(unittest.TestCase):
     def test_duplicate_asset_is_not_silently_merged(self):
         report = mod.assess(topo([HOST, HOST]))
         self.assertIn('DUPLICATE_ASSET', self.codes(report))
-        self.assertEqual(report['assets'], 1)
+        self.assertEqual(report['assets'], 0)
+        self.assertEqual(report['quarantined_asset_ids'], ['h1'])
 
     def test_capacity_thresholds(self):
         report = mod.assess(topo([{'id':'n1','kind':'nas','used_gib':96,'total_gib':100},
