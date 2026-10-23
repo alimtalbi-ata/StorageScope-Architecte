@@ -132,6 +132,11 @@ def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
 
 
 def main() -> int:
+    # Windows console may still use cp1252 even when child tests use UTF-8.
+    # Escape unrepresentable console glyphs without altering captured evidence.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="backslashreplace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", required=True, type=Path)
     parser.add_argument("--minimum-tests", type=int, default=958)
