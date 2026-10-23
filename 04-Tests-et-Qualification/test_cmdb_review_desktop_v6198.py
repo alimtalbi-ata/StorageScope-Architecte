@@ -126,6 +126,38 @@ class CMDBDesktopTests(unittest.TestCase):
                 export_cmdb_report(self.source, output)
         self.assertFalse(output.exists())
 
+    def test_export_close_failure_cleans_incomplete_report(self):
+        from unittest.mock import patch
+        self.put('[{"source":"a","serial":"S"}]')
+        output = self.source.parent / 'close-failed.json'
+        original_open = Path.open
+
+        class FailingCloseStream:
+            def __init__(self, stream):
+                self.stream = stream
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                self.stream.close()
+                raise OSError('simulated close failure')
+
+            def write(self, payload):
+                return self.stream.write(payload)
+
+            def flush(self):
+                return self.stream.flush()
+
+        def patched_open(path, *args, **kwargs):
+            stream = original_open(path, *args, **kwargs)
+            return FailingCloseStream(stream) if Path(path) == output else stream
+
+        with patch.object(Path, 'open', patched_open):
+            with self.assertRaisesRegex(OSError, 'simulated close failure'):
+                export_cmdb_report(self.source, output)
+        self.assertFalse(output.exists())
+
     def test_export_refuses_input_as_output(self):
         self.put('[{"source":"a","serial":"S"}]')
         before = self.source.read_bytes()
