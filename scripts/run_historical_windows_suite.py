@@ -141,6 +141,16 @@ def main() -> int:
         print("HISTORICAL_SUITE_RESULT: " + result["status"])
         return 0 if result["status"] == "PASS" else 1
     except Exception as exc:
+        failure = {"status": "FAIL", "error_type": type(exc).__name__,
+                   "error": str(exc), "qualification": "tests_only_not_windows_binary"}
+        if args.report:
+            try:
+                args.report.parent.mkdir(parents=True, exist_ok=True)
+                pending = args.report.with_name(args.report.name + ".tmp")
+                pending.write_text(json.dumps(failure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                pending.replace(args.report)
+            except OSError as evidence_error:
+                print(f"HISTORICAL_SUITE_REPORT_ERROR: {evidence_error}", file=sys.stderr)
         print(f"HISTORICAL_SUITE_FATAL: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
 
