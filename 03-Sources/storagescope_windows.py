@@ -515,8 +515,13 @@ def main(argv=None):
         Path(args[1]).write_text(VERSION + '\n', encoding='utf-8')
         return 0
     if args == ['--self-test']:
+        # The frozen smoke test must not create a persistent user-data folder:
+        # Inno Setup treats an existing data folder as an upgrade and requires
+        # a verified backup. Use an isolated temporary directory instead.
+        from tempfile import TemporaryDirectory
         from windows_release_check_v567 import runtime_self_test
-        return runtime_self_test(application_paths())
+        with TemporaryDirectory(prefix='storagescope-selftest-') as temporary:
+            return runtime_self_test(application_paths(temporary))
     if args and args[0] == '--benchmarks':
         if len(args) != 2:
             raise SystemExit('Usage: --benchmarks DATABASE')
