@@ -26,6 +26,7 @@ def check_release_contract(root: Path) -> str:
     source = (root / "03-Sources/storagescope_windows.py").read_text(encoding="utf-8")
     installer = (root / "02-Compilation-Windows/StorageScope.iss").read_text(encoding="utf-8")
     build = (root / "02-Compilation-Windows/build-all-windows.ps1").read_text(encoding="utf-8")
+    engine = (root / "02-Compilation-Windows/build-engine-windows.ps1").read_text(encoding="utf-8")
     app_matches = APP_VERSION_PATTERN.findall(source)
     installer_matches = INSTALLER_VERSION_PATTERN.findall(installer)
     if app_matches != [version]:
@@ -34,7 +35,8 @@ def check_release_contract(root: Path) -> str:
         raise ValueError("Inno Setup AppVersion differs from canonical VERSION")
     if ("$releaseVersion = (Get-Content" not in build
             or "07-Manifestes/VERSION" not in build
-            or "$expectedVersion = $releaseVersion" not in build):
+            or "StorageScope-Setup-v$releaseVersion.exe" not in build
+            or "$expectedVersion = $releaseVersion" not in engine):
         raise ValueError("Windows build must derive its version from the canonical manifest")
     return version
 
@@ -49,6 +51,8 @@ class ReleaseConsistencyV6191Tests(unittest.TestCase):
         self.write("02-Compilation-Windows/StorageScope.iss", '#define AppVersion "6.108"\n')
         self.write("02-Compilation-Windows/build-all-windows.ps1",
                    "$releaseVersion = (Get-Content (Join-Path $root '07-Manifestes/VERSION') -Raw).Trim()\n"
+                   'StorageScope-Setup-v$releaseVersion.exe\n')
+        self.write("02-Compilation-Windows/build-engine-windows.ps1",
                    "$expectedVersion = $releaseVersion\n")
 
     def write(self, relative, data):
@@ -85,7 +89,7 @@ class ReleaseConsistencyV6191Tests(unittest.TestCase):
             check_release_contract(self.root)
 
     def test_hardcoded_build_version_rejected(self):
-        self.write("02-Compilation-Windows/build-all-windows.ps1", "$expectedVersion = '6.108'\n")
+        self.write("02-Compilation-Windows/build-engine-windows.ps1", "$expectedVersion = '6.108'\n")
         with self.assertRaisesRegex(ValueError, "Windows build"):
             check_release_contract(self.root)
 
