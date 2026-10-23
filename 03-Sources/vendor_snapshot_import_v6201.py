@@ -164,6 +164,7 @@ def normalize(snapshot):
     return {'schema': 'storagescope.vendor-import-report.v1', 'vendor': vendor,
             'source_ref': source_ref, 'collected_at': timestamp,
             'topology': topology, 'quarantined_system_ids': duplicate_ids,
+            'quarantined_share_asset_ids': sorted(quarantined_share_assets),
             'rejected': sorted(rejected), 'assessment': 'INCOMPLETE' if rejected or duplicate_ids or not assets else 'OBSERVED_ONLY',
             'automatic_changes': 0}
 
