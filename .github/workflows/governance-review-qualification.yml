@@ -21,6 +21,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_v622.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_integrity_v687.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_review_e2e_v688.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_risk_v6194.py' -v
   review-windows:
     runs-on: windows-latest
     steps:
@@ -37,3 +38,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Integrity tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_review_e2e_v688.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Inventory E2E failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_risk_v6194.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Storage path risk tests failed' }
