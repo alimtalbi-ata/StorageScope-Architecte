@@ -48,10 +48,21 @@ def assess(topology, warning_percent=85, critical_percent=95):
     paths_by_pair = defaultdict(list)
     path_states = {}
     invalid_count = 0
+    # Quarantine repeated IDs regardless of kind or record ordering, including
+    # malformed duplicate records that could otherwise escape reconciliation.
+    asset_id_counts = Counter(_identifier(item.get("id")) for item in topology["assets"]
+                              if isinstance(item, dict) and _identifier(item.get("id")))
+    quarantined_assets = {ident for ident, count in asset_id_counts.items() if count > 1}
 
     def emit(level, code, object_id, evidence, action):
         findings.append({"level": level, "code": code, "object_id": object_id,
                          "evidence": evidence, "recommended_action": action})
+
+    for ident in sorted(quarantined_assets):
+        invalid_count += 1
+        emit("HIGH", "DUPLICATE_ASSET", ident,
+             f"{asset_id_counts[ident]} records with the same asset ID",
+             "Reconcile all records for this ID before using the asset")
 
     for i, item in enumerate(topology["assets"]):
         if not isinstance(item, dict):
@@ -59,21 +70,23 @@ def assess(topology, warning_percent=85, critical_percent=95):
             emit("HIGH", "INVALID_ASSET", f"assets[{i}]", "Expected object", "Correct source inventory")
             continue
         ident = _identifier(item.get("id"))
+        if ident in quarantined_assets:
+            continue  # All conflicting copies, even malformed ones, are untrusted.
         kind = item.get("kind")
         if not ident or not isinstance(kind, str) or kind not in VALID_KINDS:
             invalid_count += 1
             emit("HIGH", "INVALID_ASSET", f"assets[{i}]", "Missing id or unsupported kind", "Correct asset identity and kind")
-            continue
-        if ident in assets:
-            invalid_count += 1
-            emit("HIGH", "DUPLICATE_ASSET", ident, f"Duplicate at assets[{i}]", "Reconcile duplicate asset IDs")
             continue
         assets[ident] = item
         if kind == "host":
             hosts.add(ident)
         if kind in {"storage_array", "nas"}:
             storage.add(ident)
-        if kind in {"storage_array", "nas"}:
+
+    # Only assess trusted identities. Capacity on a quarantined asset must not
+    # be reported as if the first of several contradictory records were valid.
+    for ident, item in sorted(assets.items()):
+        if item["kind"] in {"storage_array", "nas"}:
             used, total = item.get("used_gib"), item.get("total_gib")
             if used is None or total is None:
                 emit("MEDIUM", "CAPACITY_UNASSESSED", ident, "Missing used_gib or total_gib", "Collect both capacity metrics")
@@ -142,12 +155,25 @@ def assess(topology, warning_percent=85, critical_percent=95):
         if not any(key[1] == target for key in paths_by_pair):
             emit("MEDIUM", "ARRAY_PATHS_UNASSESSED", target, "No validated host-to-array paths", "Collect host connectivity evidence")
 
+    # A share ID is a unique inventory identity, even across NAS controllers.
+    # A duplicate cannot inherit the first record's apparently healthy quota.
+    share_id_counts = Counter(_identifier(share.get("id")) for share in topology["shares"]
+                              if isinstance(share, dict) and _identifier(share.get("id")))
+    duplicate_shares = {ident for ident, count in share_id_counts.items() if count > 1}
+    for ident in sorted(duplicate_shares):
+        invalid_count += 1
+        emit("HIGH", "DUPLICATE_SHARE", ident,
+             f"{share_id_counts[ident]} records with the same share ID",
+             "Reconcile NAS share identity before evaluating quota")
+
     for i, share in enumerate(topology["shares"]):
         if not isinstance(share, dict):
             invalid_count += 1
             emit("HIGH", "INVALID_SHARE", f"shares[{i}]", "Expected object", "Correct NAS share record")
             continue
         ident = _identifier(share.get("id"))
+        if ident in duplicate_shares:
+            continue  # All conflicting copies are quarantined.
         target = _identifier(share.get("nas_id"))
         protocol = share.get("protocol")
         if not ident or target not in assets or assets[target]["kind"] != "nas" or not isinstance(protocol, str) or protocol not in {"NFS", "SMB"}:
@@ -167,12 +193,19 @@ def assess(topology, warning_percent=85, critical_percent=95):
             elif pct >= warning_percent:
                 emit("HIGH", "SHARE_QUOTA_WARNING", ident, f"{pct}% quota used", "Review NAS quota forecast")
 
+    if not topology["assets"] and not topology["paths"] and not topology["shares"]:
+        emit("MEDIUM", "TOPOLOGY_EMPTY", "topology", "No inventory or path evidence",
+             "Collect a bounded inventory before assessing infrastructure health")
+
     findings.sort(key=lambda f: (LEVELS.index(f["level"]), f["code"], f["object_id"], f["evidence"]))
     return {"schema": "storagescope.storage-risk.v1", "assets": len(assets),
             "validated_paths": sum(map(len, paths_by_pair.values())),
+            "verified_active_paths": sum(state in ACTIVE_STATES for state in path_states.values()),
+            "quarantined_asset_ids": sorted(quarantined_assets),
+            "quarantined_share_ids": sorted(duplicate_shares),
             "invalid_records": invalid_count, "counts": dict(sorted(Counter(f["level"] for f in findings).items())),
             "findings": findings, "finding_count": len(findings), "automatic_changes": 0,
-            "assessment": "INCOMPLETE" if invalid_count or any(f["code"].endswith("UNASSESSED") for f in findings)
+            "assessment": "INCOMPLETE" if invalid_count or any(f["code"] == "TOPOLOGY_EMPTY" or f["code"].endswith("UNASSESSED") for f in findings)
             else ("RISKS_FOUND" if findings else "NO_FINDINGS_IN_ASSESSED_SCOPE")}
 
 
