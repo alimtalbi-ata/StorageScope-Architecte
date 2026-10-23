@@ -450,6 +450,44 @@ def launch():
                    command=review_cmdb_snapshot).pack(anchor='w', pady=(0, 12))
         ttk.Label(page, text='Revue humaine · Provenance et conflits conservés · Aucune fusion automatique',
                   style='Subtle.TLabel').pack(anchor='w')
+        def review_vendor_snapshot():
+            chosen = filedialog.askopenfilename(
+                parent=root, title='Importer un snapshot fournisseur NAS (JSON, lecture seule)',
+                filetypes=[('Snapshot JSON', '*.json'), ('Tous les fichiers', '*.*')])
+            if not chosen:
+                return
+            try:
+                from vendor_snapshot_import_v6201 import load_snapshot, normalize
+                report = normalize(load_snapshot(chosen))
+                topology = report['topology']
+                lines = [
+                    'Inventaire NAS fournisseur — observation hors ligne',
+                    f"Fournisseur : {report['vendor']}",
+                    f"Source : {report['source_ref']}",
+                    f"Collecté le : {report['collected_at']}",
+                    f"Évaluation : {report['assessment']}",
+                    f"Systèmes retenus : {len(topology['assets'])}",
+                    f"Partages retenus : {len(topology['shares'])}",
+                    f"Enregistrements rejetés : {len(report['rejected'])}",
+                    f"Identités système en quarantaine : {len(report['quarantined_system_ids'])}",
+                    'Aucune modification de la CMDB ou des équipements.',
+                ]
+                if report['rejected']:
+                    lines += ['', 'Rejets (20 premiers) :'] + report['rejected'][:20]
+                if report['quarantined_system_ids']:
+                    lines += ['', 'Systèmes en quarantaine (20 premiers) :'] + report['quarantined_system_ids'][:20]
+                rendered = '\\n'.join(lines)
+            except (OSError, ValueError, TypeError) as exc:
+                status.set('Snapshot NAS · import refusé')
+                messagebox.showerror('Import fournisseur NAS', str(exc), parent=root)
+                return
+            results.configure(state='normal')
+            results.delete('1.0', 'end')
+            results.insert('1.0', rendered)
+            results.configure(state='disabled')
+            status.set(f"Snapshot NAS · {report['assessment']} · {len(topology['assets'])} système(s)")
+        ttk.Button(page, text='Importer un inventaire NetApp / PowerScale / FlashBlade (JSON)…',
+                   command=review_vendor_snapshot).pack(anchor='w', pady=(0, 12))
         refresh()
         return page
 
