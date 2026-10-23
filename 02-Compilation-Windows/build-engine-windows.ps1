@@ -13,6 +13,12 @@ function Invoke-Checked([string]$Exe, [string[]]$Arguments) {
     & $Exe @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Exe failed (exit $LASTEXITCODE): $($Arguments -join ' ')" }
 }
+# Windowed PyInstaller executables may return control to the shell before exit.
+# Start-Process -Wait is mandatory for the self-test and version-file gate.
+function Invoke-WindowedChecked([string]$Exe, [string[]]$Arguments) {
+    $process = Start-Process -FilePath $Exe -ArgumentList $Arguments -Wait -PassThru
+    if ($process.ExitCode -ne 0) { throw "Windowed executable failed (exit $($process.ExitCode)): $Exe" }
+}
 function Find-Python {
     $py = Get-Command py.exe -ErrorAction SilentlyContinue
     if ($py) {
@@ -90,12 +96,12 @@ Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','StorageSco
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','--onefile','--console','--name','StorageScope-UpgradeGate','upgrade_gate_v581.py')
 if (-not (Test-Path 'dist\StorageScope-UpgradeGate.exe')) { throw 'Upgrade gate EXE absent' }
 if (-not (Test-Path 'dist\StorageScope.exe')) { throw 'EXE absent apres compilation' }
-Invoke-Checked "$PSScriptRoot\dist\StorageScope.exe" @('--self-test')
+Invoke-WindowedChecked "$PSScriptRoot\dist\StorageScope.exe" @('--self-test')
 # Windowed PyInstaller binaries do not have a reliable stdout handle.
 # Request version via an explicit file and verify the process exit code.
 $versionProbe = Join-Path $PSScriptRoot 'dist\version-probe.txt'
 if (Test-Path $versionProbe) { Remove-Item $versionProbe -Force }
-Invoke-Checked "$PSScriptRoot\dist\StorageScope.exe" @('--version-file', $versionProbe)
+Invoke-WindowedChecked "$PSScriptRoot\dist\StorageScope.exe" @('--version-file', ('"{0}"' -f $versionProbe))
 if (-not (Test-Path $versionProbe)) { throw 'EXE version probe not created' }
 $reportedVersion = (Get-Content -LiteralPath $versionProbe -Raw).Trim()
 Remove-Item $versionProbe -Force
