@@ -31,6 +31,15 @@ class CMDBDesktopTests(unittest.TestCase):
         self.assertIn('Identité contradictoire : wwn', format_cmdb_report(report))
         self.assertEqual(before, self.source.read_bytes())
 
+    def test_quarantine_indices_visible_and_bounded(self):
+        records = [{'source': 'NetApp', 'serial': 'S1', 'wwn': '5001'},
+                   {'source': 'CMDB', 'serial': 'S1', 'wwn': '5002'}]
+        self.put(json.dumps(records))
+        rendered = format_cmdb_report(review_cmdb_file(self.source), limit=1)
+        self.assertIn('Indices en quarantaine (maximum 1 affichés) : 0', rendered)
+        self.assertIn('1 indices en quarantaine supplémentaires non affichés', rendered)
+        self.assertIn('Indices en quarantaine : 2', rendered)
+
     def test_missing_source_remains_incomplete(self):
         self.put('[{"serial":"S1"},{"source":"CMDB","serial":"S1"}]')
         report = review_cmdb_file(self.source)
