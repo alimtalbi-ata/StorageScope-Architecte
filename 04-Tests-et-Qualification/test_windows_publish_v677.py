@@ -10,7 +10,7 @@ class PublishContractTests(unittest.TestCase):
         cls.script = SCRIPT.read_text(encoding='utf-8')
 
     def test_publish_staging_precedes_replacement(self):
-        self.assertLess(self.script.index("$publishRoot ="), self.script.index("'publish-transaction.py'"))
+        self.assertLess(self.script.index("$publishRoot ="), self.script.index('--pending $publishRoot'))
 
     def test_hashes_checked_before_replacement(self):
         self.assertLess(self.script.index('Publication alteree:'), self.script.index('--pending $publishRoot'))
