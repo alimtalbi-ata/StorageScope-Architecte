@@ -108,5 +108,22 @@ class DesktopRiskTests(unittest.TestCase):
         self.assertEqual(self.source.read_bytes(), original)
 
 
+    def test_desktop_entrypoint_cli_is_read_only(self):
+        from storagescope_windows import main
+        self.put(json.dumps(topology()))
+        output = self.root / 'frozen-compatible-report.json'
+        self.assertEqual(main(['--storage-risk-file', str(self.source), str(output)]), 0)
+        self.assertIn('CAPACITY_CRITICAL',
+                      {f['code'] for f in json.loads(output.read_text(encoding='utf-8'))['findings']})
+        with self.assertRaises(FileExistsError):
+            main(['--storage-risk-file', str(self.source), str(output)])
+
+    def test_pyinstaller_import_closure_contains_risk_engine(self):
+        from windows_module_inventory import reachable_modules
+        reachable = reachable_modules(SOURCE)
+        self.assertIn('storage_risk_desktop_v6196', reachable)
+        self.assertIn('storage_path_risk_v6194', reachable)
+
+
 if __name__ == '__main__':
     unittest.main()
