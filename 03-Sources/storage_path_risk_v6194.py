@@ -47,6 +47,9 @@ def assess(topology, warning_percent=85, critical_percent=95):
     storage = set()
     paths_by_pair = defaultdict(list)
     path_states = {}
+    # Once a physical signature is contradicted, later records cannot make it healthy.
+    conflicted_signatures = set()
+    invalid_state_signatures = set()
     invalid_count = 0
     # Quarantine repeated IDs regardless of kind or record ordering, including
     # malformed duplicate records that could otherwise escape reconciliation.
@@ -109,19 +112,34 @@ def assess(topology, warning_percent=85, critical_percent=95):
         target = _identifier(item.get("storage_id"))
         fabric = _identifier(item.get("fabric"))
         state = item.get("state")
+        # Invalid states on otherwise trusted endpoints poison the same physical
+        # signature in either input order. Do not keep an earlier healthy sample.
+        endpoints_valid = (host and target and fabric and host in hosts
+                           and target in storage and assets[target]["kind"] == "storage_array")
+        signature = (host, target, fabric, _identifier(item.get("port")))
         if not host or not target or not fabric or not isinstance(state, str) or state not in KNOWN_STATES:
             invalid_count += 1
             emit("HIGH", "INVALID_PATH", f"paths[{i}]", "Missing endpoint/fabric or invalid state", "Correct path evidence")
+            if endpoints_valid:
+                invalid_state_signatures.add(signature)
+                if signature in path_states:
+                    path_states[signature] = "unknown"
             continue
-        if host not in hosts or target not in storage or assets[target]["kind"] != "storage_array":
+        if not endpoints_valid:
             invalid_count += 1
             emit("HIGH", "ORPHAN_PATH", f"paths[{i}]", f"Unresolved host/array: {host} -> {target}", "Reconcile endpoints")
             continue
         # Two records on one fabric do not constitute two independent fabrics.
-        signature = (host, target, fabric, _identifier(item.get("port")))
+        if signature in invalid_state_signatures:
+            path_states[signature] = "unknown"
+            continue
+        if signature in conflicted_signatures:
+            continue  # Sticky quarantine, even after up/down/up observations.
         if signature in path_states:
             if path_states[signature] != state:
                 emit("HIGH", "CONFLICTING_PATH_STATE", f"paths[{i}]", "Conflicting states for one endpoint/fabric/port", "Reconcile timestamped path telemetry")
+                invalid_count += 1
+                conflicted_signatures.add(signature)
                 path_states[signature] = "unknown"
             else:
                 emit("MEDIUM", "DUPLICATE_PATH_EVIDENCE", f"paths[{i}]", "Repeated endpoint/fabric/port", "Deduplicate discovery evidence")
