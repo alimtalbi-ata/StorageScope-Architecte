@@ -80,12 +80,18 @@ def map_dependencies(topology, risk_report):
                 and item.get('protocol') in ('NFS', 'SMB')):
             shares[target].add(ident)
 
+    hosts_by_array, unverified_by_array = defaultdict(set), defaultdict(set)
+    for host, target in verified_pairs:
+        hosts_by_array[target].add(host)
+    for host, target in uncertain_pairs:
+        unverified_by_array[target].add(host)
+
     results = []
     for ident, kind in sorted(trusted.items()):
         if kind not in STORAGE_KINDS:
             continue
-        host_ids = sorted(h for h, target in verified_pairs if target == ident)
-        unverified = sorted(h for h, target in uncertain_pairs if target == ident)
+        host_ids = sorted(hosts_by_array.get(ident, set()))
+        unverified = sorted(unverified_by_array.get(ident, set()))
         share_ids = sorted(shares.get(ident, set()))
         results.append({'asset_id': ident, 'kind': kind,
                         'verified_host_ids': host_ids,
