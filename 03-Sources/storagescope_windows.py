@@ -599,13 +599,18 @@ def launch():
                     csv = writer(output, delimiter=';')
                     csv.writerow(('Fournisseur', 'Système', 'Identifiant', 'Utilisé GiB', 'Total GiB', 'Partages'))
                     for item in tree.get_children():
-                        csv.writerow(tree.item(item, 'values'))
+                        csv.writerow([("'" + str(value)) if str(value).lstrip().startswith(('=', '+', '-', '@', '\t', '\r')) else value for value in tree.item(item, 'values')])
                 # Exclusive creation prevents accidental overwriting of existing exports.
                 with temporary.open('rb') as source, destination.open('xb') as output:
                     shutil.copyfileobj(source, output)
                 status.set(f'Infrastructure · export CSV créé : {destination}')
                 messagebox.showinfo('Export infrastructure', f'Export créé : {destination}', parent=root)
             except (OSError, ValueError) as exc:
+                # A failed exclusive copy must not leave a misleading partial export.
+                try:
+                    destination.unlink(missing_ok=True)
+                except OSError:
+                    pass
                 messagebox.showerror('Export infrastructure', str(exc), parent=root)
             finally:
                 if temporary is not None:
