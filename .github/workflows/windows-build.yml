@@ -70,7 +70,7 @@ jobs:
           $reportPath = '02-Compilation-Windows/windows-installer-smoke-report.json'
           if (-not (Test-Path $reportPath)) { throw 'Installer smoke report missing' }
           $result = Get-Content -Raw $reportPath | ConvertFrom-Json
-          if ($result.status -ne 'PASS' -or -not $result.installed -or -not $result.version_checked -or -not $result.uninstalled) { throw 'Installer smoke evidence is not PASS' }
+          if ($result.status -ne 'PASS' -or -not $result.installed -or -not $result.gate_checked -or -not $result.version_checked -or -not $result.uninstalled) { throw 'Installer smoke evidence is not PASS' }
       - name: Run portable Windows smoke test
         shell: pwsh
         run: |
