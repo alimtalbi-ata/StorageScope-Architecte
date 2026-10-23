@@ -152,20 +152,26 @@ jobs:
           foreach ($v in $vendorCases) {
             $inputPath = Join-Path $env:RUNNER_TEMP ("vendor-" + $v.vendor + ".json")
             $outputPath = Join-Path $env:RUNNER_TEMP ("vendor-" + $v.vendor + "-report.json")
-            $system = @{
-              ($v.serial) = 'SN-001'
-              ($v.name) = 'synthetic-array'
-              ($v.used) = 20 * $gib
-              ($v.total) = 100 * $gib
-              ($v.shares) = @(@{ ($v.sid) = 'share-1'; protocol = 'NFS'; used_bytes = 5 * $gib; quota_bytes = 10 * $gib })
-            }
+            # Assign dynamic vendor keys explicitly; do not rely on hashtable literal
+            # expression-key parsing, which can silently alter the synthetic fixture.
+            $share = @{}
+            $share[$v.sid] = 'share-1'
+            $share['protocol'] = 'NFS'
+            $share['used_bytes'] = 5 * $gib
+            $share['quota_bytes'] = 10 * $gib
+            $system = @{}
+            $system[$v.serial] = 'SN-001'
+            $system[$v.name] = 'synthetic-array'
+            $system[$v.used] = 20 * $gib
+            $system[$v.total] = 100 * $gib
+            $system[$v.shares] = @($share)
             $snapshot = @{ schema = 'storagescope.vendor-snapshot.v1'; vendor = $v.vendor; source_ref = 'synthetic-ci-001'; collected_at = '2026-10-23T20:00:00Z'; systems = @($system) }
             [IO.File]::WriteAllText($inputPath, ($snapshot | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
             $arguments = @('--vendor-snapshot-file', ('"{0}"' -f $inputPath), ('"{0}"' -f $outputPath))
             $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
             if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) { throw "Frozen vendor CLI failed: $($v.vendor)" }
             $report = Get-Content -Raw -LiteralPath $outputPath | ConvertFrom-Json
-            if ($report.schema -ne 'storagescope.vendor-import-report.v1' -or $report.vendor -ne $v.vendor -or $report.assessment -ne 'OBSERVED_ONLY' -or $report.automatic_changes -ne 0) { throw "Frozen vendor report invalid: $($v.vendor)" }
+            if ($report.schema -ne 'storagescope.vendor-import-report.v1' -or $report.vendor -ne $v.vendor -or $report.assessment -ne 'OBSERVED_ONLY' -or $report.automatic_changes -ne 0) { throw "Frozen vendor report invalid: $($v.vendor); schema=$($report.schema); assessment=$($report.assessment); rejected=$(@($report.rejected) -join ',')" }
             if (@($report.topology.assets).Count -ne 1 -or @($report.topology.shares).Count -ne 1) { throw "Frozen vendor topology incomplete: $($v.vendor)" }
             $before = (Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash
             $repeated = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
