@@ -16,6 +16,6 @@ class InstallerSmokeContract(unittest.TestCase):
   t=(R/'.github/workflows/windows-build.yml').read_text()
   self.assertIn("$result.status -ne 'PASS'",t)
  def test_version_consistency(self):
-  self.assertEqual((R/'07-Manifestes/VERSION').read_text().strip(),'6.49')
-  self.assertIn('6.49',(R/'02-Compilation-Windows/StorageScope.iss').read_text())
+  v=(R/'07-Manifestes/VERSION').read_text(encoding='utf-8').strip(); self.assertRegex(v,r'^\d+\.\d+$'); self.assertGreaterEqual(tuple(map(int,v.split('.'))),(6,49))
+  self.assertIn(f'#define AppVersion "{v}"',(R/'02-Compilation-Windows/StorageScope.iss').read_text(encoding='utf-8'))
 if __name__=='__main__': unittest.main()

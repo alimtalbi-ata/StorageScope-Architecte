@@ -15,5 +15,5 @@ class VersionProbeTests(unittest.TestCase):
  def test_ci_workflow_in_repo_root(self):
   self.assertTrue((ROOT/'.github/workflows/windows-build.yml').is_file())
  def test_versions(self):
-  self.assertEqual((ROOT/'07-Manifestes/VERSION').read_text().strip(),'6.46')
+  v=(ROOT/'07-Manifestes/VERSION').read_text(encoding='utf-8').strip(); self.assertRegex(v,r'^\d+\.\d+$'); self.assertGreaterEqual(tuple(map(int,v.split('.'))),(6,46)); self.assertIn(f"VERSION = '{v}'",(ROOT/'03-Sources/storagescope_windows.py').read_text(encoding='utf-8'))
 if __name__=='__main__': unittest.main()
