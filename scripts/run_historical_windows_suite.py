@@ -8,6 +8,7 @@ Author: Abdelhalim Talbi.
 from __future__ import annotations
 
 import argparse
+import hashlib
 from collections import Counter
 from datetime import datetime, timezone
 import json
@@ -71,19 +72,34 @@ def stage_historical_upgrade_workflow(sources: Path, tests: Path) -> None:
 
 
 def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
-              minimum: int, label: str) -> dict:
+              minimum: int, label: str, evidence_dir: Path | None = None) -> dict:
     command = [sys.executable, "-B", "-m", "unittest", "discover",
                "-s", str(start), "-p", pattern, "-q"]
     completed = subprocess.run(command, cwd=root, env=env, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, encoding="utf-8",
                                errors="replace", check=False)
     print(f"===== {label} =====\n{completed.stdout}", flush=True)
+    # Persist complete, unmodified subprocess output outside the temporary checkout.
+    # A failed build must retain enough evidence to reproduce every assertion.
+    log_evidence = {}
+    if evidence_dir is not None:
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+        safe_label = re.sub(r"[^A-Za-z0-9._-]+", "_", label).strip("._") or "suite"
+        log_name = f"historical-suite-{safe_label}.log"
+        log_path = evidence_dir / log_name
+        payload = completed.stdout.encode("utf-8")
+        pending = log_path.with_name(log_path.name + ".tmp")
+        pending.write_bytes(payload)
+        pending.replace(log_path)
+        log_evidence = {"log_file": log_name,
+                        "log_sha256": hashlib.sha256(payload).hexdigest(),
+                        "log_bytes": len(payload)}
     counts = COUNT.findall(completed.stdout)
     executed = int(counts[-1]) if counts else None
     ok = completed.returncode == 0 and executed is not None and executed >= minimum
     return {"suite": label, "executed": executed, "minimum": minimum,
             "exit_code": completed.returncode, "status": "PASS" if ok else "FAIL",
-            "symptom_counts": classify(completed.stdout)}
+            "symptom_counts": classify(completed.stdout), **log_evidence}
 
 
 def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
@@ -134,10 +150,12 @@ def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONPATH"] = os.pathsep.join(filter(None, [
             str(tests), str(sources), str(checkout), env.get("PYTHONPATH")]))
-        rows = [run_suite(tests, "test_*.py", checkout, env, minimum_tests, "historical")]
+        evidence_dir = report.parent if report else None
+        rows = [run_suite(tests, "test_*.py", checkout, env, minimum_tests,
+                          "historical", evidence_dir)]
         for nested in nested_files:
             rows.append(run_suite(nested.parent, nested.name, checkout, env, 1,
-                                  nested.relative_to(tests).as_posix()))
+                                  nested.relative_to(tests).as_posix(), evidence_dir))
     nested_count = sum(r["executed"] or 0 for r in rows[1:])
     passed = all(r["status"] == "PASS" for r in rows) and nested_count >= minimum_nested
     data = {"status": "PASS" if passed else "FAIL",
