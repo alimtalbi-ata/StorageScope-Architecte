@@ -1,5 +1,6 @@
 """Snapshot isolation and indexed governance checks. Author: Abdelhalim Talbi."""
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -33,7 +34,7 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(r['audit_head'],r['audit'][-1]['entry_hash'])
 
     def test_corrupt_audit_fails_closed(self):
-        with sqlite3.connect(self.store.path) as db:
+        with closing(sqlite3.connect(self.store.path)) as db, db:
             db.execute("UPDATE decision_audit SET payload='{}' WHERE seq=1")
         with self.assertRaises(ValueError):self.store.governance_report()
 
