@@ -470,12 +470,15 @@ def launch():
                     f"Partages retenus : {len(topology['shares'])}",
                     f"Enregistrements rejetés : {len(report['rejected'])}",
                     f"Identités système en quarantaine : {len(report['quarantined_system_ids'])}",
+                    f"NAS avec partages en quarantaine : {len(report['quarantined_share_asset_ids'])}",
                     'Aucune modification de la CMDB ou des équipements.',
                 ]
                 if report['rejected']:
                     lines += ['', 'Rejets (20 premiers) :'] + report['rejected'][:20]
                 if report['quarantined_system_ids']:
                     lines += ['', 'Systèmes en quarantaine (20 premiers) :'] + report['quarantined_system_ids'][:20]
+                if report['quarantined_share_asset_ids']:
+                    lines += ['', 'NAS dont les partages sont en quarantaine (20 premiers) :'] + report['quarantined_share_asset_ids'][:20]
                 rendered = '\n'.join(lines)
             except (OSError, ValueError, TypeError) as exc:
                 status.set('Snapshot NAS · import refusé')
