@@ -143,7 +143,9 @@ jobs:
         run: |
           $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
           $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
-          $gib = 1073741824
+          # Force Int64 arithmetic; PowerShell may promote Int32 overflow to Double,
+          # which correctly fails the adapter's strict integer-byte contract.
+          $gib = [long]1073741824
           $vendorCases = @(
             @{ vendor = 'netapp_ontap'; serial = 'serial_number'; name = 'cluster_name'; used = 'capacity_used_bytes'; total = 'capacity_total_bytes'; shares = 'volumes'; sid = 'uuid' },
             @{ vendor = 'dell_powerscale'; serial = 'serial'; name = 'cluster'; used = 'used_bytes'; total = 'total_bytes'; shares = 'exports'; sid = 'id' },
