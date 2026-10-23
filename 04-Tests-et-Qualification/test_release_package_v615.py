@@ -30,7 +30,9 @@ class TestReleaseV615(unittest.TestCase):
         script = (BUILD / "build-all-windows.ps1").read_text(encoding="utf-8")
         self.assertIn("$releaseVersion = (Get-Content", script)
         self.assertIn("07-Manifestes/VERSION", script)
-        self.assertIn("$expectedVersion = $releaseVersion", script)
+        self.assertIn("StorageScope-Setup-v$releaseVersion.exe", script)
+        engine = (BUILD / "build-engine-windows.ps1").read_text(encoding="utf-8")
+        self.assertIn("$expectedVersion = $releaseVersion", engine)
         self.assertNotIn("$expectedVersion = '6.17'", script)
 
     def test_installer_version(self):
