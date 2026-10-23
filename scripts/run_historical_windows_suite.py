@@ -105,6 +105,9 @@ def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
             if not dest.exists():
                 shutil.copy2(version, dest)
         env = os.environ.copy()
+        # Windows default text encoding can be cp1252; historical sources are UTF-8.
+        # Enforce UTF-8 for Path.read_text/open as well as stdout/stderr.
+        env["PYTHONUTF8"] = "1"
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONPATH"] = os.pathsep.join(filter(None, [
             str(tests), str(sources), str(checkout), env.get("PYTHONPATH")]))
