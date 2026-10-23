@@ -94,6 +94,40 @@ class VendorSnapshotTests(unittest.TestCase):
                 main([str(inp), str(out)])
             self.assertEqual(json.loads(inp.read_text(encoding='utf-8')), data)
 
+    def test_cli_close_failure_removes_partial_evidence(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            inp, out = Path(tmp) / 'input.json', Path(tmp) / 'report.json'
+            inp.write_text(json.dumps(sample('netapp_ontap')), encoding='utf-8')
+            original_open = Path.open
+
+            class FailedClose:
+                def __init__(self, stream):
+                    self.stream = stream
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *args):
+                    self.stream.close()
+                    raise OSError('simulated close failure')
+
+                def write(self, content):
+                    return self.stream.write(content)
+
+                def flush(self):
+                    return self.stream.flush()
+
+            def patched_open(path, *args, **kwargs):
+                stream = original_open(path, *args, **kwargs)
+                return FailedClose(stream) if Path(path) == out else stream
+
+            with patch.object(Path, 'open', patched_open):
+                with self.assertRaisesRegex(OSError, 'simulated close failure'):
+                    main([str(inp), str(out)])
+            self.assertFalse(out.exists())
+            self.assertTrue(inp.exists())
+
     def test_unhashable_vendor_rejected(self):
         data = sample('netapp_ontap')
         data['vendor'] = []
