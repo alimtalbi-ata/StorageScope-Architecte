@@ -13,7 +13,9 @@ class VersionProbeTests(unittest.TestCase):
   self.assertNotIn('(& "$PSScriptRoot\\dist\\StorageScope.exe" --version | Out-String)',s)
  def test_qualifier_uses_file_probe(self):
   s=(ROOT/'02-Compilation-Windows/qualify-native-windows.ps1').read_text()
-  self.assertIn('--version-file $probe',s)
+  self.assertIn("Invoke-Frozen $dist @('--version-file'",s)
+  self.assertIn("Invoke-Frozen $dist @('--self-test')",s)
+  self.assertIn('Start-Process -FilePath $Exe -ArgumentList $Arguments -Wait -PassThru',s)
  def test_ci_workflow_in_repo_root(self):
   self.assertTrue((ROOT/'.github/workflows/windows-build.yml').is_file())
  def test_versions(self):
