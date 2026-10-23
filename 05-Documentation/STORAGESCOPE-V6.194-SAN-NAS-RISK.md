@@ -45,7 +45,7 @@ Exit codes: **0** = no findings in assessed scope; **1** = findings requiring re
 
 ## Detection and qualification principles
 
-- Two active ports on **one** fabric do not count as independent paths. Redundancy requires two distinct active fabric IDs. Duplicate endpoint/fabric/port evidence is reported and ignored for counting.
+- Two active ports on **one** fabric do not count as independent paths. Redundancy requires two distinct active fabric IDs. Duplicate endpoint/fabric/port evidence is reported and ignored for counting. **Conflicting states on the same endpoint/fabric/port are downgraded to unknown**, so an old UP observation cannot mask a DOWN observation.
 - `unknown` is not considered active. Missing host/array paths or missing capacity/quota metrics generate **UNASSESSED** findings; incomplete input cannot be reported as healthy.
 - Default warning/critical capacity thresholds: **85% / 95%**. Negative, non-finite, boolean, zero total, and overcommitted values are rejected as invalid evidence.
 - An orphan path, duplicate asset ID, invalid protocol or malformed record generates a finding; no silent corrections are applied.
@@ -61,6 +61,6 @@ Exit codes: **0** = no findings in assessed scope; **1** = findings requiring re
 
 ## Evidence
 
-Qualification on 2026-10-23: **17/17 targeted tests PASS locally on Linux and 17/17 PASS in GitHub Actions on both Windows and Linux** (run #39963753364, commit 17e3d695). This targeted CI is not a full Windows native build: PyInstaller, Inno Setup, installation, uninstallation and portable smoke tests have **not** run on V6.194. The previous Windows full qualification applies to parent commit 4e4cf4ab only.
+Qualification on 2026-10-23: **18/18 targeted tests PASS locally on Linux (latest code). The previous 17/17 PASS in GitHub Actions on both Windows and Linux** (run #39963753364, commit 17e3d695) predates the conflicting-state regression fix and does not qualify the latest commit. This targeted CI is not a full Windows native build: PyInstaller, Inno Setup, installation, uninstallation and portable smoke tests have **not** run on V6.194. The previous Windows full qualification applies to parent commit 4e4cf4ab only.
 
 Next iteration: explicit per-vendor collector adapters, freshness/provenance, host-to-service dependencies, SRLG, capacity forecasting, UI review workflow, and portable/installer smoke test on the new commit.
