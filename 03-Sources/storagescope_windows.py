@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from pathlib import Path
 from storage_risk_desktop_v6196 import assess_topology_file, format_risk_report, export_risk_report
+from cmdb_review_desktop_v6198 import review_cmdb_file, format_cmdb_report, export_cmdb_report
 
 APP_NAME = 'StorageScope'
 VERSION = '6.108'
@@ -427,6 +428,28 @@ def launch():
                    command=review_storage_topology).pack(anchor='w', pady=(0, 12))
         ttk.Label(page, text='Analyse locale en lecture seule · Aucun accès aux équipements ou à la CMDB',
                   style='Subtle.TLabel').pack(anchor='w')
+        def review_cmdb_snapshot():
+            chosen = filedialog.askopenfilename(
+                parent=root, title='Choisir un inventaire CMDB JSON (lecture seule)',
+                filetypes=[('Inventaire JSON', '*.json'), ('Tous les fichiers', '*.*')])
+            if not chosen:
+                return
+            try:
+                report = review_cmdb_file(chosen)
+                rendered = format_cmdb_report(report)
+            except (OSError, ValueError) as exc:
+                status.set('CMDB · fichier non analysé')
+                messagebox.showerror('Réconciliation CMDB', str(exc), parent=root)
+                return
+            results.configure(state='normal')
+            results.delete('1.0', 'end')
+            results.insert('1.0', rendered)
+            results.configure(state='disabled')
+            status.set(f"CMDB · {report['assessment']} · {report['candidate_count']} candidat(s)")
+        ttk.Button(page, text='Réconcilier un inventaire CMDB (JSON)…',
+                   command=review_cmdb_snapshot).pack(anchor='w', pady=(0, 12))
+        ttk.Label(page, text='Revue humaine · Provenance et conflits conservés · Aucune fusion automatique',
+                  style='Subtle.TLabel').pack(anchor='w')
         refresh()
         return page
 
@@ -548,6 +571,10 @@ def main(argv=None):
     if len(args) == 3 and args[0] == '--storage-risk-file':
         # Frozen Windows CLI evidence: explicit input and a new, non-overwriting report.
         export_risk_report(args[1], args[2])
+        return 0
+    if len(args) == 3 and args[0] == '--cmdb-review-file':
+        # Frozen Windows CLI: local provenance-aware review, never overwrite evidence.
+        export_cmdb_report(args[1], args[2])
         return 0
     if args and args[0] == '--benchmarks':
         if len(args) != 2:
