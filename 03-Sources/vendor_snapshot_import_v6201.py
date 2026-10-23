@@ -78,6 +78,7 @@ def normalize(snapshot):
     duplicate_ids = sorted(k for k, count in ids.items() if count > 1)
     assets, shares, rejected = [], [], []
     seen_shares = set()
+    quarantined_share_assets = set()
     share_count = 0
     for index, system in enumerate(systems):
         if not isinstance(system, dict):
@@ -104,6 +105,18 @@ def normalize(snapshot):
         if share_count > 10000:
             raise ValueError('Snapshot exceeds 10000 share records')
         asset_id = f'{vendor}:{serial}'
+        # Evaluate *all* observations before validating individual quotas.
+        # A malformed duplicate is still conflicting evidence: otherwise the
+        # first valid observation would be certified when the second is skipped.
+        observed_share_ids = Counter(
+            (entry.get('protocol'), _id(entry.get(share_id_key)))
+            for entry in entries
+            if isinstance(entry, dict) and entry.get('protocol') in ('NFS', 'SMB')
+            and _id(entry.get(share_id_key))
+        )
+        if any(count > 1 for count in observed_share_ids.values()):
+            rejected.append(f'systems[{index}]: conflicting duplicate share evidence')
+            quarantined_share_assets.add(asset_id)
         asset = {'id': asset_id, 'kind': 'nas', 'vendor': vendor, 'source_ref': source_ref,
                  'collected_at': timestamp}
         if isinstance(system.get(name_key), str):
@@ -122,6 +135,7 @@ def normalize(snapshot):
             share_id = f'{asset_id}:{protocol}:{sid}'
             if not sid or protocol not in ('NFS', 'SMB') or share_id in seen_shares:
                 rejected.append(f'systems[{index}].shares[{j}]: invalid or duplicate share identity')
+                quarantined_share_assets.add(asset_id)
                 continue
             try:
                 share_used = _gib(entry.get('used_bytes'))
@@ -141,13 +155,10 @@ def normalize(snapshot):
             if quota is not None:
                 share['quota_gib'] = quota
             shares.append(share)
-    # Duplicate share evidence poisons all shares on that source system.
-    duplicates = {s.split(': invalid or duplicate share identity')[0] for s in rejected
-                  if s.endswith(': invalid or duplicate share identity')}
-    if duplicates:
-        bad_system_indices = {int(s.split(']')[0].split('[')[1]) for s in duplicates}
-        bad_assets = {f'{vendor}:{_id(systems[i].get(serial_key))}' for i in bad_system_indices}
-        shares = [s for s in shares if s['nas_id'] not in bad_assets]
+    # Never certify any share on a system with ambiguous share identity.
+    # This is independent of observation order and quota validation outcome.
+    if quarantined_share_assets:
+        shares = [s for s in shares if s['nas_id'] not in quarantined_share_assets]
     topology = {'schema': 'storagescope.storage-topology.v1', 'assets': assets,
                 'paths': [], 'shares': shares}
     return {'schema': 'storagescope.vendor-import-report.v1', 'vendor': vendor,
