@@ -109,6 +109,7 @@ jobs:
           name: StorageScope-Windows-DIAGNOSTICS
           path: |
             02-Compilation-Windows/build-logs/*
+            02-Compilation-Windows/failed-build-logs/*
             02-Compilation-Windows/windows-qualification-report.json
             02-Compilation-Windows/windows-installer-smoke-report.json
             02-Compilation-Windows/windows-portable-smoke-report.json
