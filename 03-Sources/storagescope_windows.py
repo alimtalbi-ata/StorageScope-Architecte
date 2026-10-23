@@ -517,6 +517,25 @@ def launch():
         tree.configure(yscrollcommand=scroll.set)
         tree.pack(side='left', fill='both', expand=True)
         scroll.pack(side='right', fill='y')
+        detail = tk.Text(page, height=7, wrap='word', font=('Consolas', 10), state='disabled')
+        detail.pack(fill='x', pady=(10, 0))
+        share_index = {}
+
+        def show_selected_shares(_event=None):
+            selected = tree.selection()
+            asset_id = tree.item(selected[0], 'values')[2] if selected else None
+            items = share_index.get(asset_id, [])
+            lines = [f'Partages de {asset_id} ({len(items)})'] if asset_id else ['Sélectionnez un système pour afficher ses partages.']
+            for item in items[:100]:
+                lines.append(f"{item['protocol']} · {item['id']} · utilisé {item.get('used_gib', '—')} GiB · quota {item.get('quota_gib', '—')} GiB")
+            if len(items) > 100:
+                lines.append(f'... {len(items) - 100} partage(s) supplémentaire(s) non affiché(s)')
+            detail.configure(state='normal')
+            detail.delete('1.0', 'end')
+            detail.insert('1.0', '\n'.join(lines))
+            detail.configure(state='disabled')
+
+        tree.bind('<<TreeviewSelect>>', show_selected_shares)
         summary = tk.StringVar(value='Aucun inventaire chargé. Choisissez un snapshot JSON.')
         ttk.Label(page, textvariable=summary, wraplength=780).pack(anchor='w', pady=10)
 
@@ -541,8 +560,14 @@ def launch():
                 messagebox.showerror('Inventaire infrastructure', str(exc), parent=root)
                 status.set('Infrastructure · import refusé, inventaire précédent conservé')
                 return
+            next_index = {}
+            for share in shares:
+                next_index.setdefault(share['nas_id'], []).append(share)
+            share_index.clear()
+            share_index.update(next_index)
             for item in tree.get_children():
                 tree.delete(item)
+            show_selected_shares()
             for row in rows:
                 tree.insert('', 'end', values=row)
             summary.set(
