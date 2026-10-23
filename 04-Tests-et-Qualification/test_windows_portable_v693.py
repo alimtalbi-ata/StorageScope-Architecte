@@ -14,5 +14,7 @@ class PortableSmokeContract(unittest.TestCase):
   s=(ROOT/'02-Compilation-Windows/build-all-windows.ps1').read_text()
   self.assertIn("'qualify-portable-smoke-windows.ps1'",s)
  def test_version(self):
-  self.assertEqual((ROOT/'07-Manifestes/VERSION').read_text().strip(),'6.93')
+  release=(ROOT/'07-Manifestes/VERSION').read_text(encoding='utf-8').strip()
+  self.assertEqual(release,(ROOT/'03-Sources/VERSION').read_text(encoding='utf-8').strip())
+  self.assertGreaterEqual(tuple(map(int,release.split('.'))),(6,93))
 if __name__=='__main__':unittest.main()
