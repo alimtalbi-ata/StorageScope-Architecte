@@ -26,6 +26,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_reconcile_v619.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_reconcile_provenance_v6197.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_review_desktop_v6198.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_impact_v6199.py' -v
   review-windows:
     runs-on: windows-latest
     steps:
@@ -52,3 +53,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'CMDB provenance regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_review_desktop_v6198.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'CMDB desktop review regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_impact_v6199.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Storage dependency impact regression tests failed' }
