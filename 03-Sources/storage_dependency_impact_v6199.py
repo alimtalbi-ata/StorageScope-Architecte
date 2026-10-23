@@ -52,11 +52,13 @@ def map_dependencies(topology, risk_report):
             continue
         host, target, fabric = (_id(item.get(k)) for k in ('host_id', 'storage_id', 'fabric'))
         state = item.get('state')
-        if (not host or not target or not fabric or not isinstance(state, str) or
-                state not in KNOWN or trusted.get(host) != 'host' or
-                trusted.get(target) != 'storage_array'):
+        if (not host or not target or not fabric or trusted.get(host) != 'host'
+                or trusted.get(target) != 'storage_array'):
             continue
-        signatures[(host, target, fabric, _id(item.get('port')))].add(state)
+        # Keep invalid states as an explicit untrusted observation. Skipping them
+        # would let an earlier/later "up" on the same signature look verified.
+        observed_state = state if isinstance(state, str) and state in KNOWN else '<invalid>'
+        signatures[(host, target, fabric, _id(item.get('port')))].add(observed_state)
 
     verified_pairs, uncertain_pairs = set(), set()
     for (host, target, _fabric, _port), states in signatures.items():
