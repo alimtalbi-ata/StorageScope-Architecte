@@ -1,6 +1,8 @@
 name: Build and qualify StorageScope Windows
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
 jobs:
@@ -30,12 +32,14 @@ jobs:
       - name: Build Windows release
         shell: pwsh
         run: |
+          $global:LASTEXITCODE = 0
           if (Test-Path '02-Compilation-Windows/build-all-windows.ps1') {
             & './02-Compilation-Windows/build-all-windows.ps1'
           } else {
             & './build-all-windows.ps1'
           }
           if (-not $?) { throw 'Build failed' }
+          if ($LASTEXITCODE -ne 0) { throw "Build process returned exit code $LASTEXITCODE" }
       - name: Qualify native binaries
         shell: pwsh
         run: |
@@ -45,15 +49,28 @@ jobs:
           if (-not (Test-Path '02-Compilation-Windows/windows-qualification-report.json')) { throw 'Qualification evidence missing' }
           $native = Get-Content -Raw '02-Compilation-Windows/windows-qualification-report.json' | ConvertFrom-Json
           if ($native.overall -ne 'PASS') { throw 'Native qualification report is not PASS' }
+      - name: Qualify installer rejection
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Installer rejection requires an ephemeral GitHub-hosted runner' }
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          & './02-Compilation-Windows/qualifier-echec-installateur-windows.ps1' -Version $version
+          if (-not $?) { throw 'Installer rejection qualification failed' }
+          $reportPath = Join-Path '02-Compilation-Windows/build-logs' ("installer-rejected-v{0}.json" -f $version)
+          if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) { throw 'Installer rejection evidence missing' }
+          $rejection = Get-Content -Raw $reportPath | ConvertFrom-Json
+          if (-not $rejection.passed -or -not $rejection.source_unchanged -or $rejection.installed_binary_present) { throw 'Unsafe installer rejection outcome' }
       - name: Install and uninstall smoke test
         shell: pwsh
         run: |
+          $global:LASTEXITCODE = 0
           & './02-Compilation-Windows/qualify-installer-smoke-windows.ps1'
           if (-not $?) { throw 'Installer smoke test failed' }
+          if ($LASTEXITCODE -ne 0) { throw "Installer smoke test returned exit code $LASTEXITCODE" }
           $reportPath = '02-Compilation-Windows/windows-installer-smoke-report.json'
           if (-not (Test-Path $reportPath)) { throw 'Installer smoke report missing' }
           $result = Get-Content -Raw $reportPath | ConvertFrom-Json
-          if ($result.status -ne 'PASS' -or -not $result.installed -or -not $result.version_checked -or -not $result.uninstalled) { throw 'Installer smoke evidence is not PASS' }
+          if ($result.status -ne 'PASS' -or -not $result.installed -or -not $result.gate_checked -or -not $result.version_checked -or -not $result.uninstalled) { throw 'Installer smoke evidence is not PASS' }
       - name: Run portable Windows smoke test
         shell: pwsh
         run: |
@@ -107,6 +124,7 @@ jobs:
           name: StorageScope-Windows-DIAGNOSTICS
           path: |
             02-Compilation-Windows/build-logs/*
+            02-Compilation-Windows/failed-build-logs/*
             02-Compilation-Windows/windows-qualification-report.json
             02-Compilation-Windows/windows-installer-smoke-report.json
             02-Compilation-Windows/windows-portable-smoke-report.json

@@ -117,7 +117,14 @@ def recover(root):
 def publish(root, pending, fail_after=None, crash_after=None, crash_after_commit=False, crash_during_cleanup=False):
     """Publish staged directories; crash_after simulates abrupt exit for tests."""
     root, pending = Path(root), Path(pending)
-    if root.resolve() == pending.resolve() or root.resolve() in pending.resolve().parents or pending.resolve() in root.resolve().parents:
+    root_real, pending_real = root.resolve(), pending.resolve()
+    # The native build deliberately stages in root/.publish-pending. Permit
+    # ONLY this direct, named child; reject all other nested/overlapping paths.
+    internal_pending = (pending_real.parent == root_real
+                        and pending.name == '.publish-pending'
+                        and not pending.is_symlink())
+    if (root_real == pending_real or pending_real in root_real.parents
+            or (root_real in pending_real.parents and not internal_pending)):
         raise ValueError('Publication and staging must be separate directories')
     backup = root / '.publish-backup'
     if backup.exists():
@@ -134,6 +141,10 @@ def publish(root, pending, fail_after=None, crash_after=None, crash_after_commit
             raise ValueError(f'Empty staged directory: {name}')
         if (root / name).is_symlink() or ((root / name).exists() and not _safe_dir(root / name)):
             raise ValueError(f'Unexpected published target: {name}')
+    # Nested staging must contain only the four declared components, never
+    # user data, stray files or a symlinked sidecar.
+    if internal_pending and {p.name for p in pending.iterdir()} != set(staged_names):
+        raise ValueError('Unexpected nested staging contents')
     backup.mkdir()
     _sync_directory(root)
     state = {'schema': 2, 'phase': 'publishing',
@@ -172,6 +183,8 @@ def publish(root, pending, fail_after=None, crash_after=None, crash_after_commit
                     shutil.rmtree(old)
                     break
             raise SystemExit('SIMULATED_CRASH_DURING_CLEANUP')
+        if internal_pending:
+            pending.rmdir()  # remove only the now-empty internal staging dir
         shutil.rmtree(backup)
         _sync_directory(root)
     except Exception:

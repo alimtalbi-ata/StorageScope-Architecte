@@ -14,7 +14,10 @@ class WindowsInstallQualificationV578(unittest.TestCase):
         self.assertNotIn('Remove-Item',s)
     def test_ci_runs_qualification(self):
         s=(R/'.github/workflows/windows-build.yml').read_text()
-        self.assertIn('qualifier-installation-windows.ps1',s)
+        self.assertIn('Qualify installer rejection',s)
+        self.assertIn('Install and uninstall smoke test',s)
+        self.assertIn('qualify-installer-smoke-windows.ps1',s)
+        self.assertIn('windows-installer-smoke-report.json',s)
     def test_installer_is_per_user(self):
         s=(R/'StorageScope.iss').read_text()
         self.assertIn('PrivilegesRequired=lowest',s)
