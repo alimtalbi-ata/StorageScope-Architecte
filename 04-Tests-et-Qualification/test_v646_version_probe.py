@@ -7,7 +7,9 @@ class VersionProbeTests(unittest.TestCase):
   ast.parse(p)
  def test_gui_build_uses_file_probe(self):
   s=(ROOT/'02-Compilation-Windows/build-engine-windows.ps1').read_text()
-  self.assertIn("@('--version-file', $versionProbe)",s)
+  self.assertIn("Invoke-WindowedChecked",s)
+  self.assertIn("Start-Process -FilePath $Exe -ArgumentList $Arguments -Wait -PassThru",s)
+  self.assertIn("@('--version-file', ('\"{0}\"' -f $versionProbe))",s)
   self.assertNotIn('(& "$PSScriptRoot\\dist\\StorageScope.exe" --version | Out-String)',s)
  def test_qualifier_uses_file_probe(self):
   s=(ROOT/'02-Compilation-Windows/qualify-native-windows.ps1').read_text()
