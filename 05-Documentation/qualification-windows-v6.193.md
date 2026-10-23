@@ -29,3 +29,21 @@ Relancer la CI Windows depuis la PR draft. Exiger le passage du gate de rejet, p
 
 **Traçabilité :** https://github.com/alimtalbi-ata/StorageScope-Architecte/actions/runs/39957669974 ; PR https://github.com/alimtalbi-ata/StorageScope-Architecte/pull/4.  
 **Limites :** aucune capture UI native produite dans ce correctif ; ne pas substituer un exemple fictif à une preuve réelle.
+
+## Validation native après correctif — CI #39958473015
+
+**23 octobre 2026, 13:09 UTC — GitHub Actions : SUCCESS.** Ce verdict remplace le statut provisoire « en attente » ci-dessus pour le commit de qualification `587784d2d549c9fc0287f415e2d0659311cc9b83`.
+
+- **1 424 tests principaux PASS ; 8 tests imbriqués PASS**. La ligne `FAILED (failures=1)` présente dans le journal concerne un **test synthétique volontairement défaillant** utilisé pour vérifier le runner ; la suite globale indique `HISTORICAL_SUITE_RESULT: PASS`.
+- PyInstaller + Inno Setup : **PASS** ; release binaire `v6.108` (le correctif de qualification porte le numéro V6.193, distinct du numéro produit).
+- Qualification native : **PASS**.
+- Rejet de SQLite corrompu avec préservation des données : **PASS**, et lecture du JSON par le workflow : **PASS**.
+- Installation/désinstallation, portable, contrôle de cinq artefacts, consolidation et gate de publication : **PASS**.
+- Rapport `windows-release-qualification.json` : `status=PASS` avec `native=PASS`, `installer=PASS`, `portable=PASS`.
+- Artefact GitHub `StorageScope-Windows-QUALIFIED` ID **12503118403**, archive ZIP SHA-256 **729d73775293431572cf2760bdb0db7c0cf99249a794bbccfe990283d7791ae2**.
+- Empreinte de l'installateur `StorageScope-Setup-v6.108.exe` : **520e63b204c13042781726b9ef3ba77c099e5763c79c8b76214340d504a1067d**.
+- Empreinte de `StorageScope.exe` : **41382ab3280e11c00b3630bf92069db680ecd085d829ad16b9912bc416539664**.
+
+**Qualification acquise dans le périmètre automatisé Windows CI**, sans prétendre à une validation manuelle des écrans ni à des captures UI réelles. Aucune fusion sur `main` ; PR draft conservée.
+
+Référence : https://github.com/alimtalbi-ata/StorageScope-Architecte/actions/runs/39958473015
