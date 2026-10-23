@@ -239,7 +239,7 @@ def launch():
     navigation_buttons = {}
 
     from windows_page_controller_v590 import PageController
-    controller = PageController(('Accueil', 'Gouvernance', 'Campagnes', 'Diagnostic', 'Maintenance'))
+    controller = PageController(('Accueil', 'Infrastructure', 'Gouvernance', 'Campagnes', 'Diagnostic', 'Maintenance'))
     def show_page(name):
         def render(page):
             previous = current['page']
@@ -499,7 +499,63 @@ def launch():
         ttk.Label(page, text='Sauvegarde horodatée dans un nouveau dossier, avec empreintes SHA-256 vérifiées.\nAucun écrasement ni restauration automatique.', wraplength=650).pack(anchor='w', pady=12)
         return page
 
+    def infrastructure():
+        page = ttk.Frame(content)
+        ttk.Label(page, text='Inventaire Infrastructure', style='Title.TLabel').pack(anchor='w', pady=(5, 10))
+        ttk.Label(page, text='Inventaire NAS hors ligne, sans modification des équipements.', style='Subtle.TLabel').pack(anchor='w', pady=(0, 12))
+        columns = ('vendor', 'name', 'id', 'used', 'total', 'shares')
+        frame = ttk.Frame(page)
+        frame.pack(fill='both', expand=True)
+        tree = ttk.Treeview(frame, columns=columns, show='headings', height=12)
+        for key, label, width in (
+                ('vendor', 'Fournisseur', 140), ('name', 'Système', 150),
+                ('id', 'Identifiant', 220), ('used', 'Utilisé (GiB)', 110),
+                ('total', 'Total (GiB)', 110), ('shares', 'Partages', 80)):
+            tree.heading(key, text=label)
+            tree.column(key, width=width, minwidth=70, stretch=key in ('name', 'id'))
+        scroll = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
+        tree.configure(yscrollcommand=scroll.set)
+        tree.pack(side='left', fill='both', expand=True)
+        scroll.pack(side='right', fill='y')
+        summary = tk.StringVar(value='Aucun inventaire chargé. Choisissez un snapshot JSON.')
+        ttk.Label(page, textvariable=summary, wraplength=780).pack(anchor='w', pady=10)
+
+        def import_snapshot():
+            chosen = filedialog.askopenfilename(
+                parent=root, title='Inventaire NAS fournisseur (lecture seule)',
+                filetypes=[('Snapshot JSON', '*.json'), ('Tous les fichiers', '*.*')])
+            if not chosen:
+                return
+            try:
+                from vendor_snapshot_import_v6201 import load_snapshot, normalize
+                report = normalize(load_snapshot(chosen))
+                assets = report['topology']['assets']
+                shares = report['topology']['shares']
+                counts = {}
+                for share in shares:
+                    counts[share['nas_id']] = counts.get(share['nas_id'], 0) + 1
+                rows = [(asset['vendor'], asset.get('name', '—'), asset['id'],
+                         asset.get('used_gib', '—'), asset.get('total_gib', '—'),
+                         counts.get(asset['id'], 0)) for asset in assets]
+            except (OSError, ValueError, TypeError, KeyError) as exc:
+                messagebox.showerror('Inventaire infrastructure', str(exc), parent=root)
+                status.set('Infrastructure · import refusé, inventaire précédent conservé')
+                return
+            for item in tree.get_children():
+                tree.delete(item)
+            for row in rows:
+                tree.insert('', 'end', values=row)
+            summary.set(
+                f"{report['assessment']} · {len(rows)} système(s) · {len(shares)} partage(s) · "
+                f"{len(report['rejected'])} rejet(s) · source : {report['source_ref']}")
+            status.set(f"Infrastructure · {len(rows)} équipement(s) observé(s)")
+
+        ttk.Button(page, text='Importer un snapshot NetApp / PowerScale / FlashBlade…',
+                   command=import_snapshot).pack(anchor='w', pady=(0, 12))
+        return page
+
     pages['Accueil'] = home()
+    pages['Infrastructure'] = infrastructure()
     governance_page = ttk.Frame(content)
     campaigns_page = ttk.Frame(content)
     pages['Gouvernance'] = governance_page
@@ -530,7 +586,7 @@ def launch():
 
     pages['Diagnostic'] = diagnostics()
     pages['Maintenance'] = settings()
-    for name in ('Accueil', 'Gouvernance', 'Campagnes', 'Diagnostic', 'Maintenance'):
+    for name in ('Accueil', 'Infrastructure', 'Gouvernance', 'Campagnes', 'Diagnostic', 'Maintenance'):
         action = open_governance if name == 'Gouvernance' else open_benchmarks if name == 'Campagnes' else lambda n=name: navigate_safely(n)
         button = ttk.Button(sidebar, text=name, style='Nav.TButton', command=action)
         button.pack(fill='x', pady=4)
