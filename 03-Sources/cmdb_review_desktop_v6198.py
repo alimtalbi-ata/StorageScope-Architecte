@@ -82,12 +82,17 @@ def export_cmdb_report(source, destination):
     # Reserve the destination exclusively; never overwrite an existing report.
     # Remove our own incomplete output if encoding, writing or closing fails.
     destination = Path(destination)
-    with destination.open('x', encoding='utf-8', newline='\n') as stream:
-        try:
+    stream = destination.open('x', encoding='utf-8', newline='\n')
+    try:
+        with stream:
             stream.write(payload)
             stream.flush()
-        except BaseException:
-            stream.close()
+    except BaseException:
+        # A close/flush failure also leaves an invalid report. Cleanup must not
+        # mask the original I/O error, and an existing destination is never touched.
+        try:
             destination.unlink(missing_ok=True)
-            raise
+        except OSError:
+            pass
+        raise
     return report
