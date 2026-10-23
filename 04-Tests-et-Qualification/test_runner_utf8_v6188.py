@@ -4,6 +4,7 @@ Author: Abdelhalim Talbi. Executes a real subprocess with a temporary checkout.
 """
 from __future__ import annotations
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -26,11 +27,14 @@ class UTF8Mode(unittest.TestCase):
  def test_utf8(self):
   self.assertEqual(sys.flags.utf8_mode,1)
   self.assertEqual(Path(__file__).with_name("accent.txt").read_text().strip(),"décisions – traçabilité")
+  print("UTF8_ARROW →")
 ''',encoding='utf-8')
             report=Path(td)/'report.json'
+            env=os.environ.copy()
+            env['PYTHONIOENCODING']='cp1252:strict'  # Reproduce Windows parent console.
             r=subprocess.run([sys.executable,str(RUNNER),'--repo',str(repo),
                 '--minimum-tests','1','--minimum-nested-tests','0','--report',str(report)],
-                stdout=subprocess.PIPE,stderr=subprocess.STDOUT,encoding='utf-8',errors='replace',check=False)
+                stdout=subprocess.PIPE,stderr=subprocess.STDOUT,encoding='utf-8',errors='replace',check=False,env=env)
             self.assertEqual(r.returncode,0,r.stdout)
             evidence=json.loads(report.read_text(encoding='utf-8'))
             self.assertEqual(evidence['status'],'PASS')
