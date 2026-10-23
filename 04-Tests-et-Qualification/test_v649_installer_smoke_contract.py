@@ -4,7 +4,7 @@ R = Path(__file__).resolve().parents[1]
 class InstallerSmokeContract(unittest.TestCase):
  def test_cleanup_not_claimed_before_uninstall(self):
   t=(R/'02-Compilation-Windows/qualify-installer-smoke-windows.ps1').read_text()
-  self.assertIn('$report.installed -and $report.version_checked -and $report.uninstalled -and -not $failure',t)
+  self.assertIn('$report.installed -and $report.gate_checked -and $report.version_checked -and $report.uninstalled -and -not $failure',t)
  def test_cleanup_error_captured(self):
   t=(R/'02-Compilation-Windows/qualify-installer-smoke-windows.ps1').read_text()
   self.assertIn('Cleanup failed:',t)
