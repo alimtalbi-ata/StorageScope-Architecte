@@ -4,7 +4,7 @@ on:
   pull_request:
     # Include the stacked SAN/NAS review branch so feature changes receive
     # a full native Windows qualification, not governance-only CI.
-    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023]
+    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023, feature/storagescope-v6.195-identity-quarantine-20261023]
   push:
     branches: [main]
 jobs:
