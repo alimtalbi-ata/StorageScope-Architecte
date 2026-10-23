@@ -5,6 +5,7 @@ on:
       - '03-Sources/vendor_snapshot_import_v6201.py'
       - '03-Sources/storagescope_windows.py'
       - '04-Tests-et-Qualification/test_vendor_snapshot_import_v6201.py'
+      - '04-Tests-et-Qualification/test_vendor_desktop_integration_v6201.py'
       - '.github/workflows/vendor-snapshot-qualification.yml'
   workflow_dispatch:
 jobs:
