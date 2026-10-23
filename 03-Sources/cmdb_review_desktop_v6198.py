@@ -88,8 +88,8 @@ def export_cmdb_report(source, destination):
             stream.write(payload)
             stream.flush()
     except BaseException:
-        # A close/flush failure also leaves an invalid report. Cleanup must not
-        # mask the original I/O error, and an existing destination is never touched.
+        # Cleanup only the output we created. If deletion is denied, leave the
+        # failure visible rather than claiming that the evidence was exported.
         try:
             destination.unlink(missing_ok=True)
         except OSError:
