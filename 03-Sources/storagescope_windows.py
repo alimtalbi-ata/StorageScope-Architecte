@@ -614,6 +614,11 @@ def main(argv=None):
         # Frozen Windows CLI: local provenance-aware review, never overwrite evidence.
         export_cmdb_report(args[1], args[2])
         return 0
+    if len(args) == 3 and args[0] == '--vendor-snapshot-file':
+        # Offline vendor import: frozen Windows CLI, strictly read-only input,
+        # exclusive output, no live array access or CMDB writes.
+        from vendor_snapshot_import_v6201 import main as vendor_snapshot_main
+        return vendor_snapshot_main(args[1:])
     if args and args[0] == '--benchmarks':
         if len(args) != 2:
             raise SystemExit('Usage: --benchmarks DATABASE')
