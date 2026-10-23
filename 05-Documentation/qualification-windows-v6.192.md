@@ -34,3 +34,9 @@ Nouvelle exécution Windows déclenchée par les commits de ce cycle : `39947273
 ## Risques et prochaines actions
 
 Examiner la liste exacte des assertions restantes après V6.192, distinguer attentes figées et défauts produit, puis corriger les vrais bugs et les contrats périmés sans affaiblissement. Les changements restent sur la branche de la PR draft #4 ; `main` est préservée. Pas de binaires Windows ni de captures réelles publiés.
+
+## Lot complémentaire V6.192 (commit `b5ad9a389`)
+
+Sept autres contrats historiques ont été corrigés en **un seul commit atomique** : `test_v642_build_contract.py`, `test_v643_qualification_contract.py`, `test_v645_bootstrap_contract.py`, `test_v646_version_probe.py`, `test_v647_ci_contract.py`, `test_v648_installer_contract.py`, `test_v649_installer_smoke_contract.py`. Chaque contrôle conserve la version minimale historique et exige la cohérence avec la version courante. Les assertions fonctionnelles non liées aux numéros de version sont conservées (interpolation des chemins, SHA-256, code de sortie, préflight, version probe, présence du workflow, désinstallation, reporting et refus de publication sur échec).
+
+**CI Windows intermédiaire #39947273516 : 1 409 tests, 41 failures, 0 errors ; 8 imbriqués PASS ; BUILD FAIL**. Le passage de 51 à 41 failures est confirmé par les journaux Windows. Les sept corrections supplémentaires doivent encore être validées par la CI native déclenchée sur `b5ad9a389`. L'exécution de la CI gouvernance ne suffit pas à qualifier Windows.
