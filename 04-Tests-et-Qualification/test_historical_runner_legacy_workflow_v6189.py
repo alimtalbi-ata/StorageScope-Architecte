@@ -38,8 +38,15 @@ class ArchivedWorkflowFixtureTests(unittest.TestCase):
             runner.stage_historical_upgrade_workflow(self.sources, self.tests)
         self.assertEqual(self.target.read_text(encoding="utf-8"), "name: different\n")
 
+    def test_missing_archive_without_legacy_test_is_allowed(self):
+        self.archived.unlink()
+        runner.stage_historical_upgrade_workflow(self.sources, self.tests)
+        self.assertFalse(self.target.exists())
+
     def test_missing_archive_fails_closed(self):
         self.archived.unlink()
+        self.tests.mkdir(parents=True)
+        (self.tests / "test_windows_portable_v589.py").write_text("# requires workflow\\n", encoding="utf-8")
         with self.assertRaisesRegex(FileNotFoundError, "archived"):
             runner.stage_historical_upgrade_workflow(self.sources, self.tests)
         self.assertFalse(self.target.exists())
