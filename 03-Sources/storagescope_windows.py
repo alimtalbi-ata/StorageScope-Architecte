@@ -10,6 +10,7 @@ import json
 from datetime import datetime, timezone
 from uuid import uuid4
 from pathlib import Path
+from storage_risk_desktop_v6196 import assess_topology_file, format_risk_report, export_risk_report
 
 APP_NAME = 'StorageScope'
 VERSION = '6.108'
@@ -404,6 +405,28 @@ def launch():
             results.insert('1.0', '\n'.join(lines))
             results.configure(state='disabled')
         ttk.Button(page, text='Actualiser le diagnostic', command=refresh).pack(anchor='w', pady=12)
+        def review_storage_topology():
+            chosen = filedialog.askopenfilename(
+                parent=root, title='Choisir un inventaire SAN/NAS JSON (lecture seule)',
+                filetypes=[('Topologie JSON', '*.json'), ('Tous les fichiers', '*.*')])
+            if not chosen:
+                return
+            try:
+                report = assess_topology_file(chosen)
+                rendered = format_risk_report(report)
+            except (OSError, ValueError) as exc:
+                status.set('SAN/NAS · fichier non analysé')
+                messagebox.showerror('Analyse SAN/NAS', str(exc), parent=root)
+                return
+            results.configure(state='normal')
+            results.delete('1.0', 'end')
+            results.insert('1.0', rendered)
+            results.configure(state='disabled')
+            status.set(f"SAN/NAS · {report['assessment']} · {report['finding_count']} constat(s)")
+        ttk.Button(page, text='Analyser une topologie SAN/NAS (JSON)…',
+                   command=review_storage_topology).pack(anchor='w', pady=(0, 12))
+        ttk.Label(page, text='Analyse locale en lecture seule · Aucun accès aux équipements ou à la CMDB',
+                  style='Subtle.TLabel').pack(anchor='w')
         refresh()
         return page
 
@@ -522,6 +545,10 @@ def main(argv=None):
         from windows_release_check_v567 import runtime_self_test
         with TemporaryDirectory(prefix='storagescope-selftest-') as temporary:
             return runtime_self_test(application_paths(temporary))
+    if len(args) == 3 and args[0] == '--storage-risk-file':
+        # Frozen Windows CLI evidence: explicit input and a new, non-overwriting report.
+        export_risk_report(args[1], args[2])
+        return 0
     if args and args[0] == '--benchmarks':
         if len(args) != 2:
             raise SystemExit('Usage: --benchmarks DATABASE')
