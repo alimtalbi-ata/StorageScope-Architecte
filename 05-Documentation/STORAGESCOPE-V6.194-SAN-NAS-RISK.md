@@ -61,6 +61,6 @@ Exit codes: **0** = no findings in assessed scope; **1** = findings requiring re
 
 ## Evidence
 
-Qualification on 2026-10-23: **18/18 targeted tests PASS locally on Linux (latest code). The previous 17/17 PASS in GitHub Actions on both Windows and Linux** (run #39963753364, commit 17e3d695) predates the conflicting-state regression fix and does not qualify the latest commit. This targeted CI is not a full Windows native build: PyInstaller, Inno Setup, installation, uninstallation and portable smoke tests have **not** run on V6.194. The previous Windows full qualification applies to parent commit 4e4cf4ab only.
+Qualification on 2026-10-23: **18/18 targeted tests PASS locally on Linux and 18/18 PASS in GitHub Actions on Windows and Linux** (run #39964012579, commit d054687e). The conflicting-state regression was executed and passed on both runners. This targeted CI is **not** a full Windows native build: PyInstaller, Inno Setup, installation, uninstallation and portable smoke tests have **not** run on V6.194. The previous Windows full qualification applies to parent commit 4e4cf4ab only.
 
 Next iteration: explicit per-vendor collector adapters, freshness/provenance, host-to-service dependencies, SRLG, capacity forecasting, UI review workflow, and portable/installer smoke test on the new commit.
