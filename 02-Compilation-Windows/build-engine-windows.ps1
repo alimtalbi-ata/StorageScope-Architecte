@@ -69,11 +69,21 @@ $testsRoot = Join-Path $repoRoot '04-Tests-et-Qualification'
 if (-not (Test-Path -LiteralPath $testsRoot -PathType Container)) {
     throw "Repository qualification directory missing: $testsRoot"
 }
-Push-Location $repoRoot
-try {
-    Invoke-Checked $builder @('-m','unittest','discover','-s',$testsRoot,'-p','test_*.py','-q')
-} finally {
-    Pop-Location
+# V6.186: run historical tests with colocated fixtures and strict 958 + 8 gates.
+# The runner is in the checkout, not the temporary build stage.
+$historicalRunner = Join-Path $repoRoot 'scripts/run_historical_windows_suite.py'
+if (-not (Test-Path -LiteralPath $historicalRunner -PathType Leaf)) {
+    throw "Historical regression runner missing: $historicalRunner"
+}
+$historicalReport = Join-Path $logDir 'historical-suite-report.json'
+Invoke-Checked $builder @($historicalRunner, '--repo', $repoRoot, '--minimum-tests', '958',
+    '--minimum-nested-tests', '8', '--report', $historicalReport)
+if (-not (Test-Path -LiteralPath $historicalReport -PathType Leaf)) {
+    throw "Historical regression evidence missing: $historicalReport"
+}
+$historicalEvidence = Get-Content -LiteralPath $historicalReport -Raw | ConvertFrom-Json
+if ($historicalEvidence.status -ne 'PASS') {
+    throw "Historical regression report is not PASS: $historicalReport"
 }
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','StorageScope.spec')
 # Independent console-mode gate: no Python required on the target PC.
