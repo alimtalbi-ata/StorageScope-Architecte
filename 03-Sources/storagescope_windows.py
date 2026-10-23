@@ -476,7 +476,7 @@ def launch():
                     lines += ['', 'Rejets (20 premiers) :'] + report['rejected'][:20]
                 if report['quarantined_system_ids']:
                     lines += ['', 'Systèmes en quarantaine (20 premiers) :'] + report['quarantined_system_ids'][:20]
-                rendered = '\\n'.join(lines)
+                rendered = '\n'.join(lines)
             except (OSError, ValueError, TypeError) as exc:
                 status.set('Snapshot NAS · import refusé')
                 messagebox.showerror('Import fournisseur NAS', str(exc), parent=root)
