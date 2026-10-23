@@ -56,7 +56,11 @@ def stage_historical_upgrade_workflow(sources: Path, tests: Path) -> None:
     """
     archived = sources / "Ressources" / ".github" / "workflows" / "windows-upgrade-e2e.yml"
     if not archived.is_file():
-        raise FileNotFoundError("Missing archived Windows upgrade workflow fixture: " + str(archived))
+        # Minimal/synthetic checkouts do not carry the historical v5.89 test.
+        # Fail closed only when that test actually requires this fixture.
+        if (tests / "test_windows_portable_v589.py").is_file():
+            raise FileNotFoundError("Missing archived Windows upgrade workflow fixture: " + str(archived))
+        return
     target = tests / ".github" / "workflows" / archived.name
     if target.exists():
         if target.read_bytes() != archived.read_bytes():
