@@ -1,12 +1,13 @@
 import unittest, tempfile, shutil
 from pathlib import Path
 import importlib.util
-spec=importlib.util.spec_from_file_location('verify',Path(__file__).parent/'verify-windows-build.py')
+spec=importlib.util.spec_from_file_location('verify',Path(__file__).resolve().parents[1]/'02-Compilation-Windows'/'verify-windows-build.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-validate=module.validate
 ROOT = Path(__file__).parent
+module.ROOT = ROOT
+validate=module.validate
 class BuildV578(unittest.TestCase):
-    def test_preflight(self): self.assertEqual(validate(), '6.17')
+    def test_preflight(self): self.assertEqual(validate(), (ROOT/'VERSION').read_text(encoding='utf-8').strip())
     def test_delegation(self):
         for name in ('build-windows.ps1','build-installer-windows.ps1'):
             self.assertIn('build-all-windows.ps1', (ROOT/name).read_text())
