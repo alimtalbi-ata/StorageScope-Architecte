@@ -68,7 +68,7 @@ class PublicationRollbackContract(unittest.TestCase):
 
     def test_sha_before_promotion(self):
         code = SCRIPT.read_text(encoding="utf-8")
-        self.assertLess(code.index("Publication alteree:"), code.index("'publish-transaction.py'"))
+        self.assertLess(code.index("Publication alteree:"), code.index('--pending $publishRoot'))
         self.assertIn("Get-FileHash", code)
 
 
