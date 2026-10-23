@@ -46,7 +46,7 @@ def assess(topology, warning_percent=85, critical_percent=95):
     hosts = set()
     storage = set()
     paths_by_pair = defaultdict(list)
-    seen_paths = set()
+    path_states = {}
     invalid_count = 0
 
     def emit(level, code, object_id, evidence, action):
@@ -106,10 +106,16 @@ def assess(topology, warning_percent=85, critical_percent=95):
             continue
         # Two records on one fabric do not constitute two independent fabrics.
         signature = (host, target, fabric, _identifier(item.get("port")))
-        if signature in seen_paths:
-            emit("MEDIUM", "DUPLICATE_PATH_EVIDENCE", f"paths[{i}]", "Repeated endpoint/fabric/port", "Deduplicate discovery evidence")
+        if signature in path_states:
+            if path_states[signature] != state:
+                emit("HIGH", "CONFLICTING_PATH_STATE", f"paths[{i}]", "Conflicting states for one endpoint/fabric/port", "Reconcile timestamped path telemetry")
+                path_states[signature] = "unknown"
+            else:
+                emit("MEDIUM", "DUPLICATE_PATH_EVIDENCE", f"paths[{i}]", "Repeated endpoint/fabric/port", "Deduplicate discovery evidence")
             continue
-        seen_paths.add(signature)
+        path_states[signature] = state
+
+    for (host, target, fabric, _port), state in path_states.items():
         paths_by_pair[(host, target)].append((fabric, state))
 
     for host, target in sorted(paths_by_pair):
