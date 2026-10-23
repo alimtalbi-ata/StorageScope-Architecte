@@ -12,6 +12,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Qualify the PR's exact head, not GitHub's synthetic merge ref.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -210,6 +213,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path 'source-delivery' | Out-Null
           $archive = 'source-delivery/StorageScope-V6.200-SOURCES-EXACT-HEAD.zip'
+          $expected = '${{ github.event.pull_request.head.sha || github.sha }}'
+          $actual = (& git rev-parse HEAD).Trim()
+          if ($actual -ne $expected) { throw "Source checkout SHA mismatch: $actual != $expected" }
           & git archive --format=zip --output=$archive HEAD
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw 'Tracked source archive failed' }
           $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
