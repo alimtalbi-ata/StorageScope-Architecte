@@ -107,7 +107,7 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                                  'Invalid import destroyed previously loaded inventory')
                 self.assertTrue(any('vol-gui' in w.get('1.0', 'end') for w in details),
                                 'Invalid import erased previously selected NAS share details')
-                self.assertEqual(table.item(table.get_children()[0], 'values')[0],
+                self.assertEqual(table.item(table.get_children()[0], 'values')[2],
                                  'netapp_ontap:GUI-001',
                                  'Invalid import changed the previously loaded NAS identity')
                 # Existing CSV must never be overwritten, even through the GUI.
