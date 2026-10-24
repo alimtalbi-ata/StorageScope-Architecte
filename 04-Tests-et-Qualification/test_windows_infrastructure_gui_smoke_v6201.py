@@ -63,6 +63,16 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                 importer = next(w for w in buttons if 'Importer un snapshot' in w.cget('text'))
                 exporter = next(w for w in buttons if 'Exporter le tableau' in w.cget('text'))
                 table = next(w for w in widgets if isinstance(w, ttk.Treeview))
+                # Empty inventory: export must not create a file or prompt for a destination.
+                with patch('tkinter.filedialog.asksaveasfilename') as save_dialog:
+                    with patch('tkinter.messagebox.showinfo') as empty_info:
+                        exporter.invoke()
+                self.assertTrue(empty_info.called, 'Empty inventory warning missing')
+                save_dialog.assert_not_called()
+                # Canceling the file picker must leave the table untouched.
+                with patch('tkinter.filedialog.askopenfilename', return_value=''):
+                    importer.invoke()
+                self.assertFalse(table.get_children(), 'Canceled import modified inventory')
                 with patch('tkinter.filedialog.askopenfilename', return_value=str(snapshot)):
                     importer.invoke()
                 self.assertEqual(len(table.get_children()), 1, 'Import button did not populate NAS table')
