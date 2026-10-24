@@ -80,7 +80,19 @@ def format_risk_report(report, limit=200):
                 f"Horodatages absents : {times['missing_observations']}",
                 f"Horodatages invalides : {times['invalid_observations']}",
                 f"Dernière observation datée (non authentifiée) : {times['latest_parsed_utc'] or 'aucune'}",
-                'Fraîcheur : NON ÉVALUÉE (aucune heure de collecte inférée)',
+                ('Fraîcheur : ÉVALUÉE PAR POLITIQUE EXPLICITE (non authentifiée)'
+                 if impact.get('freshness_evaluation') is not None
+                 else 'Fraîcheur : NON ÉVALUÉE (aucune heure de collecte inférée)'),
+            ])
+        freshness = impact.get('freshness_evaluation')
+        if freshness is not None:
+            lines.extend([
+                f"Politique de fraîcheur : référence {freshness['reference_time']}",
+                f"Observations dans la fenêtre : {freshness['fresh_observations']}",
+                f"Observations périmées : {freshness['stale_observations']}",
+                f"Observations futures : {freshness['future_observations']}",
+                f"Observations sans date : {freshness['missing_observations']}",
+                'Horloge et origine des données : NON AUTHENTIFIÉES',
             ])
         for asset in impact['assets'][:limit]:
             lines.append(f"[{asset['scope']}] {asset['asset_id']} ({asset['kind']}) "
