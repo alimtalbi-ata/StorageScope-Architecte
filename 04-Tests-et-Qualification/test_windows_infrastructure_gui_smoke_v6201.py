@@ -113,6 +113,20 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                                     'Vendor SMB share details missing after switching vendor')
                     self.assertFalse(any('vol-gui' in w.get('1.0', 'end') for w in details),
                                      'Previous vendor share details leaked into new inventory')
+                # Reject a malformed snapshot after switching vendors, preserving the
+                # latest valid vendor identity and the selected SMB share details.
+                malformed_switch = Path(folder) / 'invalid-after-switch.json'
+                malformed_switch.write_text('{ invalid', encoding='utf-8')
+                with patch('tkinter.filedialog.askopenfilename', return_value=str(malformed_switch)):
+                    with patch('tkinter.messagebox.showerror') as switch_error:
+                        importer.invoke()
+                self.assertTrue(switch_error.called, 'Malformed vendor switch did not report an error')
+                self.assertEqual(len(table.get_children()), 1)
+                self.assertEqual(table.item(table.get_children()[0], 'values')[2],
+                                 'pure_flashblade:GUI-002',
+                                 'Failed vendor switch replaced the last valid inventory')
+                self.assertTrue(any('share-smb' in w.get('1.0', 'end') for w in details),
+                                'Failed vendor switch erased selected SMB share details')
                 # Restore NetApp for the existing CSV and fail-closed regression assertions.
                 with patch('tkinter.filedialog.askopenfilename', return_value=str(snapshot)):
                     importer.invoke()
