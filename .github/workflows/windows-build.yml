@@ -221,6 +221,23 @@ jobs:
           if (-not (@($quotaReport.rejected) | Where-Object { $_ -match 'inconsistent quota' })) { throw 'Frozen unique quota rejection reason missing' }
           $quotaHash = (Get-FileHash -LiteralPath $quotaInput -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($quotaReport.snapshot_sha256 -ne $quotaHash) { throw 'Frozen unique quota snapshot digest mismatch' }
+          # V6.207: a non-object share record invalidates sibling share evidence.
+          # The other NAS in the same snapshot must remain unaffected.
+          $malformedInput = Join-Path $env:RUNNER_TEMP 'vendor-malformed-share-v6207.json'
+          $malformedOutput = Join-Path $env:RUNNER_TEMP 'vendor-malformed-share-v6207-report.json'
+          $malformedJson = '{"schema":"storagescope.vendor-snapshot.v1","vendor":"netapp_ontap","source_ref":"synthetic-v6207","collected_at":"2026-10-24T02:00:00Z","systems":[{"serial_number":"SN-MALFORMED","volumes":[{"uuid":"clean","protocol":"NFS","used_bytes":1073741824,"quota_bytes":2147483648},null]},{"serial_number":"SN-OK","volumes":[{"uuid":"safe","protocol":"SMB","used_bytes":1073741824,"quota_bytes":2147483648}]}]}'
+          [IO.File]::WriteAllText($malformedInput, $malformedJson, [Text.UTF8Encoding]::new($false))
+          $malformedArgs = @('--vendor-snapshot-file', ('"{0}"' -f $malformedInput), ('"{0}"' -f $malformedOutput))
+          $malformedProcess = Start-Process -FilePath $exe -ArgumentList $malformedArgs -Wait -PassThru
+          if ($malformedProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $malformedOutput -PathType Leaf)) { throw 'Frozen malformed share CLI failed' }
+          $malformedReport = Get-Content -Raw -LiteralPath $malformedOutput | ConvertFrom-Json
+          if ($malformedReport.assessment -ne 'INCOMPLETE' -or $malformedReport.automatic_changes -ne 0) { throw 'Frozen malformed share report contract invalid' }
+          if (@($malformedReport.quarantined_share_asset_ids).Count -ne 1 -or $malformedReport.quarantined_share_asset_ids[0] -ne 'netapp_ontap:SN-MALFORMED') { throw 'Frozen malformed share quarantine missing' }
+          if (@($malformedReport.topology.shares).Count -ne 1 -or $malformedReport.topology.shares[0].nas_id -ne 'netapp_ontap:SN-OK') { throw 'Frozen executable retained unsafe shares or lost unaffected NAS evidence' }
+          if (-not (@($malformedReport.rejected) | Where-Object { $_ -match 'not an object' })) { throw 'Frozen malformed share rejection reason missing' }
+          $malformedHash = (Get-FileHash -LiteralPath $malformedInput -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($malformedReport.snapshot_sha256 -ne $malformedHash) { throw 'Frozen malformed share snapshot digest mismatch' }
+          Write-Host 'Frozen V6.207 malformed NAS share quarantine PASS'
           Write-Host 'Frozen offline vendor CLI PASS: 3 vendors, exclusive output, ambiguous JSON, duplicate shares and unique bad quotas quarantined'
       - name: Qualify native binaries
         shell: pwsh
