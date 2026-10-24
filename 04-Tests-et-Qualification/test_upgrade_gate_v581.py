@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from upgrade_gate_v581 import prepare_upgrade
 from storagescope_windows import verify_backup_snapshot
@@ -9,12 +10,12 @@ class UpgradeGateTests(unittest.TestCase):
     def test_verified_snapshot(self):
         with tempfile.TemporaryDirectory() as root:
             data=Path(root)/'data';data.mkdir()
-            with sqlite3.connect(data/'campaigns.sqlite') as db:
+            with closing(sqlite3.connect(data/'campaigns.sqlite')) as db, db:
                 db.execute('create table t (id integer)');db.execute('insert into t values (7)')
             result=prepare_upgrade(data,Path(root)/'backups')
             self.assertTrue(result['safe'])
             self.assertTrue(verify_backup_snapshot(result['snapshot']))
-            with sqlite3.connect(data/'campaigns.sqlite') as db:
+            with closing(sqlite3.connect(data/'campaigns.sqlite')) as db, db:
                 self.assertEqual(db.execute('select id from t').fetchone()[0],7)
     def test_no_data_rejected(self):
         with tempfile.TemporaryDirectory() as root:

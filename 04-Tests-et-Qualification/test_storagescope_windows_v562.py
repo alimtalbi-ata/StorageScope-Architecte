@@ -1,5 +1,6 @@
 """Windows shell regression tests. Author: Abdelhalim Talbi."""
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,13 +16,13 @@ class TestWindowsShell562(unittest.TestCase):
     def test_backup_consistent(self):
         with tempfile.TemporaryDirectory() as tmp:
             paths = application_paths(Path(tmp)/'active')
-            with sqlite3.connect(paths['decisions']) as db:
+            with closing(sqlite3.connect(paths['decisions'])) as db, db:
                 db.execute('CREATE TABLE t(x INTEGER)')
                 db.execute('INSERT INTO t VALUES(42)')
             output = backup_databases(paths, Path(tmp)/'backup')
             self.assertEqual(len(output), 1)
             self.assertEqual(database_health(output[0]), 'OK')
-            with sqlite3.connect(output[0]) as db:
+            with closing(sqlite3.connect(output[0])) as db, db:
                 self.assertEqual(db.execute('SELECT x FROM t').fetchone()[0],42)
     def test_reject_same_folder(self):
         with tempfile.TemporaryDirectory() as tmp:
