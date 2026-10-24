@@ -2,9 +2,7 @@ name: Build and qualify StorageScope Windows
 on:
   workflow_dispatch:
   pull_request:
-    # Include the stacked SAN/NAS review branch so feature changes receive
-    # a full native Windows qualification, not governance-only CI.
-    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023, feature/storagescope-v6.195-identity-quarantine-20261023, feature/storagescope-v6.196-desktop-san-nas-review-20261023, feature/storagescope-v6.197-cmdb-provenance-20261023, feature/storagescope-v6.198-cmdb-desktop-20261023, feature/storagescope-v6.199-dependency-impact-20261023, feature/storagescope-v6.200-path-evidence-quarantine-20261023, feature/storagescope-v6.201-offline-vendor-snapshots-20261023, feature/storagescope-v6.202-frozen-vendor-cli-20261023, feature/storagescope-v6.203-vendor-share-evidence-quarantine-20261024, feature/storagescope-v6.204-nas-quarantine-visibility-20261024]
+    # Qualify stacked feature PRs on their exact head, not only legacy base branches.
   push:
     branches: [main]
 jobs:
