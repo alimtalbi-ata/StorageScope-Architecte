@@ -712,6 +712,10 @@ def main(argv=None):
         # Frozen Windows CLI: local provenance-aware review, never overwrite evidence.
         export_cmdb_report(args[1], args[2])
         return 0
+    if len(args) == 3 and args[0] == '--vendor-snapshot-file':
+        # Exercise the same strict vendor importer inside the frozen Windows binary.
+        from vendor_snapshot_import_v6201 import main as import_vendor_snapshot
+        return import_vendor_snapshot(args[1:])
     if args and args[0] == '--benchmarks':
         if len(args) != 2:
             raise SystemExit('Usage: --benchmarks DATABASE')
