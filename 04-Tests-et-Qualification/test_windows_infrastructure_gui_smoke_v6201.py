@@ -105,6 +105,11 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                 self.assertTrue(error_dialog.called, 'Invalid import did not surface a GUI error')
                 self.assertEqual(len(table.get_children()), 1,
                                  'Invalid import destroyed previously loaded inventory')
+                self.assertTrue(any('vol-gui' in w.get('1.0', 'end') for w in details),
+                                'Invalid import erased previously selected NAS share details')
+                self.assertEqual(table.item(table.get_children()[0], 'values')[0],
+                                 'netapp_ontap:GUI-001',
+                                 'Invalid import changed the previously loaded NAS identity')
                 # Existing CSV must never be overwritten, even through the GUI.
                 original_csv = destination.read_bytes()
                 with patch('tkinter.filedialog.asksaveasfilename', return_value=str(destination)):
