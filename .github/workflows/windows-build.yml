@@ -138,6 +138,45 @@ jobs:
           $rejected = Start-Process -FilePath $exe -ArgumentList $badArgs -Wait -PassThru
           if ($rejected.ExitCode -eq 0 -or (Test-Path -LiteralPath $badOutput)) { throw 'Frozen CMDB parser accepted duplicate JSON property' }
           Write-Host 'Frozen CMDB provenance and conflict review PASS'
+      - name: Verify frozen offline NAS vendor import and rejection
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'vendor-snapshot-valid.json'
+          $output = Join-Path $env:RUNNER_TEMP 'vendor-snapshot-normalized.json'
+          $badInput = Join-Path $env:RUNNER_TEMP 'vendor-snapshot-invalid.json'
+          $badOutput = Join-Path $env:RUNNER_TEMP 'vendor-snapshot-rejected.json'
+          $gib = [long]1073741824
+          $snapshot = @{
+            schema = 'storagescope.vendor-snapshot.v1'
+            vendor = 'netapp_ontap'
+            source_ref = 'windows-frozen-qualification'
+            collected_at = '2026-10-24T10:00:00Z'
+            systems = @(@{
+              serial_number = 'ONTAP-WIN-001'
+              cluster_name = 'nas-windows'
+              capacity_used_bytes = 20 * $gib
+              capacity_total_bytes = 100 * $gib
+              volumes = @(@{
+                uuid = 'vol-nfs'
+                protocol = 'NFS'
+                used_bytes = 10 * $gib
+                quota_bytes = 20 * $gib
+              })
+            })
+          }
+          [IO.File]::WriteAllText($input, ($snapshot | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+          $arguments = @('--vendor-snapshot-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen vendor import failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          if ($report.assessment -ne 'OBSERVED_ONLY' -or $report.automatic_changes -ne 0 -or @($report.topology.assets).Count -ne 1 -or @($report.topology.shares).Count -ne 1) { throw 'Frozen vendor import contract mismatch' }
+          [IO.File]::WriteAllText($badInput, '{"schema":"a","schema":"b"}', [Text.UTF8Encoding]::new($false))
+          $badArguments = @('--vendor-snapshot-file', ('"{0}"' -f $badInput), ('"{0}"' -f $badOutput))
+          $rejected = Start-Process -FilePath $exe -ArgumentList $badArguments -Wait -PassThru
+          if ($rejected.ExitCode -eq 0 -or (Test-Path -LiteralPath $badOutput)) { throw 'Frozen vendor parser failed closed' }
+          Write-Host 'Frozen NAS vendor import PASS: valid topology produced; invalid input rejected'
       - name: Qualify native binaries
         shell: pwsh
         run: |
