@@ -1,0 +1,41 @@
+name: Offline vendor snapshot qualification
+on:
+  pull_request:
+    paths:
+      - '03-Sources/vendor_snapshot_import_v6201.py'
+      - '03-Sources/storagescope_windows.py'
+      - '04-Tests-et-Qualification/test_vendor_snapshot_import_v6201.py'
+      - '04-Tests-et-Qualification/test_vendor_desktop_integration_v6201.py'
+      - '04-Tests-et-Qualification/test_vendor_frozen_cli_v6202.py'
+      - '04-Tests-et-Qualification/test_vendor_share_conflict_v6203.py'
+      - '04-Tests-et-Qualification/test_vendor_quarantine_visibility_v6204.py'
+      - '04-Tests-et-Qualification/test_vendor_source_digest_v6205.py'
+      - '04-Tests-et-Qualification/test_vendor_quota_quarantine_v6206.py'
+      - '.github/workflows/vendor-snapshot-qualification.yml'
+  workflow_dispatch:
+jobs:
+  vendor-snapshot:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Vendor adapter and SAN regression tests
+        shell: bash
+        run: |
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_vendor_snapshot_import_v6201.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_quarantine_v6200.py' -v
+          python -m py_compile 03-Sources/storagescope_windows.py
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_vendor_desktop_integration_v6201.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_vendor_frozen_cli_v6202.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_vendor_share_conflict_v6203.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_vendor_quarantine_visibility_v6204.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_vendor_source_digest_v6205.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_vendor_quota_quarantine_v6206.py' -v

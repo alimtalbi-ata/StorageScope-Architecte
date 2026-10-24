@@ -3,6 +3,12 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $version = (Get-Content (Join-Path $root '07-Manifestes/VERSION') -Raw).Trim()
 $report = [ordered]@{version=$version; timestamp_utc=(Get-Date).ToUniversalTime().ToString('o'); host=$env:COMPUTERNAME; checks=@(); overall='FAIL'}
+# The application is a GUI-subsystem PyInstaller EXE. PowerShell's & can
+# return before the GUI process exits; wait and inspect the real exit code.
+function Invoke-Frozen([string]$Exe,[string[]]$Arguments) {
+  $process = Start-Process -FilePath $Exe -ArgumentList $Arguments -Wait -PassThru
+  if ($process.ExitCode -ne 0) { throw "Frozen executable failed (exit $($process.ExitCode)): $Exe" }
+}
 function Check([string]$name,[scriptblock]$action) {
   try { & $action; $script:report.checks += @{name=$name; status='PASS'} }
   catch { $script:report.checks += @{name=$name; status='FAIL'; error="$($_.Exception.Message)"} }
@@ -15,11 +21,11 @@ $setup = Join-Path $PSScriptRoot "installer/StorageScope-Setup-v$version.exe"
 if (-not $SkipInstaller) { Check 'release_manifest' { $m = Join-Path $PSScriptRoot ("installer/release-manifest-v$version.json"); if (-not (Test-Path $m)) { throw 'Release manifest missing' }; $manifest = Get-Content -LiteralPath $m -Raw | ConvertFrom-Json; if ($manifest.version -ne $version) { throw 'Release manifest version mismatch' }; foreach ($a in $manifest.artifacts) { $candidates = @((Join-Path $PSScriptRoot ('dist/' + $a.filename)), (Join-Path $PSScriptRoot ('installer/' + $a.filename))); $found = @($candidates | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-Item -LiteralPath $_ }); if ($found.Count -ne 1) { throw "Artifact missing/ambiguous: $($a.filename)" }; if ((Get-FileHash -LiteralPath $found[0].FullName -Algorithm SHA256).Hash -ne $a.sha256) { throw "Artifact hash mismatch: $($a.filename)" } } } }
 Check 'compiled_executable' { if (-not (Test-Path $dist)) { throw 'EXE not built' }; if ((Get-Item $dist).Length -lt 1024) { throw 'EXE too small' } }
 if (Test-Path $dist) {
-  Check 'executable_version' { $probe = Join-Path $PSScriptRoot 'version-probe-build.txt'; if (Test-Path $probe) { Remove-Item $probe -Force }; & $dist --version-file $probe; if ($LASTEXITCODE -ne 0 -or -not (Test-Path $probe)) { throw 'Version probe failed' }; $out = (Get-Content $probe -Raw).Trim(); Remove-Item $probe -Force; if ($out -ne $version) { throw "Expected $version got $out" } }
-  Check 'executable_self_test' { & $dist --self-test; if ($LASTEXITCODE -ne 0) { throw "Self-test failed: $LASTEXITCODE" } }
+  Check 'executable_version' { $probe = Join-Path $PSScriptRoot 'version-probe-build.txt'; if (Test-Path $probe) { Remove-Item $probe -Force }; Invoke-Frozen $dist @('--version-file', ('"{0}"' -f $probe)); if (-not (Test-Path $probe)) { throw 'Version probe failed' }; $out = (Get-Content $probe -Raw).Trim(); Remove-Item $probe -Force; if ($out -ne $version) { throw "Expected $version got $out" } }
+  Check 'executable_self_test' { Invoke-Frozen $dist @('--self-test') }
 }
 if (-not $SkipInstaller) { Check 'installer_present' { if (-not (Test-Path $setup)) { throw 'Installer missing' }; if ((Get-Item $setup).Length -lt 1024) { throw 'Installer too small' } } }
-if ($InstallPath) { Check 'installed_executable' { $exe=Join-Path $InstallPath 'StorageScope.exe'; if (-not (Test-Path $exe)) { throw 'Installed executable missing' }; $probe = Join-Path $PSScriptRoot 'version-probe-installed.txt'; if (Test-Path $probe) { Remove-Item $probe -Force }; & $exe --version-file $probe; if ($LASTEXITCODE -ne 0 -or -not (Test-Path $probe)) { throw 'Installed version probe failed' }; $installedVersion = (Get-Content $probe -Raw).Trim(); Remove-Item $probe -Force; if ($installedVersion -ne $version) { throw "Installed version mismatch: $installedVersion" } } }
+if ($InstallPath) { Check 'installed_executable' { $exe=Join-Path $InstallPath 'StorageScope.exe'; if (-not (Test-Path $exe)) { throw 'Installed executable missing' }; $probe = Join-Path $PSScriptRoot 'version-probe-installed.txt'; if (Test-Path $probe) { Remove-Item $probe -Force }; Invoke-Frozen $exe @('--version-file', ('"{0}"' -f $probe)); if (-not (Test-Path $probe)) { throw 'Installed version probe failed' }; $installedVersion = (Get-Content $probe -Raw).Trim(); Remove-Item $probe -Force; if ($installedVersion -ne $version) { throw "Installed version mismatch: $installedVersion" } } }
 $requiredChecks = @('release_version','build_launcher','release_manifest','compiled_executable','executable_version','executable_self_test','installer_present')
 $passedNames = @($report.checks | Where-Object { $_.status -eq 'PASS' } | ForEach-Object { $_.name })
 $missingChecks = @($requiredChecks | Where-Object { $_ -notin $passedNames })

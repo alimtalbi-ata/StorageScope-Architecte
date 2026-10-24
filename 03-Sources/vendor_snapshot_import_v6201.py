@@ -1,0 +1,216 @@
+"""Offline, fail-closed NetApp/PowerScale/FlashBlade inventory adapters.
+
+Only operator-supplied snapshots are accepted; no vendor API or CMDB writes.
+Author: Abdelhalim Talbi.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+from collections import Counter
+from datetime import datetime
+from pathlib import Path
+
+SCHEMA = 'storagescope.vendor-snapshot.v1'
+VENDORS = {
+    'netapp_ontap': ('serial_number', 'cluster_name', 'capacity_used_bytes', 'capacity_total_bytes', 'volumes', 'uuid'),
+    'dell_powerscale': ('serial', 'cluster', 'used_bytes', 'total_bytes', 'exports', 'id'),
+    'pure_flashblade': ('array_id', 'name', 'space_used_bytes', 'space_total_bytes', 'shares', 'id'),
+}
+IDENT = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$')
+MAX_BYTES = 5_000_000
+
+
+def _id(value):
+    return value if isinstance(value, str) and IDENT.fullmatch(value) else None
+
+
+def _gib(value):
+    if value is None:
+        return None
+    if type(value) is not int or value < 0:
+        raise ValueError('Capacity must be a nonnegative integer number of bytes')
+    return round(value / 1073741824, 6)
+
+
+def _unique_pairs(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('Duplicate JSON property rejected')
+        result[key] = value
+    return result
+
+
+def load_snapshot_with_digest(path):
+    """Parse exactly the bytes hashed for the report; bound reads even on special files.
+
+    The digest attests to source bytes, not to the vendor's identity or truthfulness.
+    """
+    with Path(path).open('rb') as stream:
+        raw = stream.read(MAX_BYTES + 1)
+    if len(raw) > MAX_BYTES:
+        raise ValueError('Snapshot exceeds 5 MB')
+    snapshot = json.loads(raw.decode('utf-8-sig'), object_pairs_hook=_unique_pairs,
+                          parse_constant=lambda value: (_ for _ in ()).throw(ValueError('Non-finite JSON number')))
+    return snapshot, hashlib.sha256(raw).hexdigest()
+
+
+def load_snapshot(path):
+    """Compatibility reader for existing callers; same strict bounded parser."""
+    return load_snapshot_with_digest(path)[0]
+
+
+def normalize(snapshot, *, source_sha256=None):
+    """Return topology + provenance + quarantine; never silently certify missing data."""
+    if not isinstance(snapshot, dict) or snapshot.get('schema') != SCHEMA:
+        raise ValueError('Unsupported vendor snapshot schema')
+    vendor = snapshot.get('vendor')
+    if not isinstance(vendor, str) or vendor not in VENDORS:
+        raise ValueError('Unsupported vendor; no generic fallback')
+    source_ref = _id(snapshot.get('source_ref'))
+    timestamp = snapshot.get('collected_at')
+    if not source_ref or not isinstance(timestamp, str) or not timestamp.endswith('Z'):
+        raise ValueError('Trusted source_ref and UTC collection time required')
+    try:
+        parsed = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+    except ValueError as exc:
+        raise ValueError('Invalid collection timestamp') from exc
+    if parsed.tzinfo is None or parsed.utcoffset().total_seconds() != 0:
+        raise ValueError('UTC timestamp required')
+    if source_sha256 is not None and (not isinstance(source_sha256, str) or
+                                      not re.fullmatch(r'[0-9a-f]{64}', source_sha256)):
+        raise ValueError('Invalid source SHA-256 evidence')
+    systems = snapshot.get('systems')
+    if not isinstance(systems, list) or len(systems) > 1000:
+        raise ValueError('systems must be an array of at most 1000 entries')
+    serial_key, name_key, used_key, total_key, shares_key, share_id_key = VENDORS[vendor]
+    ids = Counter(_id(s.get(serial_key)) for s in systems if isinstance(s, dict) and _id(s.get(serial_key)))
+    duplicate_ids = sorted(k for k, count in ids.items() if count > 1)
+    assets, shares, rejected = [], [], []
+    seen_shares = set()
+    quarantined_share_assets = set()
+    share_count = 0
+    for index, system in enumerate(systems):
+        if not isinstance(system, dict):
+            rejected.append(f'systems[{index}]: not an object')
+            continue
+        serial = _id(system.get(serial_key))
+        if not serial or serial in duplicate_ids:
+            rejected.append(f'systems[{index}]: missing or duplicate system identity')
+            continue
+        try:
+            used, total = _gib(system.get(used_key)), _gib(system.get(total_key))
+        except ValueError:
+            rejected.append(f'systems[{index}]: invalid capacity')
+            continue
+        # Validate the original integer bytes: rounded GiB can hide a 1-byte overrun.
+        if system.get(used_key) is not None and system.get(total_key) is not None and (system[total_key] == 0 or system[used_key] > system[total_key]):
+            rejected.append(f'systems[{index}]: inconsistent capacity')
+            continue
+        entries = system.get(shares_key, [])
+        if not isinstance(entries, list):
+            rejected.append(f'systems[{index}]: shares not an array')
+            continue
+        share_count += len(entries)
+        if share_count > 10000:
+            raise ValueError('Snapshot exceeds 10000 share records')
+        asset_id = f'{vendor}:{serial}'
+        # Evaluate *all* observations before validating individual quotas.
+        # A malformed duplicate is still conflicting evidence: otherwise the
+        # first valid observation would be certified when the second is skipped.
+        observed_share_ids = Counter(
+            (entry.get('protocol'), _id(entry.get(share_id_key)))
+            for entry in entries
+            if isinstance(entry, dict) and entry.get('protocol') in ('NFS', 'SMB')
+            and _id(entry.get(share_id_key))
+        )
+        if any(count > 1 for count in observed_share_ids.values()):
+            rejected.append(f'systems[{index}]: conflicting duplicate share evidence')
+            quarantined_share_assets.add(asset_id)
+        asset = {'id': asset_id, 'kind': 'nas', 'vendor': vendor, 'source_ref': source_ref,
+                 'collected_at': timestamp}
+        if isinstance(system.get(name_key), str):
+            asset['name'] = system[name_key]
+        if used is not None:
+            asset['used_gib'] = used
+        if total is not None:
+            asset['total_gib'] = total
+        assets.append(asset)
+        for j, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                rejected.append(f'systems[{index}].shares[{j}]: not an object')
+                continue
+            sid = _id(entry.get(share_id_key))
+            protocol = entry.get('protocol')
+            share_id = f'{asset_id}:{protocol}:{sid}'
+            if not sid or protocol not in ('NFS', 'SMB') or share_id in seen_shares:
+                rejected.append(f'systems[{index}].shares[{j}]: invalid or duplicate share identity')
+                quarantined_share_assets.add(asset_id)
+                continue
+            try:
+                share_used = _gib(entry.get('used_bytes'))
+                quota = _gib(entry.get('quota_bytes'))
+            except ValueError:
+                rejected.append(f'systems[{index}].shares[{j}]: invalid quota')
+                # Malformed share evidence makes this NAS share set untrustworthy,
+                # even when other share identifiers are individually valid.
+                quarantined_share_assets.add(asset_id)
+                continue
+            # Do not compare rounded GiB; even a 1-byte quota violation matters.
+            if entry.get('used_bytes') is not None and entry.get('quota_bytes') is not None and (entry['quota_bytes'] == 0 or entry['used_bytes'] > entry['quota_bytes']):
+                rejected.append(f'systems[{index}].shares[{j}]: inconsistent quota')
+                quarantined_share_assets.add(asset_id)
+                continue
+            seen_shares.add(share_id)
+            share = {'id': share_id, 'nas_id': asset_id, 'protocol': protocol,
+                     'source_ref': source_ref, 'collected_at': timestamp}
+            if share_used is not None:
+                share['used_gib'] = share_used
+            if quota is not None:
+                share['quota_gib'] = quota
+            shares.append(share)
+    # Never certify any share on a system with ambiguous share identity.
+    # This is independent of observation order and quota validation outcome.
+    if quarantined_share_assets:
+        shares = [s for s in shares if s['nas_id'] not in quarantined_share_assets]
+    topology = {'schema': 'storagescope.storage-topology.v1', 'assets': assets,
+                'paths': [], 'shares': shares}
+    return {'schema': 'storagescope.vendor-import-report.v1', 'vendor': vendor,
+            'snapshot_sha256': source_sha256,
+            'source_ref': source_ref, 'collected_at': timestamp,
+            'topology': topology, 'quarantined_system_ids': duplicate_ids,
+            'quarantined_share_asset_ids': sorted(quarantined_share_assets),
+            'rejected': sorted(rejected), 'assessment': 'INCOMPLETE' if rejected or duplicate_ids or not assets else 'OBSERVED_ONLY',
+            'automatic_changes': 0}
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description='Read-only offline vendor snapshot normalization')
+    parser.add_argument('input', help='Vendor snapshot JSON (maximum 5 MB)')
+    parser.add_argument('output', help='New normalized report JSON (must not exist)')
+    args = parser.parse_args(argv)
+    snapshot, digest = load_snapshot_with_digest(args.input)
+    report = normalize(snapshot, source_sha256=digest)
+    target = Path(args.output)
+    stream = target.open('x', encoding='utf-8')
+    try:
+        with stream:
+            json.dump(report, stream, indent=2, sort_keys=True, ensure_ascii=False)
+            stream.write('\n')
+            stream.flush()
+    except BaseException:
+        # The output was exclusively created by this invocation. Do not leave
+        # truncated evidence after write, flush or close failures.
+        try:
+            target.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -22,10 +22,11 @@ class WindowsPortable589(unittest.TestCase):
 
     def test_onefile_portable_build(self):
         spec = (ROOT/'StorageScope.spec').read_text()
-        build = (ROOT/'build-all-windows.ps1').read_text()
+        build = (ROOT/'build-engine-windows.ps1').read_text(encoding='utf-8')
         self.assertIn('a.binaries, a.datas', spec)
         self.assertIn("name='StorageScope'", spec)
-        self.assertIn("'portable'", build)
+        self.assertIn('StorageScope-Portable-v', build)
+        self.assertIn('verify-portable-release.py',build)
         self.assertIn('Portable binary hash mismatch', build)
 
     def test_upgrade_e2e_workflow(self):
@@ -37,4 +38,6 @@ class WindowsPortable589(unittest.TestCase):
 
     def test_version(self):
         from storagescope_windows import VERSION
-        self.assertEqual(VERSION, '6.17')
+        release=(ROOT/'VERSION').read_text(encoding='utf-8').strip()
+        self.assertEqual(VERSION,release)
+        self.assertGreaterEqual(tuple(map(int,release.split('.'))),(6,17))
