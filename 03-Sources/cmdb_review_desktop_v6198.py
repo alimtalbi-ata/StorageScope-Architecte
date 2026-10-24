@@ -61,6 +61,7 @@ def format_cmdb_report(report, limit=100):
              f"Candidats à revue : {report['candidate_count']}",
              f"Enregistrements invalides : {len(report['invalid_records'])}",
              f"Indices en quarantaine : {len(report['quarantined_indices'])}",
+             f"Quarantaine par propagation : {len(report.get('propagated_quarantine_indices', []))}",
              'Lecture seule · Aucune fusion ni modification CMDB automatique', '']
     quarantined = report['quarantined_indices']
     if quarantined:
