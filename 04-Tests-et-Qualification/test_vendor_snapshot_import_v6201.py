@@ -116,6 +116,23 @@ class VendorSnapshotTests(unittest.TestCase):
                 self.assertTrue(any('inconsistent quota' in entry for entry in report['rejected']))
                 self.assertEqual(report['automatic_changes'], 0)
 
+    def test_system_usage_above_total_is_quarantined_for_each_vendor(self):
+        for vendor in ('netapp_ontap', 'dell_powerscale', 'pure_flashblade'):
+            with self.subTest(vendor=vendor):
+                data = sample(vendor)
+                used_key = {
+                    'netapp_ontap': 'capacity_used_bytes',
+                    'dell_powerscale': 'used_bytes',
+                    'pure_flashblade': 'space_used_bytes',
+                }[vendor]
+                data['systems'][0][used_key] = 101 * GIB
+                report = normalize(data)
+                self.assertEqual(report['topology']['assets'], [])
+                self.assertEqual(report['topology']['shares'], [])
+                self.assertEqual(report['assessment'], 'INCOMPLETE')
+                self.assertTrue(any('inconsistent capacity' in entry for entry in report['rejected']))
+                self.assertEqual(report['automatic_changes'], 0)
+
     def test_duplicate_system_quarantined(self):
         data = sample('netapp_ontap')
         data['systems'].append(copy.deepcopy(data['systems'][0]))
