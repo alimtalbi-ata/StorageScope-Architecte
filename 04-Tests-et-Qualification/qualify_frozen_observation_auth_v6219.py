@@ -68,6 +68,19 @@ def run(executable):
         without_key = dict(env)
         without_key.pop('STORAGESCOPE_HMAC_KEY_COLLECTOR_A', None)
         check('missing-key', original, without_key, 0, 0, 0)
+        # Prevent an attacker from bypassing signatures by stripping the policy.
+        downgraded = json.loads(json.dumps(original))
+        downgraded.pop('observation_auth_policy')
+        downgrade_input = root / 'downgrade.json'
+        downgrade_output = root / 'downgrade-report.json'
+        downgrade_input.write_text(json.dumps(downgraded), encoding='utf-8')
+        enforced = dict(env)
+        enforced['STORAGESCOPE_REQUIRE_OBSERVATION_AUTH'] = '1'
+        rejected = subprocess.run([str(executable), '--storage-risk-file',
+                                   str(downgrade_input), str(downgrade_output)],
+                                  env=enforced, capture_output=True, text=True, timeout=120)
+        if rejected.returncode == 0 or downgrade_output.exists():
+            raise AssertionError('Frozen policy-stripping downgrade was accepted')
     print('Frozen V6.219 HMAC authentication PASS (synthetic, no real secrets, read-only)')
 
 
