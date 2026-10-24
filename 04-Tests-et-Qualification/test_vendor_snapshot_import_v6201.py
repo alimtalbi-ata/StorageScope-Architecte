@@ -42,6 +42,29 @@ class VendorSnapshotTests(unittest.TestCase):
                 self.assertEqual(assess(result['topology'])['schema'], 'storagescope.storage-risk.v1')
                 self.assertEqual(result['automatic_changes'], 0)
 
+    def test_all_three_vendors_support_mixed_nfs_smb_shares(self):
+        for vendor in ('netapp_ontap', 'dell_powerscale', 'pure_flashblade'):
+            with self.subTest(vendor=vendor):
+                data = sample(vendor)
+                share_key = {
+                    'netapp_ontap': ('volumes', 'uuid'),
+                    'dell_powerscale': ('exports', 'id'),
+                    'pure_flashblade': ('shares', 'id'),
+                }[vendor]
+                collection, identity = share_key
+                data['systems'][0][collection].append({
+                    identity: 'share-smb', 'protocol': 'SMB',
+                    'used_bytes': 5 * GIB, 'quota_bytes': 10 * GIB,
+                })
+                result = normalize(data)
+                self.assertEqual(result['assessment'], 'OBSERVED_ONLY')
+                self.assertEqual(len(result['topology']['assets']), 1)
+                self.assertEqual(len(result['topology']['shares']), 2)
+                self.assertEqual(
+                    {share['protocol'] for share in result['topology']['shares']},
+                    {'NFS', 'SMB'})
+                self.assertEqual(result['automatic_changes'], 0)
+
     def test_duplicate_system_quarantined(self):
         data = sample('netapp_ontap')
         data['systems'].append(copy.deepcopy(data['systems'][0]))
