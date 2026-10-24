@@ -300,7 +300,29 @@ jobs:
           }
           $manifestPath = Join-Path $staging 'MANIFEST.json'
           [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+          # Validate source archive contents and declared commit before publishing.
+          $sourceZip = Join-Path $staging ('03-Sources-Exact-Head/StorageScope-V' + $version + '-SOURCES-EXACT-HEAD.zip')
+          if (-not (Test-Path -LiteralPath $sourceZip)) { throw 'Exact-head source ZIP missing in cumulative package' }
+          Add-Type -AssemblyName System.IO.Compression
+          $sourceArchive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $sourceZip).Path)
+          try {
+            $entries = @($sourceArchive.Entries | ForEach-Object FullName)
+            foreach ($required in @('03-Sources/storagescope_windows.py', '04-Tests-et-Qualification/test_windows_infrastructure_gui_smoke_v6201.py', '07-Manifestes/VERSION')) {
+              if ($required -notin $entries) { throw "Missing required tracked source: $required" }
+            }
+          } finally {
+            $sourceArchive.Dispose()
+          }
           Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $archive -CompressionLevel Optimal
+          $cumulative = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $archive).Path)
+          try {
+            $packaged = @($cumulative.Entries | ForEach-Object FullName)
+            foreach ($required in @('MANIFEST.json', '03-Sources-Exact-Head/StorageScope-V' + $version + '-SOURCES-EXACT-HEAD.zip')) {
+              if ($required -notin $packaged) { throw "Cumulative archive missing: $required" }
+            }
+          } finally {
+            $cumulative.Dispose()
+          }
           if (-not (Test-Path -LiteralPath $archive)) { throw 'Cumulative ZIP missing' }
           $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $archive" | Set-Content -LiteralPath 'StorageScope-WINDOWS-CUMULATIF-SHA256.txt' -Encoding ascii
