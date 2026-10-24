@@ -10,6 +10,8 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from storage_observation_time_v6215 import parse_observed_at
+
 LEVELS = ("CRITICAL", "HIGH", "MEDIUM", "INFO")
 VALID_KINDS = {"host", "storage_array", "nas", "san_switch"}
 ACTIVE_STATES = {"up", "active"}
@@ -117,6 +119,15 @@ def assess(topology, warning_percent=85, critical_percent=95):
         endpoints_valid = (host and target and fabric and host in hosts
                            and target in storage and assets[target]["kind"] == "storage_array")
         signature = (host, target, fabric, _identifier(item.get("port")))
+        if parse_observed_at(item)[0] == "INVALID":
+            invalid_count += 1
+            emit("HIGH", "INVALID_PATH_TIMESTAMP", f"paths[{i}]",
+                 "observed_at must be a timezone-aware ISO 8601 timestamp",
+                 "Recollect path evidence with an authenticated observation time")
+            if endpoints_valid:
+                invalid_state_signatures.add(signature)
+                path_states[signature] = "unknown"
+            continue
         if not host or not target or not fabric or not isinstance(state, str) or state not in KNOWN_STATES:
             invalid_count += 1
             emit("HIGH", "INVALID_PATH", f"paths[{i}]", "Missing endpoint/fabric or invalid state", "Correct path evidence")
@@ -192,6 +203,12 @@ def assess(topology, warning_percent=85, critical_percent=95):
         ident = _identifier(share.get("id"))
         if ident in duplicate_shares:
             continue  # All conflicting copies are quarantined.
+        if parse_observed_at(share)[0] == "INVALID":
+            invalid_count += 1
+            emit("HIGH", "INVALID_SHARE_TIMESTAMP", f"shares[{i}]",
+                 "observed_at must be a timezone-aware ISO 8601 timestamp",
+                 "Recollect share evidence with an authenticated observation time")
+            continue
         target = _identifier(share.get("nas_id"))
         protocol = share.get("protocol")
         if not ident or target not in assets or assets[target]["kind"] != "nas" or not isinstance(protocol, str) or protocol not in {"NFS", "SMB"}:
