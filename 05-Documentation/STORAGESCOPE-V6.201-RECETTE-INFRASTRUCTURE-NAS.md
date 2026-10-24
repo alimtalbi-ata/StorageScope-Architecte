@@ -23,6 +23,10 @@ Les snapshots sont des **preuves déclaratives hors ligne** : leur présence ne 
 9. Réexporter vers le CSV existant : l'opération doit être refusée et le fichier initial préservé.
 10. Répéter sur les trois formats fournisseur et sur les versions installée et portable. Pour chaque fournisseur, inclure dans le même système un partage NFS et un partage SMB ; vérifier que les deux protocoles apparaissent dans les détails et qu'aucune modification d'équipement ou de CMDB n'est effectuée.
 
+## Gestion des données partielles
+
+Pour chacun des trois fournisseurs, répéter l'import avec un partage dont `quota_bytes` vaut `-1`. Résultat attendu : le système NAS valide reste visible, le partage incorrect est rejeté, le rapport signale une observation `INCOMPLETE` et aucune modification automatique n'est exécutée. Le rejet d'un partage ne doit jamais être présenté comme un inventaire complet.
+
 ## Exemple synthétique (fictif — non issu d'une baie réelle)
 
 ```json
