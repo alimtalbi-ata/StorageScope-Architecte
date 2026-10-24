@@ -176,6 +176,17 @@ class ReplayLedgerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'symlink'):
             register_snapshot(data, link)
 
+    def test_forged_ledger_without_primary_key_is_rejected(self):
+        with closing(sqlite3.connect(self.ledger)) as db:
+            db.execute('PRAGMA user_version=1')
+            db.execute('CREATE TABLE collection_seen ('
+                       'source_ref TEXT, collection_id TEXT, '
+                       'observation_count INTEGER, accepted_utc TEXT)')
+            db.commit()
+        with self.assertRaisesRegex(ValueError, 'primary key'):
+            register_snapshot(snapshot(), self.ledger)
+        self.assertEqual(self.rows(), [])
+
     def test_read_only_assessment_does_not_touch_ledger(self):
         data = snapshot()
         self.assertEqual(assess(data)['verified_active_paths'], 1)
