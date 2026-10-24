@@ -21,7 +21,7 @@ Les snapshots sont des **preuves déclaratives hors ligne** : leur présence ne 
 7. Exporter le tableau en CSV vers un chemin neuf : ouvrir le fichier et vérifier les valeurs et l'encodage. Répéter l'export en annulant la boîte de dialogue : aucun fichier ne doit être créé et aucune erreur ne doit être affichée.
 8. Réimporter un JSON invalide : une erreur doit apparaître et **l'inventaire précédent doit être conservé**.
 9. Réexporter vers le CSV existant : l'opération doit être refusée et le fichier initial préservé.
-10. Répéter sur les trois formats fournisseur et sur les versions installée et portable.
+10. Répéter sur les trois formats fournisseur et sur les versions installée et portable. Pour chaque fournisseur, inclure dans le même système un partage NFS et un partage SMB ; vérifier que les deux protocoles apparaissent dans les détails et qu'aucune modification d'équipement ou de CMDB n'est effectuée.
 
 ## Exemple synthétique (fictif — non issu d'une baie réelle)
 
