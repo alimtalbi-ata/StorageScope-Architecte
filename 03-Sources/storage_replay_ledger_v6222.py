@@ -73,9 +73,16 @@ def _open_existing(path):
         names = db.execute("SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").fetchall()
         if names != [('table', 'collection_seen')]:
             raise ValueError('Unexpected replay ledger objects')
-        cols = [row[1] for row in db.execute('PRAGMA table_info(collection_seen)')]
-        if cols != ['source_ref', 'collection_id', 'observation_count', 'accepted_utc']:
-            raise ValueError('Invalid replay ledger table')
+        columns = list(db.execute('PRAGMA table_info(collection_seen)'))
+        if ([row[1] for row in columns] !=
+                ['source_ref', 'collection_id', 'observation_count', 'accepted_utc'] or
+                [row[5] for row in columns] != [1, 2, 0, 0]):
+            raise ValueError('Invalid replay ledger primary key')
+        schema_sql = db.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='collection_seen'"
+        ).fetchone()[0]
+        if schema_sql != _SCHEMA:
+            raise ValueError('Unexpected replay ledger table definition')
     except BaseException:
         db.close()
         raise
