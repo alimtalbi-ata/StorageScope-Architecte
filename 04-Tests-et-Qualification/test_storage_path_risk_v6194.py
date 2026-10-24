@@ -9,6 +9,9 @@ import json
 import unittest
 
 SOURCE = pathlib.Path(__file__).resolve().parents[1] / '03-Sources' / 'storage_path_risk_v6194.py'
+# The isolated spec loader does not add sibling modules to sys.path.
+# Include the real source root so dependency imports are exercised, not mocked.
+sys.path.insert(0, str(SOURCE.parent))
 spec = importlib.util.spec_from_file_location('storage_path_risk_v6194', SOURCE)
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
