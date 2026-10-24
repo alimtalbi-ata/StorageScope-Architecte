@@ -204,7 +204,24 @@ jobs:
           if ($conflictReport.snapshot_sha256 -ne $sourceHash) { throw 'Frozen executable source digest does not match the exact input bytes' }
           if (@($conflictReport.quarantined_share_asset_ids).Count -ne 1 -or $conflictReport.quarantined_share_asset_ids[0] -ne 'netapp_ontap:SN-CONFLICT') { throw 'Frozen executable did not expose quarantined NAS identity' }
           if (-not (@($conflictReport.rejected) | Where-Object { $_ -match 'conflicting duplicate share evidence' })) { throw 'Frozen duplicate share conflict reason missing' }
-          Write-Host 'Frozen offline vendor CLI PASS: 3 vendors, exclusive output, ambiguous JSON and share conflicts rejected'
+          # V6.206: a different share ID with a malformed quota must also
+          # quarantine every share on the affected NAS, not only that record.
+          $quotaInput = Join-Path $env:RUNNER_TEMP 'vendor-unique-bad-quota-v6206.json'
+          $quotaOutput = Join-Path $env:RUNNER_TEMP 'vendor-unique-bad-quota-v6206-report.json'
+          $uniqueBad = @{ uuid = 'share-2'; protocol = 'SMB'; used_bytes = 4 * $gib + [long]1; quota_bytes = 4 * $gib }
+          $quotaSystem = @{ serial_number = 'SN-QUOTA'; cluster_name = 'synthetic'; capacity_used_bytes = 10 * $gib; capacity_total_bytes = 20 * $gib; volumes = @($shareGood, $uniqueBad) }
+          $quotaSnapshot = @{ schema = 'storagescope.vendor-snapshot.v1'; vendor = 'netapp_ontap'; source_ref = 'synthetic-v6206'; collected_at = '2026-10-24T01:00:00Z'; systems = @($quotaSystem) }
+          [IO.File]::WriteAllText($quotaInput, ($quotaSnapshot | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+          $quotaArgs = @('--vendor-snapshot-file', ('"{0}"' -f $quotaInput), ('"{0}"' -f $quotaOutput))
+          $quotaProcess = Start-Process -FilePath $exe -ArgumentList $quotaArgs -Wait -PassThru
+          if ($quotaProcess.ExitCode -ne 0) { throw 'Frozen unique bad quota CLI failed' }
+          $quotaReport = Get-Content -Raw -LiteralPath $quotaOutput | ConvertFrom-Json
+          if ($quotaReport.assessment -ne 'INCOMPLETE' -or @($quotaReport.topology.shares).Count -ne 0 -or $quotaReport.automatic_changes -ne 0) { throw 'Frozen executable retained shares from NAS with malformed unique quota' }
+          if (@($quotaReport.quarantined_share_asset_ids).Count -ne 1 -or $quotaReport.quarantined_share_asset_ids[0] -ne 'netapp_ontap:SN-QUOTA') { throw 'Frozen unique quota quarantine identity missing' }
+          if (-not (@($quotaReport.rejected) | Where-Object { $_ -match 'inconsistent quota' })) { throw 'Frozen unique quota rejection reason missing' }
+          $quotaHash = (Get-FileHash -LiteralPath $quotaInput -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($quotaReport.snapshot_sha256 -ne $quotaHash) { throw 'Frozen unique quota snapshot digest mismatch' }
+          Write-Host 'Frozen offline vendor CLI PASS: 3 vendors, exclusive output, ambiguous JSON, duplicate shares and unique bad quotas quarantined'
       - name: Qualify native binaries
         shell: pwsh
         run: |
