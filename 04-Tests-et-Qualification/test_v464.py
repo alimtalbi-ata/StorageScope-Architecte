@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from portfolio import portfolio_snapshot
 
@@ -21,6 +22,6 @@ class GovernanceSearchTests(unittest.TestCase):
     def test_bad_limit(self):
         with self.assertRaises(ValueError):self.run_query(limit=0)
     def test_ui_wired(self):
-        source=open('desktop.py').read()
+        source=(Path(__file__).resolve().parents[1] / '03-Sources' / 'desktop.py').read_text(encoding='utf-8')
         for term in ('portfolio_query','portfolio_priority','portfolio_sort','<Return>'):self.assertIn(term,source)
 if __name__=='__main__':unittest.main()
