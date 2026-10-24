@@ -550,19 +550,12 @@ def launch():
                 report = normalize(load_snapshot(chosen))
                 assets = report['topology']['assets']
                 shares = report['topology']['shares']
-                counts = {}
-                for share in shares:
-                    counts[share['nas_id']] = counts.get(share['nas_id'], 0) + 1
-                rows = [(asset['vendor'], asset.get('name', '—'), asset['id'],
-                         asset.get('used_gib', '—'), asset.get('total_gib', '—'),
-                         counts.get(asset['id'], 0)) for asset in assets]
+                from nas_inventory_desktop_v6201 import inventory_rows
+                rows, next_index = inventory_rows(report)
             except (OSError, ValueError, TypeError, KeyError) as exc:
                 messagebox.showerror('Inventaire infrastructure', str(exc), parent=root)
                 status.set('Infrastructure · import refusé, inventaire précédent conservé')
                 return
-            next_index = {}
-            for share in shares:
-                next_index.setdefault(share['nas_id'], []).append(share)
             share_index.clear()
             share_index.update(next_index)
             for item in tree.get_children():
@@ -590,35 +583,13 @@ def launch():
             if destination.exists():
                 messagebox.showerror('Export infrastructure', 'Le fichier existe déjà : export non écrasant.', parent=root)
                 return
-            temporary = None
-            created_destination = False
             try:
-                with NamedTemporaryFile(mode='w', newline='', encoding='utf-8-sig',
-                                        dir=destination.parent, prefix='.storagescope-',
-                                        suffix='.tmp', delete=False) as output:
-                    temporary = Path(output.name)
-                    csv = writer(output, delimiter=';')
-                    csv.writerow(('Fournisseur', 'Système', 'Identifiant', 'Utilisé GiB', 'Total GiB', 'Partages'))
-                    for item in tree.get_children():
-                        csv.writerow([("'" + str(value)) if str(value).lstrip().startswith(('=', '+', '-', '@', '\t', '\r')) else value for value in tree.item(item, 'values')])
-                # Exclusive creation prevents accidental overwriting of existing exports.
-                with temporary.open('rb') as source, destination.open('xb') as output:
-                    created_destination = True
-                    shutil.copyfileobj(source, output)
+                from nas_inventory_desktop_v6201 import export_inventory_csv as write_inventory_csv
+                write_inventory_csv([tree.item(item, 'values') for item in tree.get_children()], destination)
                 status.set(f'Infrastructure · export CSV créé : {destination}')
                 messagebox.showinfo('Export infrastructure', f'Export créé : {destination}', parent=root)
             except (OSError, ValueError) as exc:
-                # A failed exclusive copy must not leave a misleading partial export.
-                if created_destination:
-                    try:
-                        destination.unlink(missing_ok=True)
-                    except OSError:
-                        pass
                 messagebox.showerror('Export infrastructure', str(exc), parent=root)
-            finally:
-                if temporary is not None:
-                    temporary.unlink(missing_ok=True)
-
         ttk.Button(page, text='Exporter le tableau en CSV…',
                    command=export_inventory_csv).pack(anchor='w', pady=(0, 12))
         ttk.Button(page, text='Importer un snapshot NetApp / PowerScale / FlashBlade…',
