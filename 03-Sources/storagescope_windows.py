@@ -570,8 +570,6 @@ def launch():
             status.set(f"Infrastructure · {len(rows)} équipement(s) observé(s)")
 
         def export_inventory_csv():
-            from csv import writer
-            from tempfile import NamedTemporaryFile
             if not tree.get_children():
                 messagebox.showinfo('Export infrastructure', 'Importez d’abord un inventaire NAS.', parent=root)
                 return
