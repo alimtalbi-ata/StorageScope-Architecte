@@ -48,13 +48,21 @@ def map_dependencies(topology, risk_report):
     # is not repaired by the last record in the input (order independence).
     signatures = defaultdict(set)
     unresolved_fabric_pairs = set()
+    unresolved_paths_by_array = Counter()
+    unresolved_path_observations = 0
     for item in topology['paths']:
         if not isinstance(item, dict):
+            unresolved_path_observations += 1
             continue
         host, target, fabric = (_id(item.get(k)) for k in ('host_id', 'storage_id', 'fabric'))
         state = item.get('state')
         if trusted.get(host) != 'host' or trusted.get(target) != 'storage_array':
-            continue  # Unknown endpoints cannot safely be attributed to a pair.
+            # Do not invent a host-array relation. Retain a bounded audit count,
+            # attributable to the array only when its identity is trusted.
+            unresolved_path_observations += 1
+            if trusted.get(target) == 'storage_array':
+                unresolved_paths_by_array[target] += 1
+            continue
         if not fabric:
             # The host/array is identifiable even when the fabric is not.
             # Preserve this as unverified evidence rather than silently
@@ -107,11 +115,13 @@ def map_dependencies(topology, risk_report):
                         'verified_host_ids': host_ids,
                         'unverified_host_ids': unverified,
                         'mixed_evidence_host_ids': mixed,
+                        'unresolved_path_observations': unresolved_paths_by_array[ident],
                         'verified_share_ids': share_ids,
                         'scope': 'OBSERVED' if host_ids or share_ids else 'UNASSESSED'})
 
     incomplete = (risk_report.get('assessment') == 'INCOMPLETE'
                   or bool(uncertain_pairs)
+                  or bool(unresolved_path_observations)
                   or any(a['scope'] == 'UNASSESSED' for a in results)
                   or not results)
     return {
@@ -122,6 +132,7 @@ def map_dependencies(topology, risk_report):
         'verified_host_relationships': len(verified_pairs),
         'unverified_host_relationships': len(uncertain_pairs),
         'mixed_evidence_host_relationships': len(mixed_pairs),
+        'unresolved_path_observations': unresolved_path_observations,
         'verified_share_relationships': sum(len(s) for s in shares.values()),
         'scope_note': 'Observed host-array paths and NAS shares only; not service-level impact or a complete CMDB dependency map',
         'automatic_changes': 0,
