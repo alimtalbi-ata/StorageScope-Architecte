@@ -142,6 +142,9 @@ def normalize(snapshot, *, source_sha256=None):
         for j, entry in enumerate(entries):
             if not isinstance(entry, dict):
                 rejected.append(f'systems[{index}].shares[{j}]: not an object')
+                # A malformed observation invalidates the entire NAS share set:
+                # otherwise a sibling share could appear independently verified.
+                quarantined_share_assets.add(asset_id)
                 continue
             sid = _id(entry.get(share_id_key))
             protocol = entry.get('protocol')
