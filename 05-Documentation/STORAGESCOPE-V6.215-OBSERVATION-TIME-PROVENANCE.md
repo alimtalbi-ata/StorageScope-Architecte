@@ -46,6 +46,12 @@ python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_r
 
 La CI gouvernance exécute les nouveaux tests sur Linux **et** Windows, avec contrôle du code retour. La CI Windows native vérifie l'export produit par l'exécutable PyInstaller, puis poursuit les contrôles installateur Inno Setup, désinstallation, portable et empreintes SHA-256. Seul un résultat réussi sur le HEAD exact autorise à annoncer une qualification Windows automatisée.
 
+## Correction de la fixture historique
+
+Le test historique `test_storage_path_risk_v6194.py` charge le moteur par `importlib.util.spec_from_file_location`, ce qui n'ajoute pas le répertoire `03-Sources` à `sys.path`. L'introduction du module de validation d'horodatage a donc révélé un échec d'import sur Linux **et** Windows : `ModuleNotFoundError: storage_observation_time_v6215`. Le test conserve son chargement isolé et ses assertions ; seule la racine réelle des sources est ajoutée au chemin d'import. Aucun contrôle n'est désactivé.
+
+Exécution locale sur copie des sources V6.214 corrigée (Python 3.13, Linux) : **9 tests V6.215**, **33 tests de dépendances**, **24 tests du moteur de risques**, **15 tests Diagnostic** et **41 tests fournisseurs** réussis. Ces résultats locaux ne qualifient ni Python 3.12 Windows ni les binaires ; voir les workflows du commit exact.
+
 ## Architecture et normes
 
 - **ISO/IEC/IEEE 42010** : provenance et limites explicites de la vue de dépendances.
