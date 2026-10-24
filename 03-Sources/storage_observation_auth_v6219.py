@@ -24,7 +24,12 @@ _DOMAIN = b"StorageScope.observation.hmac-sha256.v1\x00"
 
 def load_auth_policy(topology):
     """Return a bounded source-to-key-ID map, or None for legacy snapshots."""
+    enforcement = os.environ.get('STORAGESCOPE_REQUIRE_OBSERVATION_AUTH', '0')
+    if enforcement not in ('0', '1'):
+        raise ValueError('Invalid observation authentication enforcement setting')
     if 'observation_auth_policy' not in topology:
+        if enforcement == '1':
+            raise ValueError('Observation authentication policy required by operator')
         return None
     raw = topology['observation_auth_policy']
     if (not isinstance(raw, dict) or
