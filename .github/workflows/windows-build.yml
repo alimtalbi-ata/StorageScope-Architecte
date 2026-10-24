@@ -4,7 +4,7 @@ on:
   pull_request:
     # Include the stacked SAN/NAS review branch so feature changes receive
     # a full native Windows qualification, not governance-only CI.
-    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023, feature/storagescope-v6.195-identity-quarantine-20261023, feature/storagescope-v6.196-desktop-san-nas-review-20261023, feature/storagescope-v6.197-cmdb-provenance-20261023, feature/storagescope-v6.198-cmdb-desktop-20261023, feature/storagescope-v6.199-dependency-impact-20261023]
+    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023, feature/storagescope-v6.195-identity-quarantine-20261023, feature/storagescope-v6.196-desktop-san-nas-review-20261023, feature/storagescope-v6.197-cmdb-provenance-20261023, feature/storagescope-v6.198-cmdb-desktop-20261023, feature/storagescope-v6.199-dependency-impact-20261023, feature/storagescope-v6.200-path-evidence-quarantine-20261023, feature/storagescope-v6.201-offline-vendor-snapshots-20261023]
   push:
     branches: [main]
 jobs:
@@ -34,6 +34,13 @@ jobs:
             $path = Join-Path '02-Compilation-Windows' $name
             if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force -ErrorAction Stop }
           }
+      - name: Inspect actual Infrastructure widgets on Windows desktop
+        shell: pwsh
+        env:
+          STORAGESCOPE_GUI_SMOKE: '1'
+        run: |
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_windows_infrastructure_gui_smoke_v6201.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Infrastructure GUI smoke failed' }
       - name: Build Windows release
         shell: pwsh
         run: |
@@ -138,6 +145,45 @@ jobs:
           $rejected = Start-Process -FilePath $exe -ArgumentList $badArgs -Wait -PassThru
           if ($rejected.ExitCode -eq 0 -or (Test-Path -LiteralPath $badOutput)) { throw 'Frozen CMDB parser accepted duplicate JSON property' }
           Write-Host 'Frozen CMDB provenance and conflict review PASS'
+      - name: Verify frozen offline NAS vendor import and rejection
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'vendor-snapshot-valid.json'
+          $output = Join-Path $env:RUNNER_TEMP 'vendor-snapshot-normalized.json'
+          $badInput = Join-Path $env:RUNNER_TEMP 'vendor-snapshot-invalid.json'
+          $badOutput = Join-Path $env:RUNNER_TEMP 'vendor-snapshot-rejected.json'
+          $gib = [long]1073741824
+          $snapshot = @{
+            schema = 'storagescope.vendor-snapshot.v1'
+            vendor = 'netapp_ontap'
+            source_ref = 'windows-frozen-qualification'
+            collected_at = '2026-10-24T10:00:00Z'
+            systems = @(@{
+              serial_number = 'ONTAP-WIN-001'
+              cluster_name = 'nas-windows'
+              capacity_used_bytes = 20 * $gib
+              capacity_total_bytes = 100 * $gib
+              volumes = @(@{
+                uuid = 'vol-nfs'
+                protocol = 'NFS'
+                used_bytes = 10 * $gib
+                quota_bytes = 20 * $gib
+              })
+            })
+          }
+          [IO.File]::WriteAllText($input, ($snapshot | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+          $arguments = @('--vendor-snapshot-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen vendor import failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          if ($report.assessment -ne 'OBSERVED_ONLY' -or $report.automatic_changes -ne 0 -or @($report.topology.assets).Count -ne 1 -or @($report.topology.shares).Count -ne 1) { throw 'Frozen vendor import contract mismatch' }
+          [IO.File]::WriteAllText($badInput, '{"schema":"a","schema":"b"}', [Text.UTF8Encoding]::new($false))
+          $badArguments = @('--vendor-snapshot-file', ('"{0}"' -f $badInput), ('"{0}"' -f $badOutput))
+          $rejected = Start-Process -FilePath $exe -ArgumentList $badArguments -Wait -PassThru
+          if ($rejected.ExitCode -eq 0 -or (Test-Path -LiteralPath $badOutput)) { throw 'Frozen vendor parser failed closed' }
+          Write-Host 'Frozen NAS vendor import PASS: valid topology produced; invalid input rejected'
       - name: Qualify native binaries
         shell: pwsh
         run: |
@@ -212,21 +258,92 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path 'source-delivery' | Out-Null
-          $archive = 'source-delivery/StorageScope-V6.200-SOURCES-EXACT-HEAD.zip'
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $archiveName = "StorageScope-V$version-SOURCES-EXACT-HEAD.zip"
+          $archive = Join-Path 'source-delivery' $archiveName
           $expected = '${{ github.event.pull_request.head.sha || github.sha }}'
           $actual = (& git rev-parse HEAD).Trim()
           if ($actual -ne $expected) { throw "Source checkout SHA mismatch: $actual != $expected" }
           & git archive --format=zip --output=$archive HEAD
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw 'Tracked source archive failed' }
           $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  StorageScope-V6.200-SOURCES-EXACT-HEAD.zip" | Set-Content -LiteralPath 'source-delivery/SHA256SUMS.txt' -Encoding ascii
+          "$hash  $archiveName" | Set-Content -LiteralPath 'source-delivery/SHA256SUMS.txt' -Encoding ascii
           Write-Host "Exact-head source archive SHA256: $hash"
+      - name: Assemble one cumulative Windows delivery ZIP
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $binary = Join-Path 'binary' ('v' + $version)
+          $archive = "StorageScope-v$version-WINDOWS-CUMULATIF.zip"
+          $staging = Join-Path $env:RUNNER_TEMP 'storagescope-cumulative'
+          if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          $parts = @(
+            @{ source = $binary; target = '01-Application-Windows' },
+            @{ source = '02-Compilation-Windows/windows-release-qualification.json'; target = '04-Tests-et-Qualification/windows-release-qualification.json' },
+            @{ source = '02-Compilation-Windows/windows-installer-smoke-report.json'; target = '04-Tests-et-Qualification/windows-installer-smoke-report.json' },
+            @{ source = '02-Compilation-Windows/windows-portable-smoke-report.json'; target = '04-Tests-et-Qualification/windows-portable-smoke-report.json' },
+            @{ source = 'source-delivery'; target = '03-Sources-Exact-Head' },
+            @{ source = '05-Documentation'; target = '05-Documentation' },
+            @{ source = '06-Historique'; target = '06-Historique' },
+            @{ source = '07-Manifestes'; target = '07-Manifestes' }
+          )
+          foreach ($part in $parts) {
+            if (-not (Test-Path -LiteralPath $part.source)) { throw "Missing cumulative input: $($part.source)" }
+            $destination = Join-Path $staging $part.target
+            New-Item -ItemType Directory -Force -Path (Split-Path $destination -Parent) | Out-Null
+            Copy-Item -LiteralPath $part.source -Destination $destination -Recurse -Force
+          }
+          $manifest = @{
+            schema = 'storagescope.windows-cumulative.v1'
+            version = $version
+            commit = (& git rev-parse HEAD).Trim()
+            qualification = 'PASS'
+            limitations = @('GUI interactive acceptance is not certified by this package')
+          }
+          $manifestPath = Join-Path $staging 'MANIFEST.json'
+          [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+          # Validate source archive contents and declared commit before publishing.
+          $sourceZip = Join-Path $staging ('03-Sources-Exact-Head/StorageScope-V' + $version + '-SOURCES-EXACT-HEAD.zip')
+          if (-not (Test-Path -LiteralPath $sourceZip)) { throw 'Exact-head source ZIP missing in cumulative package' }
+          Add-Type -AssemblyName System.IO.Compression
+          $sourceArchive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $sourceZip).Path)
+          try {
+            $entries = @($sourceArchive.Entries | ForEach-Object FullName)
+            foreach ($required in @('03-Sources/storagescope_windows.py', '04-Tests-et-Qualification/test_windows_infrastructure_gui_smoke_v6201.py', '07-Manifestes/VERSION')) {
+              if ($required -notin $entries) { throw "Missing required tracked source: $required" }
+            }
+          } finally {
+            $sourceArchive.Dispose()
+          }
+          Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $archive -CompressionLevel Optimal
+          $cumulative = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $archive).Path)
+          try {
+            $packaged = @($cumulative.Entries | ForEach-Object FullName)
+            foreach ($required in @('MANIFEST.json', ('03-Sources-Exact-Head/StorageScope-V' + $version + '-SOURCES-EXACT-HEAD.zip'), '07-Manifestes/VERSION')) {
+              if ($required -notin $packaged) { throw "Cumulative archive missing: $required" }
+            }
+          } finally {
+            $cumulative.Dispose()
+          }
+          if (-not (Test-Path -LiteralPath $archive)) { throw 'Cumulative ZIP missing' }
+          $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $archive" | Set-Content -LiteralPath 'StorageScope-WINDOWS-CUMULATIF-SHA256.txt' -Encoding ascii
+          Write-Host "Cumulative Windows archive: $archive SHA256=$hash"
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: StorageScope-SOURCES-V6200
+          name: StorageScope-Windows-CUMULATIF
           path: |
-            source-delivery/StorageScope-V6.200-SOURCES-EXACT-HEAD.zip
+            StorageScope-v*-WINDOWS-CUMULATIF.zip
+            StorageScope-WINDOWS-CUMULATIF-SHA256.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: StorageScope-SOURCES-EXACT-HEAD
+          path: |
+            source-delivery/StorageScope-V*-SOURCES-EXACT-HEAD.zip
             source-delivery/SHA256SUMS.txt
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
