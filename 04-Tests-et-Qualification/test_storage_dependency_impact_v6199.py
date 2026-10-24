@@ -64,8 +64,11 @@ class DependencyImpactTests(unittest.TestCase):
         data['paths'].append(dict(data['paths'][0], state='down'))
         result = self.assess(data)
         self.assertEqual(result['verified_host_relationships'], 1)
-        self.assertEqual(result['unverified_host_relationships'], 0)
+        self.assertEqual(result['unverified_host_relationships'], 1)
+        self.assertEqual(result['mixed_evidence_host_relationships'], 1)
+        self.assertEqual(result['assessment'], 'INCOMPLETE')
         self.assertEqual(result['assets'][0]['verified_host_ids'], ['h1'])
+        self.assertEqual(result['assets'][0]['mixed_evidence_host_ids'], ['h1'])
 
     def test_duplicate_asset_id_never_creates_trusted_dependency(self):
         data = topology()
