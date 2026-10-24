@@ -101,7 +101,8 @@ def assess(topology, warning_percent=85, critical_percent=95):
                 invalid_count += 1
                 emit("HIGH", "INVALID_CAPACITY", ident, "Capacity must be finite, nonnegative and used <= total > 0", "Correct source metrics")
             else:
-                pct = round(used / total * 100, 2)
+                # Classify against the unrounded ratio: 94.9999% is not 95%.
+                pct = used / total * 100
                 if pct >= critical_percent:
                     emit("CRITICAL", "CAPACITY_CRITICAL", ident, f"{pct}% used", "Plan immediate capacity remediation")
                 elif pct >= warning_percent:
@@ -241,7 +242,8 @@ def assess(topology, warning_percent=85, critical_percent=95):
             invalid_count += 1
             emit("HIGH", "INVALID_SHARE_QUOTA", ident, "Invalid share capacity or quota", "Correct share metrics")
         else:
-            pct = round(used / quota * 100, 2)
+            # Never round a quota into a higher severity band.
+            pct = used / quota * 100
             if pct >= critical_percent:
                 emit("CRITICAL", "SHARE_QUOTA_CRITICAL", ident, f"{pct}% quota used", "Review NAS quota and growth")
             elif pct >= warning_percent:
