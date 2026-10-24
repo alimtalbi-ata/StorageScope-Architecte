@@ -83,6 +83,42 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                 self.assertTrue(details, 'NAS share details widget missing')
                 self.assertTrue(any('vol-gui' in w.get('1.0', 'end') for w in details),
                                 'Selecting NAS asset did not reveal its share details')
+                # Switching vendors must replace, not append, inventory and share details.
+                for vendor, serial_key, name_key, used_key, total_key, collection, share_key in (
+                    ('dell_powerscale', 'serial', 'cluster', 'used_bytes', 'total_bytes', 'exports', 'id'),
+                    ('pure_flashblade', 'array_id', 'name', 'space_used_bytes', 'space_total_bytes', 'shares', 'id'),
+                ):
+                    vendor_snapshot = Path(folder) / (vendor + '.json')
+                    vendor_snapshot.write_text(json.dumps({
+                        'schema': 'storagescope.vendor-snapshot.v1',
+                        'vendor': vendor, 'source_ref': 'gui-acceptance',
+                        'collected_at': '2026-10-24T10:00:00Z',
+                        'systems': [{
+                            serial_key: 'GUI-002', name_key: 'nas-gui-2',
+                            used_key: 1073741824, total_key: 10737418240,
+                            collection: [{share_key: 'share-smb', 'protocol': 'SMB',
+                                          'used_bytes': 1073741824, 'quota_bytes': 2147483648}]
+                        }]
+                    }), encoding='utf-8')
+                    with patch('tkinter.filedialog.askopenfilename', return_value=str(vendor_snapshot)):
+                        importer.invoke()
+                    self.assertEqual(len(table.get_children()), 1,
+                                     'Switching vendor appended stale inventory rows')
+                    row = table.get_children()[0]
+                    self.assertEqual(table.item(row, 'values')[2], vendor + ':GUI-002')
+                    table.selection_set(row)
+                    table.event_generate('<<TreeviewSelect>>')
+                    root.update()
+                    self.assertTrue(any('share-smb' in w.get('1.0', 'end') for w in details),
+                                    'Vendor SMB share details missing after switching vendor')
+                    self.assertFalse(any('vol-gui' in w.get('1.0', 'end') for w in details),
+                                     'Previous vendor share details leaked into new inventory')
+                # Restore NetApp for the existing CSV and fail-closed regression assertions.
+                with patch('tkinter.filedialog.askopenfilename', return_value=str(snapshot)):
+                    importer.invoke()
+                table.selection_set(table.get_children()[0])
+                table.event_generate('<<TreeviewSelect>>')
+                root.update()
                 # Canceling export must not write a file or raise a modal error.
                 with patch('tkinter.filedialog.asksaveasfilename', return_value=''):
                     with patch('tkinter.messagebox.showerror') as cancel_error:
