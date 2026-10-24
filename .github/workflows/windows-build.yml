@@ -407,6 +407,32 @@ jobs:
           if ($malformedReport.snapshot_sha256 -ne $malformedHash) { throw 'Frozen malformed share snapshot digest mismatch' }
           Write-Host 'Frozen V6.207 malformed NAS share quarantine PASS'
           Write-Host 'Frozen offline vendor CLI PASS: 3 vendors, exclusive output, ambiguous JSON, duplicate shares and unique bad quotas quarantined'
+      - name: Verify frozen SAN/NAS capacity threshold precision V6.217
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $inputPath = Join-Path $env:RUNNER_TEMP 'storage-capacity-v6217.json'
+          $outputPath = Join-Path $env:RUNNER_TEMP 'storage-capacity-v6217-report.json'
+          # Synthetic data: compare strictly below versus exactly at the thresholds.
+          $raw = '{"schema":"storagescope.storage-topology.v1","assets":[{"id":"nas-low","kind":"nas","used_gib":84.9999,"total_gib":100},{"id":"nas-warning","kind":"nas","used_gib":94.9999,"total_gib":100},{"id":"nas-critical","kind":"nas","used_gib":95,"total_gib":100}],"paths":[],"shares":[{"id":"share-low","nas_id":"nas-low","protocol":"NFS","used_gib":84.9999,"quota_gib":100},{"id":"share-warning","nas_id":"nas-low","protocol":"SMB","used_gib":94.9999,"quota_gib":100},{"id":"share-critical","nas_id":"nas-low","protocol":"NFS","used_gib":95,"quota_gib":100}]}'
+          [IO.File]::WriteAllText($inputPath, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--storage-risk-file', ('"{0}"' -f $inputPath), ('"{0}"' -f $outputPath))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath)) { throw 'Frozen capacity assessment failed' }
+          $report = Get-Content -Raw -LiteralPath $outputPath | ConvertFrom-Json
+          if ($report.automatic_changes -ne 0) { throw 'Frozen assessment attempted automatic changes' }
+          function HasFinding($id, $code) {
+            return @($report.findings | Where-Object { $_.object_id -eq $id -and $_.code -eq $code }).Count -gt 0
+          }
+          if (HasFinding 'nas-low' 'CAPACITY_WARNING') { throw 'Sub-warning capacity rounded into WARNING' }
+          if (HasFinding 'nas-low' 'CAPACITY_CRITICAL') { throw 'Sub-warning capacity rounded into CRITICAL' }
+          if (-not (HasFinding 'nas-warning' 'CAPACITY_WARNING') -or (HasFinding 'nas-warning' 'CAPACITY_CRITICAL')) { throw 'Sub-critical capacity misclassified' }
+          if (-not (HasFinding 'nas-critical' 'CAPACITY_CRITICAL')) { throw 'Exact critical capacity boundary missed' }
+          if ((HasFinding 'share-low' 'SHARE_QUOTA_WARNING') -or (HasFinding 'share-low' 'SHARE_QUOTA_CRITICAL')) { throw 'Sub-warning share quota misclassified' }
+          if (-not (HasFinding 'share-warning' 'SHARE_QUOTA_WARNING') -or (HasFinding 'share-warning' 'SHARE_QUOTA_CRITICAL')) { throw 'Sub-critical share quota misclassified' }
+          if (-not (HasFinding 'share-critical' 'SHARE_QUOTA_CRITICAL')) { throw 'Exact critical share boundary missed' }
+          Write-Host 'Frozen SAN/NAS capacity precision PASS (synthetic, read-only)'
       - name: Qualify native binaries
         shell: pwsh
         run: |
