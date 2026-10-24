@@ -15,6 +15,8 @@ IDENTITY_FIELDS = ('serial', 'wwn', 'uuid')
 UNKNOWN_IDENTITIES = frozenset({'unknown', 'n/a', 'na', 'none', 'null', 'not available', '-'})
 MAX_RECORDS = 10000
 MAX_CANDIDATE_PAIRS = 50000
+ASSET_KIND_ALIASES = {'array': 'storage_array', 'storage': 'storage_array',
+                      'switch': 'san_switch', 'server': 'host'}
 
 
 def _identity(value):
@@ -23,6 +25,22 @@ def _identity(value):
         return None
     normalized = value.strip().casefold()
     return normalized if normalized and normalized not in UNKNOWN_IDENTITIES else None
+
+
+def _asset_kind(item):
+    """Resolve optional kind/type evidence; reject contradictory self-descriptions."""
+    observed = []
+    for field in ('kind', 'type'):
+        value = item.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, str) or not value.strip():
+            return None, 'invalid_asset_kind'
+        normalized = value.strip().casefold().replace('-', '_').replace(' ', '_')
+        observed.append(ASSET_KIND_ALIASES.get(normalized, normalized))
+    if len(set(observed)) > 1:
+        return None, 'conflicting_asset_kind'
+    return (observed[0] if observed else None), None
 
 
 def reconcile(records):
@@ -40,6 +58,7 @@ def reconcile(records):
     groups = collections.defaultdict(list)
     invalid = []
     identities = {}
+    asset_kinds = {}
     for index, item in enumerate(records):
         if not isinstance(item, dict):
             invalid.append({'index': index, 'reason': 'not_object'})
@@ -48,6 +67,11 @@ def reconcile(records):
         if not isinstance(source, str) or not source.strip():
             invalid.append({'index': index, 'reason': 'missing_source'})
             continue  # Fail closed: unprovenanced records are not match evidence.
+        kind, kind_error = _asset_kind(item)
+        if kind_error:
+            invalid.append({'index': index, 'reason': kind_error})
+            continue  # An internally contradictory type cannot be match evidence.
+        asset_kinds[index] = kind
         strong = {field: _identity(item.get(field)) for field in IDENTITY_FIELDS}
         identities[index] = strong
         if not any(strong.values()):
@@ -81,6 +105,11 @@ def reconcile(records):
             av, bv = identities[left][field], identities[right][field]
             if av is not None and bv is not None and av != bv:
                 identity_conflicts.append({'field': field, 'left': av, 'right': bv})
+        # A shared serial/WWN/UUID cannot reconcile a NAS with a host or
+        # switch. Missing kind remains unknown, never inferred.
+        ak, bk = asset_kinds[left], asset_kinds[right]
+        if ak is not None and bk is not None and ak != bk:
+            identity_conflicts.append({'field': 'asset_kind', 'left': ak, 'right': bk})
         adjacency[left].add(right)
         adjacency[right].add(left)
         if identity_conflicts:
