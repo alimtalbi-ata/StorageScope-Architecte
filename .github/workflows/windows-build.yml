@@ -251,21 +251,23 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path 'source-delivery' | Out-Null
-          $archive = 'source-delivery/StorageScope-V6.200-SOURCES-EXACT-HEAD.zip'
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $archiveName = "StorageScope-V$version-SOURCES-EXACT-HEAD.zip"
+          $archive = Join-Path 'source-delivery' $archiveName
           $expected = '${{ github.event.pull_request.head.sha || github.sha }}'
           $actual = (& git rev-parse HEAD).Trim()
           if ($actual -ne $expected) { throw "Source checkout SHA mismatch: $actual != $expected" }
           & git archive --format=zip --output=$archive HEAD
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw 'Tracked source archive failed' }
           $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  StorageScope-V6.200-SOURCES-EXACT-HEAD.zip" | Set-Content -LiteralPath 'source-delivery/SHA256SUMS.txt' -Encoding ascii
+          "$hash  $archiveName" | Set-Content -LiteralPath 'source-delivery/SHA256SUMS.txt' -Encoding ascii
           Write-Host "Exact-head source archive SHA256: $hash"
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: StorageScope-SOURCES-V6200
+          name: StorageScope-SOURCES-EXACT-HEAD
           path: |
-            source-delivery/StorageScope-V6.200-SOURCES-EXACT-HEAD.zip
+            source-delivery/StorageScope-V*-SOURCES-EXACT-HEAD.zip
             source-delivery/SHA256SUMS.txt
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
