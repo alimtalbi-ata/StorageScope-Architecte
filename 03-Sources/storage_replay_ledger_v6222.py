@@ -105,13 +105,30 @@ def inspect_ledger(path):
             'MIN(accepted_utc), MAX(accepted_utc) FROM collection_seen'
         ).fetchone()
         count, sources, observations, first, last = row
-        # Timestamps are generated in UTC by register_snapshot. If altered,
-        # never report a healthy registry based on malformed time bounds.
-        for value in (first, last):
-            if value is not None:
-                parsed = datetime.fromisoformat(value)
-                if parsed.tzinfo is None or parsed.utcoffset().total_seconds() != 0:
-                    raise ValueError('Replay ledger contains non-UTC timestamp')
+        # A min/max-only check misses malformed interior rows: SQLite MIN/MAX
+        # compares TEXT lexically, not as timestamps. Stream every row with
+        # bounded memory; never expose collector or collection identifiers.
+        for source, collection_id, observation_count, stamp in db.execute(
+                'SELECT source_ref, collection_id, observation_count, '
+                'accepted_utc FROM collection_seen'):
+            if not isinstance(source, str) or not source.strip():
+                raise ValueError('Replay ledger contains invalid collection metadata')
+            try:
+                parsed_id = uuid.UUID(collection_id) if isinstance(collection_id, str) else None
+            except (ValueError, AttributeError):
+                parsed_id = None
+            if (parsed_id is None or parsed_id.version != 4 or
+                    str(parsed_id) != collection_id or
+                    type(observation_count) is not int or observation_count <= 0):
+                raise ValueError('Replay ledger contains invalid collection metadata')
+            try:
+                parsed_time = datetime.fromisoformat(stamp) if isinstance(stamp, str) else None
+            except (ValueError, TypeError):
+                parsed_time = None
+            if (parsed_time is None or parsed_time.tzinfo is None or
+                    parsed_time.utcoffset() is None or
+                    parsed_time.utcoffset().total_seconds() != 0):
+                raise ValueError('Replay ledger contains invalid UTC timestamp')
         return {'schema': 'storagescope.replay-ledger-audit.v1',
                 'status': 'READ_ONLY', 'integrity': 'PASS',
                 'registered_collections': count,

@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from uuid import uuid4
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / '03-Sources'))
@@ -79,6 +80,50 @@ class ReplayAuditTests(unittest.TestCase):
         self.ledger.rename(moved)
         moved.rename(self.ledger)
         self.assertEqual(inspect_ledger(self.ledger)['integrity'], 'PASS')
+
+    def test_malformed_interior_timestamp_rejected_not_only_min_max(self):
+        initialize_ledger(self.ledger)
+        with closing(sqlite3.connect(self.ledger)) as db:
+            with db:
+                for stamp in ('2026-10-24T00:00:00+00:00',
+                              '2026-10-24T12:00:00+00:00INVALID',
+                              '2026-10-24T23:59:59+00:00'):
+                    db.execute('INSERT INTO collection_seen VALUES (?, ?, ?, ?)',
+                               ('collector:a', str(uuid4()), 1, stamp))
+        before = hashlib.sha256(self.ledger.read_bytes()).hexdigest()
+        with self.assertRaisesRegex(ValueError, 'invalid UTC timestamp'):
+            inspect_ledger(self.ledger)
+        self.assertEqual(before, hashlib.sha256(self.ledger.read_bytes()).hexdigest())
+        moved = self.root / 'moved.sqlite'
+        self.ledger.rename(moved)
+        moved.rename(self.ledger)
+
+    def test_forged_collection_id_rejected_without_leaking_identity(self):
+        initialize_ledger(self.ledger)
+        with closing(sqlite3.connect(self.ledger)) as db:
+            with db:
+                db.execute('INSERT INTO collection_seen VALUES (?, ?, ?, ?)',
+                           ('collector:secret', 'not-a-uuid', 1,
+                            '2026-10-24T12:00:00+00:00'))
+        with self.assertRaisesRegex(ValueError, 'invalid collection metadata') as error:
+            inspect_ledger(self.ledger)
+        self.assertNotIn('collector:secret', str(error.exception))
+        self.assertNotIn('not-a-uuid', str(error.exception))
+
+    def test_forged_empty_source_and_negative_count_rejected(self):
+        for source, count in (('', 1), ('collector:a', -1)):
+            with self.subTest(source=source, count=count):
+                if self.ledger.exists():
+                    self.ledger.unlink()
+                initialize_ledger(self.ledger)
+                with closing(sqlite3.connect(self.ledger)) as db:
+                    with db:
+                        db.execute('PRAGMA ignore_check_constraints=ON')
+                        db.execute('INSERT INTO collection_seen VALUES (?, ?, ?, ?)',
+                                   (source, str(uuid4()), count,
+                                    '2026-10-24T12:00:00+00:00'))
+                with self.assertRaisesRegex(ValueError, 'invalid collection metadata'):
+                    inspect_ledger(self.ledger)
 
     def test_audit_cli_json(self):
         initialize_ledger(self.ledger)
