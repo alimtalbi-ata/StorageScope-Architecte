@@ -16,7 +16,7 @@ class VendorDesktopIntegrationTests(unittest.TestCase):
         handler = next(node for node in ast.walk(diagnostics) if isinstance(node, ast.FunctionDef) and node.name == 'review_vendor_snapshot')
         calls = [node for node in ast.walk(handler) if isinstance(node, ast.Call)]
         names = [node.func.id for node in calls if isinstance(node.func, ast.Name)]
-        self.assertIn('load_snapshot', names)
+        self.assertIn('load_snapshot_with_digest', names)
         self.assertIn('normalize', names)
         self.assertIn('showerror', [node.func.attr for node in calls if isinstance(node.func, ast.Attribute)])
         self.assertIn('review_vendor_snapshot', source)
