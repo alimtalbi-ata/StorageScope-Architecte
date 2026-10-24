@@ -262,6 +262,50 @@ jobs:
           $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $archiveName" | Set-Content -LiteralPath 'source-delivery/SHA256SUMS.txt' -Encoding ascii
           Write-Host "Exact-head source archive SHA256: $hash"
+      - name: Assemble one cumulative Windows delivery ZIP
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $binary = Join-Path 'binary' ('v' + $version)
+          $archive = "StorageScope-v$version-WINDOWS-CUMULATIF.zip"
+          $staging = Join-Path $env:RUNNER_TEMP 'storagescope-cumulative'
+          if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          $parts = @(
+            @{ source = $binary; target = '01-Application-Windows' },
+            @{ source = '02-Compilation-Windows/windows-release-qualification.json'; target = '04-Tests-et-Qualification/windows-release-qualification.json' },
+            @{ source = '02-Compilation-Windows/windows-installer-smoke-report.json'; target = '04-Tests-et-Qualification/windows-installer-smoke-report.json' },
+            @{ source = '02-Compilation-Windows/windows-portable-smoke-report.json'; target = '04-Tests-et-Qualification/windows-portable-smoke-report.json' },
+            @{ source = 'source-delivery'; target = '03-Sources-Exact-Head' }
+          )
+          foreach ($part in $parts) {
+            if (-not (Test-Path -LiteralPath $part.source)) { throw "Missing cumulative input: $($part.source)" }
+            $destination = Join-Path $staging $part.target
+            New-Item -ItemType Directory -Force -Path (Split-Path $destination -Parent) | Out-Null
+            Copy-Item -LiteralPath $part.source -Destination $destination -Recurse -Force
+          }
+          $manifest = @{
+            schema = 'storagescope.windows-cumulative.v1'
+            version = $version
+            commit = (& git rev-parse HEAD).Trim()
+            qualification = 'PASS'
+            limitations = @('GUI interactive acceptance is not certified by this package')
+          }
+          $manifestPath = Join-Path $staging 'MANIFEST.json'
+          [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+          Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $archive -CompressionLevel Optimal
+          if (-not (Test-Path -LiteralPath $archive)) { throw 'Cumulative ZIP missing' }
+          $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $archive" | Set-Content -LiteralPath 'StorageScope-WINDOWS-CUMULATIF-SHA256.txt' -Encoding ascii
+          Write-Host "Cumulative Windows archive: $archive SHA256=$hash"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: StorageScope-Windows-CUMULATIF
+          path: |
+            StorageScope-v*-WINDOWS-CUMULATIF.zip
+            StorageScope-WINDOWS-CUMULATIF-SHA256.txt
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: success()
         with:
