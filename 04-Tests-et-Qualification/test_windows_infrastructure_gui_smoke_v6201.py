@@ -45,6 +45,39 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                                 'Inventory CSV export action missing')
                 self.assertTrue(any(isinstance(w, ttk.Treeview) for w in widgets),
                                 'Inventory table missing')
+                from unittest.mock import patch
+                import json
+                snapshot = Path(folder) / 'snapshot.json'
+                snapshot.write_text(json.dumps({
+                    'schema': 'storagescope.vendor-snapshot.v1',
+                    'vendor': 'netapp_ontap',
+                    'source_ref': 'gui-acceptance',
+                    'collected_at': '2026-10-24T10:00:00Z',
+                    'systems': [{
+                        'serial_number': 'GUI-001', 'cluster_name': 'nas-gui',
+                        'capacity_used_bytes': 1073741824,
+                        'capacity_total_bytes': 10737418240,
+                        'volumes': [{'uuid': 'vol-gui', 'protocol': 'NFS',
+                                     'used_bytes': 1073741824,
+                                     'quota_bytes': 2147483648}]
+                    }]
+                }), encoding='utf-8')
+                buttons = [w for w in widgets if isinstance(w, ttk.Button)]
+                importer = next(w for w in buttons if 'Importer un snapshot' in w.cget('text'))
+                exporter = next(w for w in buttons if 'Exporter le tableau' in w.cget('text'))
+                table = next(w for w in widgets if isinstance(w, ttk.Treeview))
+                with patch('tkinter.filedialog.askopenfilename', return_value=str(snapshot)):
+                    importer.invoke()
+                self.assertEqual(len(table.get_children()), 1, 'Import button did not populate NAS table')
+                table.selection_set(table.get_children()[0])
+                table.event_generate('<<TreeviewSelect>>')
+                root.update()
+                destination = Path(folder) / 'inventory.csv'
+                with patch('tkinter.filedialog.asksaveasfilename', return_value=str(destination)):
+                    with patch('tkinter.messagebox.showinfo'):
+                        exporter.invoke()
+                self.assertTrue(destination.is_file(), 'Export button did not create CSV')
+                self.assertIn('GUI-001', destination.read_text(encoding='utf-8-sig'))
                 root.destroy()
             tk.Tk.mainloop = inspect
             try:
