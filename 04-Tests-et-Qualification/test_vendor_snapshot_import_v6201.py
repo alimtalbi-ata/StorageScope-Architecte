@@ -133,6 +133,23 @@ class VendorSnapshotTests(unittest.TestCase):
                 self.assertTrue(any('inconsistent capacity' in entry for entry in report['rejected']))
                 self.assertEqual(report['automatic_changes'], 0)
 
+    def test_negative_system_capacity_rejected_for_each_vendor(self):
+        for vendor in ('netapp_ontap', 'dell_powerscale', 'pure_flashblade'):
+            with self.subTest(vendor=vendor):
+                data = sample(vendor)
+                total_key = {
+                    'netapp_ontap': 'capacity_total_bytes',
+                    'dell_powerscale': 'total_bytes',
+                    'pure_flashblade': 'space_total_bytes',
+                }[vendor]
+                data['systems'][0][total_key] = -1
+                report = normalize(data)
+                self.assertEqual(report['topology']['assets'], [])
+                self.assertEqual(report['topology']['shares'], [])
+                self.assertEqual(report['assessment'], 'INCOMPLETE')
+                self.assertTrue(any('invalid capacity' in entry for entry in report['rejected']))
+                self.assertEqual(report['automatic_changes'], 0)
+
     def test_duplicate_system_quarantined(self):
         data = sample('netapp_ontap')
         data['systems'].append(copy.deepcopy(data['systems'][0]))
