@@ -70,6 +70,22 @@ class ReplayTests(unittest.TestCase):
         self.assertEqual(deps['replayed_share_observations'], 2)
         self.assertEqual(deps['verified_share_relationships'], 0)
         self.assertEqual(deps['unresolved_share_observations'], 2)
+        self.assertEqual(sum(x['code'] == 'REPLAYED_SHARE_OBSERVATION'
+                             for x in risk['findings']), 2)
+        self.assertEqual(sum(x['code'] == 'DUPLICATE_SHARE'
+                             for x in risk['findings']), 1)
+
+    def test_mixed_duplicate_share_identity_reports_only_verified_replays(self):
+        data = topology()
+        data['shares'].append(copy.deepcopy(data['shares'][0]))
+        data['shares'].append(dict(data['shares'][0], used_gib=2))
+        risk, deps = self.evaluate(data)
+        codes = [item['code'] for item in risk['findings']]
+        self.assertEqual(codes.count('REPLAYED_SHARE_OBSERVATION'), 2)
+        self.assertEqual(codes.count('DUPLICATE_SHARE'), 1)
+        self.assertEqual(risk['replayed_share_observations'], 2)
+        self.assertEqual(deps['verified_share_relationships'], 0)
+        self.assertEqual(deps['unresolved_share_observations'], 3)
 
     def test_distinct_signed_path_not_replay(self):
         data = topology()
