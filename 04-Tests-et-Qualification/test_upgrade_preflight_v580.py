@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,7 +15,7 @@ class UpgradePreflightTests(unittest.TestCase):
     def test_valid_database_is_read_only(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / 'campaigns.sqlite'
-            with sqlite3.connect(p) as con:
+            with closing(sqlite3.connect(p)) as con, con:
                 con.execute('CREATE TABLE sample (id INTEGER)')
                 con.execute('PRAGMA user_version=3')
             before = p.read_bytes()
