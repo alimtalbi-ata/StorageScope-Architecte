@@ -25,7 +25,7 @@ Les snapshots sont des **preuves déclaratives hors ligne** : leur présence ne 
 
 ## Gestion des données partielles
 
-Pour chacun des trois fournisseurs, répéter l'import avec un partage dont `quota_bytes` vaut `-1`, puis avec un partage dont `protocol` vaut `FTP` (protocole non pris en charge). Résultat attendu : le système NAS valide reste visible, le partage incorrect est rejeté, le rapport signale une observation `INCOMPLETE` et aucune modification automatique n'est exécutée. Le rejet d'un partage ne doit jamais être présenté comme un inventaire complet.
+Pour chacun des trois fournisseurs, répéter l'import avec un partage dont `quota_bytes` vaut `-1`, puis avec un partage dont `protocol` vaut `FTP` (protocole non pris en charge), et enfin avec `used_bytes` supérieur à `quota_bytes` (par exemple 21 GiB utilisés pour 20 GiB de quota). Résultat attendu : le système NAS valide reste visible, le partage incorrect est rejeté, le rapport signale une observation `INCOMPLETE` et aucune modification automatique n'est exécutée. Le rejet d'un partage ne doit jamais être présenté comme un inventaire complet.
 
 ## Exemple synthétique (fictif — non issu d'une baie réelle)
 
