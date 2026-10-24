@@ -457,13 +457,15 @@ def launch():
             if not chosen:
                 return
             try:
-                from vendor_snapshot_import_v6201 import load_snapshot, normalize
-                report = normalize(load_snapshot(chosen))
+                from vendor_snapshot_import_v6201 import load_snapshot_with_digest, normalize
+                snapshot, digest = load_snapshot_with_digest(chosen)
+                report = normalize(snapshot, source_sha256=digest)
                 topology = report['topology']
                 lines = [
                     'Inventaire NAS fournisseur — observation hors ligne',
                     f"Fournisseur : {report['vendor']}",
                     f"Source : {report['source_ref']}",
+                    f"SHA-256 du fichier source : {report['snapshot_sha256']}",
                     f"Collecté le : {report['collected_at']}",
                     f"Évaluation : {report['assessment']}",
                     f"Systèmes retenus : {len(topology['assets'])}",
