@@ -144,6 +144,16 @@ class ObservationAuthenticationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             assess(data)
 
+    def test_operator_enforcement_blocks_policy_stripping_downgrade(self):
+        data = signed()
+        data.pop('observation_auth_policy')
+        with patch.dict(os.environ, {'STORAGESCOPE_REQUIRE_OBSERVATION_AUTH': '1'}):
+            with self.assertRaisesRegex(ValueError, 'required by operator'):
+                evaluate(data)
+        with patch.dict(os.environ, {'STORAGESCOPE_REQUIRE_OBSERVATION_AUTH': 'invalid'}):
+            with self.assertRaisesRegex(ValueError, 'enforcement setting'):
+                evaluate(data)
+
     def test_legacy_without_auth_policy_is_unchanged(self):
         data = topology()
         data.pop('observation_auth_policy')
