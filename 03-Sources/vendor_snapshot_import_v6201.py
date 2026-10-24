@@ -6,6 +6,7 @@ Author: Abdelhalim Talbi.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from collections import Counter
@@ -43,17 +44,26 @@ def _unique_pairs(pairs):
     return result
 
 
-def load_snapshot(path):
-    """Bounded, strict JSON reader; rejects duplicate keys and non-finite numbers."""
-    source = Path(path)
-    if source.stat().st_size > MAX_BYTES:
+def load_snapshot_with_digest(path):
+    """Parse exactly the bytes hashed for the report; bound reads even on special files.
+
+    The digest attests to source bytes, not to the vendor's identity or truthfulness.
+    """
+    with Path(path).open('rb') as stream:
+        raw = stream.read(MAX_BYTES + 1)
+    if len(raw) > MAX_BYTES:
         raise ValueError('Snapshot exceeds 5 MB')
-    with source.open('r', encoding='utf-8-sig') as stream:
-        return json.load(stream, object_pairs_hook=_unique_pairs,
-                         parse_constant=lambda value: (_ for _ in ()).throw(ValueError('Non-finite JSON number')))
+    snapshot = json.loads(raw.decode('utf-8-sig'), object_pairs_hook=_unique_pairs,
+                          parse_constant=lambda value: (_ for _ in ()).throw(ValueError('Non-finite JSON number')))
+    return snapshot, hashlib.sha256(raw).hexdigest()
 
 
-def normalize(snapshot):
+def load_snapshot(path):
+    """Compatibility reader for existing callers; same strict bounded parser."""
+    return load_snapshot_with_digest(path)[0]
+
+
+def normalize(snapshot, *, source_sha256=None):
     """Return topology + provenance + quarantine; never silently certify missing data."""
     if not isinstance(snapshot, dict) or snapshot.get('schema') != SCHEMA:
         raise ValueError('Unsupported vendor snapshot schema')
@@ -70,6 +80,9 @@ def normalize(snapshot):
         raise ValueError('Invalid collection timestamp') from exc
     if parsed.tzinfo is None or parsed.utcoffset().total_seconds() != 0:
         raise ValueError('UTC timestamp required')
+    if source_sha256 is not None and (not isinstance(source_sha256, str) or
+                                      not re.fullmatch(r'[0-9a-f]{64}', source_sha256)):
+        raise ValueError('Invalid source SHA-256 evidence')
     systems = snapshot.get('systems')
     if not isinstance(systems, list) or len(systems) > 1000:
         raise ValueError('systems must be an array of at most 1000 entries')
@@ -162,6 +175,7 @@ def normalize(snapshot):
     topology = {'schema': 'storagescope.storage-topology.v1', 'assets': assets,
                 'paths': [], 'shares': shares}
     return {'schema': 'storagescope.vendor-import-report.v1', 'vendor': vendor,
+            'snapshot_sha256': source_sha256,
             'source_ref': source_ref, 'collected_at': timestamp,
             'topology': topology, 'quarantined_system_ids': duplicate_ids,
             'quarantined_share_asset_ids': sorted(quarantined_share_assets),
@@ -174,7 +188,8 @@ def main(argv=None):
     parser.add_argument('input', help='Vendor snapshot JSON (maximum 5 MB)')
     parser.add_argument('output', help='New normalized report JSON (must not exist)')
     args = parser.parse_args(argv)
-    report = normalize(load_snapshot(args.input))
+    snapshot, digest = load_snapshot_with_digest(args.input)
+    report = normalize(snapshot, source_sha256=digest)
     target = Path(args.output)
     stream = target.open('x', encoding='utf-8')
     try:
