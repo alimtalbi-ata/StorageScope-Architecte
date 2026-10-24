@@ -89,13 +89,22 @@ def map_dependencies(topology, risk_report):
     share_counts = Counter(_id(s.get('id')) for s in topology['shares']
                            if isinstance(s, dict) and _id(s.get('id')))
     shares = defaultdict(set)
+    unresolved_shares_by_nas = Counter()
+    unresolved_share_observations = 0
     for item in topology['shares']:
         if not isinstance(item, dict):
+            unresolved_share_observations += 1
             continue
         ident, target = _id(item.get('id')), _id(item.get('nas_id'))
         if (ident and share_counts[ident] == 1 and trusted.get(target) == 'nas'
                 and item.get('protocol') in ('NFS', 'SMB')):
             shares[target].add(ident)
+        else:
+            # Retain ambiguous share evidence even when another share is healthy.
+            # Attribute only to uniquely trusted NAS identities.
+            unresolved_share_observations += 1
+            if trusted.get(target) == 'nas':
+                unresolved_shares_by_nas[target] += 1
 
     hosts_by_array, unverified_by_array = defaultdict(set), defaultdict(set)
     for host, target in verified_pairs:
@@ -116,12 +125,14 @@ def map_dependencies(topology, risk_report):
                         'unverified_host_ids': unverified,
                         'mixed_evidence_host_ids': mixed,
                         'unresolved_path_observations': unresolved_paths_by_array[ident],
+                        'unresolved_share_observations': unresolved_shares_by_nas[ident],
                         'verified_share_ids': share_ids,
                         'scope': 'OBSERVED' if host_ids or share_ids else 'UNASSESSED'})
 
     incomplete = (risk_report.get('assessment') == 'INCOMPLETE'
                   or bool(uncertain_pairs)
                   or bool(unresolved_path_observations)
+                  or bool(unresolved_share_observations)
                   or any(a['scope'] == 'UNASSESSED' for a in results)
                   or not results)
     return {
@@ -133,6 +144,7 @@ def map_dependencies(topology, risk_report):
         'unverified_host_relationships': len(uncertain_pairs),
         'mixed_evidence_host_relationships': len(mixed_pairs),
         'unresolved_path_observations': unresolved_path_observations,
+        'unresolved_share_observations': unresolved_share_observations,
         'verified_share_relationships': sum(len(s) for s in shares.values()),
         'scope_note': 'Observed host-array paths and NAS shares only; not service-level impact or a complete CMDB dependency map',
         'automatic_changes': 0,
