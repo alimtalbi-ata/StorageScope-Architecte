@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 
+from storage_observation_time_v6215 import parse_observed_at, summarize_observation_times
+
 ACTIVE = frozenset({'up', 'active'})
 KNOWN = ACTIVE | {'down', 'disabled', 'unknown'}
 STORAGE_KINDS = frozenset({'storage_array', 'nas'})
@@ -56,6 +58,18 @@ def map_dependencies(topology, risk_report):
             continue
         host, target, fabric = (_id(item.get(k)) for k in ('host_id', 'storage_id', 'fabric'))
         state = item.get('state')
+        if parse_observed_at(item)[0] == 'INVALID':
+            # An explicitly bad clock value cannot certify the path. Poison
+            # the same physical signature even if another sample says "up".
+            unresolved_path_observations += 1
+            if trusted.get(target) == 'storage_array':
+                unresolved_paths_by_array[target] += 1
+            if trusted.get(host) == 'host' and trusted.get(target) == 'storage_array':
+                if fabric:
+                    signatures[(host, target, fabric, _id(item.get('port')))].add('<invalid timestamp>')
+                else:
+                    unresolved_fabric_pairs.add((host, target))
+            continue
         if trusted.get(host) != 'host' or trusted.get(target) != 'storage_array':
             # Do not invent a host-array relation. Retain a bounded audit count,
             # attributable to the array only when its identity is trusted.
@@ -96,6 +110,11 @@ def map_dependencies(topology, risk_report):
             unresolved_share_observations += 1
             continue
         ident, target = _id(item.get('id')), _id(item.get('nas_id'))
+        if parse_observed_at(item)[0] == 'INVALID':
+            unresolved_share_observations += 1
+            if trusted.get(target) == 'nas':
+                unresolved_shares_by_nas[target] += 1
+            continue
         if (ident and share_counts[ident] == 1 and trusted.get(target) == 'nas'
                 and item.get('protocol') in ('NFS', 'SMB')):
             shares[target].add(ident)
@@ -145,6 +164,7 @@ def map_dependencies(topology, risk_report):
         'mixed_evidence_host_relationships': len(mixed_pairs),
         'unresolved_path_observations': unresolved_path_observations,
         'unresolved_share_observations': unresolved_share_observations,
+        'observation_times': summarize_observation_times(topology['paths'], topology['shares']),
         'verified_share_relationships': sum(len(s) for s in shares.values()),
         'scope_note': 'Observed host-array paths and NAS shares only; not service-level impact or a complete CMDB dependency map',
         'automatic_changes': 0,
