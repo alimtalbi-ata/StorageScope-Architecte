@@ -3,7 +3,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[1]
 B=ROOT/'02-Compilation-Windows'
 class BootstrapContract(unittest.TestCase):
  def test_version(self):
-  self.assertEqual((ROOT/'07-Manifestes/VERSION').read_text().strip(),'6.45')
+  v=(ROOT/'07-Manifestes/VERSION').read_text(encoding='utf-8').strip(); self.assertRegex(v,r'^\d+\.\d+$'); self.assertGreaterEqual(tuple(map(int,v.split('.'))),(6,45))
  def test_preflight_allows_bootstrap(self):
   s=(B/'preflight.ps1').read_text()
   self.assertIn('Write-Warning',s)
@@ -15,6 +15,6 @@ class BootstrapContract(unittest.TestCase):
   self.assertIn('failed-build-logs',s)
   self.assertIn('diagnostic stage retained',s)
  def test_versions_aligned(self):
-  self.assertIn('6.45',(B/'StorageScope.iss').read_text())
-  self.assertIn("VERSION = '6.45'",(ROOT/'03-Sources/storagescope_windows.py').read_text())
+  v=(ROOT/'07-Manifestes/VERSION').read_text(encoding='utf-8').strip(); self.assertIn(f'#define AppVersion "{v}"',(B/'StorageScope.iss').read_text(encoding='utf-8'))
+  self.assertIn(f"VERSION = '{v}'",(ROOT/'03-Sources/storagescope_windows.py').read_text(encoding='utf-8'))
 if __name__=='__main__': unittest.main()

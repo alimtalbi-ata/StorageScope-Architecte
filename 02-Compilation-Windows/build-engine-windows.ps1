@@ -13,6 +13,12 @@ function Invoke-Checked([string]$Exe, [string[]]$Arguments) {
     & $Exe @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Exe failed (exit $LASTEXITCODE): $($Arguments -join ' ')" }
 }
+# Windowed PyInstaller executables may return control to the shell before exit.
+# Start-Process -Wait is mandatory for the self-test and version-file gate.
+function Invoke-WindowedChecked([string]$Exe, [string[]]$Arguments) {
+    $process = Start-Process -FilePath $Exe -ArgumentList $Arguments -Wait -PassThru
+    if ($process.ExitCode -ne 0) { throw "Windowed executable failed (exit $($process.ExitCode)): $Exe" }
+}
 function Find-Python {
     $py = Get-Command py.exe -ErrorAction SilentlyContinue
     if ($py) {
@@ -59,18 +65,43 @@ if (-not (Test-Path "$venv\Scripts\python.exe")) { Invoke-Checked $python.Execut
  $builder = "$venv\Scripts\python.exe"
 Invoke-Checked $builder @('verify-windows-build.py')
 Invoke-Checked $builder @('-m','pip','install','--disable-pip-version-check','--requirement','requirements-build.txt')
-Invoke-Checked $builder @('-m','unittest','discover','-s','.','-p','test_*.py','-q')
+# Run the full regression suite from the repository root, not the reduced build stage.
+# Historical tests use repository-relative paths, fixtures and workflow definitions.
+$repoRoot = Split-Path -Parent $PSScriptRoot
+if ((Split-Path -Leaf $repoRoot) -eq '02-Compilation-Windows') {
+    $repoRoot = Split-Path -Parent $repoRoot
+}
+$testsRoot = Join-Path $repoRoot '04-Tests-et-Qualification'
+if (-not (Test-Path -LiteralPath $testsRoot -PathType Container)) {
+    throw "Repository qualification directory missing: $testsRoot"
+}
+# V6.186: run historical tests with colocated fixtures and strict 958 + 8 gates.
+# The runner is in the checkout, not the temporary build stage.
+$historicalRunner = Join-Path $repoRoot 'scripts/run_historical_windows_suite.py'
+if (-not (Test-Path -LiteralPath $historicalRunner -PathType Leaf)) {
+    throw "Historical regression runner missing: $historicalRunner"
+}
+$historicalReport = Join-Path $logDir 'historical-suite-report.json'
+Invoke-Checked $builder @($historicalRunner, '--repo', $repoRoot, '--minimum-tests', '958',
+    '--minimum-nested-tests', '8', '--report', $historicalReport)
+if (-not (Test-Path -LiteralPath $historicalReport -PathType Leaf)) {
+    throw "Historical regression evidence missing: $historicalReport"
+}
+$historicalEvidence = Get-Content -LiteralPath $historicalReport -Raw | ConvertFrom-Json
+if ($historicalEvidence.status -ne 'PASS') {
+    throw "Historical regression report is not PASS: $historicalReport"
+}
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','StorageScope.spec')
 # Independent console-mode gate: no Python required on the target PC.
 Invoke-Checked $builder @('-m','PyInstaller','--clean','--noconfirm','--onefile','--console','--name','StorageScope-UpgradeGate','upgrade_gate_v581.py')
 if (-not (Test-Path 'dist\StorageScope-UpgradeGate.exe')) { throw 'Upgrade gate EXE absent' }
 if (-not (Test-Path 'dist\StorageScope.exe')) { throw 'EXE absent apres compilation' }
-Invoke-Checked "$PSScriptRoot\dist\StorageScope.exe" @('--self-test')
+Invoke-WindowedChecked "$PSScriptRoot\dist\StorageScope.exe" @('--self-test')
 # Windowed PyInstaller binaries do not have a reliable stdout handle.
 # Request version via an explicit file and verify the process exit code.
 $versionProbe = Join-Path $PSScriptRoot 'dist\version-probe.txt'
 if (Test-Path $versionProbe) { Remove-Item $versionProbe -Force }
-Invoke-Checked "$PSScriptRoot\dist\StorageScope.exe" @('--version-file', $versionProbe)
+Invoke-WindowedChecked "$PSScriptRoot\dist\StorageScope.exe" @('--version-file', ('"{0}"' -f $versionProbe))
 if (-not (Test-Path $versionProbe)) { throw 'EXE version probe not created' }
 $reportedVersion = (Get-Content -LiteralPath $versionProbe -Raw).Trim()
 Remove-Item $versionProbe -Force

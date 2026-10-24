@@ -1,0 +1,84 @@
+name: Governance review qualification
+on:
+  push:
+    branches: [feature/audit-coherence-review-20261020]
+  pull_request:
+    paths:
+      - '03-Sources/**'
+      - '04-Tests-et-Qualification/**'
+      - '.github/workflows/governance-review-qualification.yml'
+  workflow_dispatch:
+jobs:
+  review-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Test the PR exact head, not the synthetic merge checkout.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Qualify audit and multi-vendor review
+        run: |
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_v622.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_integrity_v687.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_review_e2e_v688.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_risk_v6194.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_risk_desktop_v6196.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_reconcile_v619.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_reconcile_provenance_v6197.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_review_desktop_v6198.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_snapshot_digest_v6208.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_transitive_quarantine_v6209.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_asset_kind_quarantine_v6210.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_impact_v6199.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_quarantine_v6200.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_missing_fabric_v6212.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_paths_v6213.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_shares_v6214.py' -v
+  review-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Test the PR exact head, not the synthetic merge checkout.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Qualify Windows review logic
+        shell: pwsh
+        run: |
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_v622.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Registry tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_integrity_v687.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Integrity tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_review_e2e_v688.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Inventory E2E failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_risk_v6194.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Storage path risk tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_risk_desktop_v6196.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop storage risk tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_reconcile_v619.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Historical CMDB reconciliation tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_reconcile_provenance_v6197.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'CMDB provenance regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_review_desktop_v6198.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'CMDB desktop review regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_snapshot_digest_v6208.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'CMDB exact-byte SHA256 provenance regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_transitive_quarantine_v6209.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'CMDB transitive identity quarantine regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_asset_kind_quarantine_v6210.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'CMDB asset kind quarantine regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_impact_v6199.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Storage dependency impact regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_quarantine_v6200.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'SAN path quarantine regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_missing_fabric_v6212.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Missing SAN fabric evidence regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_paths_v6213.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Unresolved SAN path evidence regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_shares_v6214.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Unresolved NAS share evidence regression tests failed' }
