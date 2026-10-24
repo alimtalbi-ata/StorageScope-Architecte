@@ -123,7 +123,7 @@ def display_assets(candidate, max_chars=180):
     return text if len(text) <= max_chars else text[:max_chars-1] + '…'
 
 def can_decide(candidate):
-    return candidate.get('review_eligibility','REVIEW_REQUIRED') == 'REVIEW_REQUIRED' and bool(candidate.get('review_key'))
+    return candidate.get('review_eligibility') == 'ELIGIBLE' and bool(candidate.get('review_key'))
 
 
 def explain_candidate(candidate):

@@ -7,7 +7,8 @@ class PublicationRecovery(unittest.TestCase):
   self.assertIn('Test-Path -LiteralPath $unfinishedBackup',s)
  def test_preserve_pending_when_backup_exists(self):
   s=(ROOT/'02-Compilation-Windows/build-all-windows.ps1').read_text(encoding='utf-8')
-  self.assertIn("-not (Test-Path (Join-Path $PSScriptRoot '.publish-backup'))",s)
+  self.assertIn("Test-Path -LiteralPath $unfinishedBackup",s)
+  self.assertIn("Restaurer manuellement",s)
  def test_recovery_inspection_read_only(self):
   s=(ROOT/'02-Compilation-Windows/inspect-publication-recovery.ps1').read_text(encoding='utf-8')
   self.assertIn('Test-Path',s)
