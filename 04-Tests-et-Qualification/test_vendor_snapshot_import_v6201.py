@@ -65,6 +65,23 @@ class VendorSnapshotTests(unittest.TestCase):
                     {'NFS', 'SMB'})
                 self.assertEqual(result['automatic_changes'], 0)
 
+    def test_share_invalid_capacity_quarantined_without_losing_system(self):
+        for vendor in ('netapp_ontap', 'dell_powerscale', 'pure_flashblade'):
+            with self.subTest(vendor=vendor):
+                data = sample(vendor)
+                collection = {
+                    'netapp_ontap': 'volumes',
+                    'dell_powerscale': 'exports',
+                    'pure_flashblade': 'shares',
+                }[vendor]
+                data['systems'][0][collection][0]['quota_bytes'] = -1
+                report = normalize(data)
+                self.assertEqual(len(report['topology']['assets']), 1)
+                self.assertEqual(report['topology']['shares'], [])
+                self.assertEqual(report['assessment'], 'INCOMPLETE')
+                self.assertTrue(report['rejected'])
+                self.assertEqual(report['automatic_changes'], 0)
+
     def test_duplicate_system_quarantined(self):
         data = sample('netapp_ontap')
         data['systems'].append(copy.deepcopy(data['systems'][0]))
