@@ -131,6 +131,25 @@ jobs:
           if ($dep.assessment -ne 'INCOMPLETE' -or $dep.verified_host_relationships -ne 1 -or $dep.unverified_host_relationships -ne 1 -or $dep.mixed_evidence_host_relationships -ne 1 -or $dep.automatic_changes -ne 0) { throw 'Frozen mixed SAN evidence was hidden or misclassified' }
           if ((@($dep.assets[0].mixed_evidence_host_ids) -join ',') -ne 'h1') { throw 'Frozen mixed SAN host traceability missing' }
           Write-Host 'Frozen mixed SAN evidence PASS (synthetic, read-only)'
+      - name: Verify frozen missing SAN fabric evidence V6.212
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'missing-san-fabric-v6212.json'
+          $output = Join-Path $env:RUNNER_TEMP 'missing-san-fabric-v6212-report.json'
+          # Synthetic: one active fabric B and a second path with no fabric ID.
+          $raw = '{"schema":"storagescope.storage-topology.v1","assets":[{"id":"h1","kind":"host"},{"id":"a1","kind":"storage_array","used_gib":20,"total_gib":100}],"paths":[{"host_id":"h1","storage_id":"a1","fabric":"B","port":"p2","state":"up"},{"host_id":"h1","storage_id":"a1","state":"up"}],"shares":[]}'
+          [IO.File]::WriteAllText($input, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--storage-risk-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen missing-fabric SAN review failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          $dep = $report.dependency_impact
+          if ($dep.assessment -ne 'INCOMPLETE' -or $dep.verified_host_relationships -ne 1 -or $dep.unverified_host_relationships -ne 1 -or $dep.mixed_evidence_host_relationships -ne 1 -or $dep.automatic_changes -ne 0) { throw 'Frozen missing-fabric evidence was hidden' }
+          if ((@($dep.assets[0].mixed_evidence_host_ids) -join ',') -ne 'h1') { throw 'Frozen missing-fabric host traceability missing' }
+          if ('INVALID_PATH' -notin @($report.findings | ForEach-Object { $_.code })) { throw 'Frozen invalid SAN fabric finding missing' }
+          Write-Host 'Frozen missing SAN fabric evidence PASS (synthetic, read-only)'
       - name: Verify frozen CMDB review (provenance and fail-closed)
         shell: pwsh
         run: |
