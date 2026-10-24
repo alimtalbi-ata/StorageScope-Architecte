@@ -73,6 +73,15 @@ def format_risk_report(report, limit=200):
                       f"Observations de chemins sans relation résolue : {impact.get('unresolved_path_observations', 0)}",
                       f"Observations de partages sans relation résolue : {impact.get('unresolved_share_observations', 0)}",
                       'Portée : chemins hôte-baie et partages NAS uniquement, sans impact applicatif présumé'])
+        times = impact.get('observation_times')
+        if times:
+            lines.extend([
+                f"Horodatages valides : {times['valid_observations']}",
+                f"Horodatages absents : {times['missing_observations']}",
+                f"Horodatages invalides : {times['invalid_observations']}",
+                f"Dernière observation datée (non authentifiée) : {times['latest_parsed_utc'] or 'aucune'}",
+                'Fraîcheur : NON ÉVALUÉE (aucune heure de collecte inférée)',
+            ])
         for asset in impact['assets'][:limit]:
             lines.append(f"[{asset['scope']}] {asset['asset_id']} ({asset['kind']}) "
                          f"hôtes={asset['verified_host_ids']} "
