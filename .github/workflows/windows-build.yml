@@ -133,6 +133,9 @@ jobs:
           $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
           if ($report.assessment -ne 'INCOMPLETE' -or $report.candidate_count -ne 1 -or $report.automatic_merges -ne 0 -or $report.destructive_changes -ne 0) { throw 'Frozen CMDB report contract invalid' }
           if (@($report.quarantined_indices).Count -ne 2 -or $report.candidates[0].action -ne 'QUARANTINE_IDENTITY_CONFLICT') { throw 'Frozen CMDB conflict quarantine absent' }
+          $sourceBytes = [IO.File]::ReadAllBytes($input)
+          $expectedDigest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($sourceBytes)).ToLowerInvariant()
+          if ($report.snapshot_sha256 -ne $expectedDigest -or $report.snapshot_size_bytes -ne $sourceBytes.Length) { throw 'Frozen CMDB snapshot exact-byte SHA256 evidence invalid' }
           [IO.File]::WriteAllText($badInput, '[{"source":"a","source":"b","serial":"S"}]', [Text.UTF8Encoding]::new($false))
           $badArgs = @('--cmdb-review-file', ('"{0}"' -f $badInput), ('"{0}"' -f $badOutput))
           $rejected = Start-Process -FilePath $exe -ArgumentList $badArgs -Wait -PassThru
