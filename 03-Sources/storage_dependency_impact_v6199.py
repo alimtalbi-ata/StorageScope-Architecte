@@ -47,20 +47,26 @@ def map_dependencies(topology, risk_report):
     # Preserve *all* observations per physical signature. A conflicting state
     # is not repaired by the last record in the input (order independence).
     signatures = defaultdict(set)
+    unresolved_fabric_pairs = set()
     for item in topology['paths']:
         if not isinstance(item, dict):
             continue
         host, target, fabric = (_id(item.get(k)) for k in ('host_id', 'storage_id', 'fabric'))
         state = item.get('state')
-        if (not host or not target or not fabric or trusted.get(host) != 'host'
-                or trusted.get(target) != 'storage_array'):
+        if trusted.get(host) != 'host' or trusted.get(target) != 'storage_array':
+            continue  # Unknown endpoints cannot safely be attributed to a pair.
+        if not fabric:
+            # The host/array is identifiable even when the fabric is not.
+            # Preserve this as unverified evidence rather than silently
+            # discarding it when another path for the pair is healthy.
+            unresolved_fabric_pairs.add((host, target))
             continue
         # Keep invalid states as an explicit untrusted observation. Skipping them
         # would let an earlier/later "up" on the same signature look verified.
         observed_state = state if isinstance(state, str) and state in KNOWN else '<invalid>'
         signatures[(host, target, fabric, _id(item.get('port')))].add(observed_state)
 
-    verified_pairs, uncertain_pairs = set(), set()
+    verified_pairs, uncertain_pairs = set(), set(unresolved_fabric_pairs)
     for (host, target, _fabric, _port), states in signatures.items():
         pair = (host, target)
         if len(states) == 1 and next(iter(states)) in ACTIVE:
