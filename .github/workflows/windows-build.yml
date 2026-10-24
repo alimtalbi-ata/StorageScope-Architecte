@@ -34,6 +34,13 @@ jobs:
             $path = Join-Path '02-Compilation-Windows' $name
             if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force -ErrorAction Stop }
           }
+      - name: Inspect actual Infrastructure widgets on Windows desktop
+        shell: pwsh
+        env:
+          STORAGESCOPE_GUI_SMOKE: '1'
+        run: |
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_windows_infrastructure_gui_smoke_v6201.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Infrastructure GUI smoke failed' }
       - name: Build Windows release
         shell: pwsh
         run: |
