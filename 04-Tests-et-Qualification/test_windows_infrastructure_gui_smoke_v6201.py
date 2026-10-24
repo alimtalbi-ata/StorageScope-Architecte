@@ -78,6 +78,23 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                         exporter.invoke()
                 self.assertTrue(destination.is_file(), 'Export button did not create CSV')
                 self.assertIn('GUI-001', destination.read_text(encoding='utf-8-sig'))
+                # Invalid import must preserve the last valid inventory (fail closed).
+                invalid = Path(folder) / 'invalid-snapshot.json'
+                invalid.write_text('{ malformed JSON', encoding='utf-8')
+                with patch('tkinter.filedialog.askopenfilename', return_value=str(invalid)):
+                    with patch('tkinter.messagebox.showerror') as error_dialog:
+                        importer.invoke()
+                self.assertTrue(error_dialog.called, 'Invalid import did not surface a GUI error')
+                self.assertEqual(len(table.get_children()), 1,
+                                 'Invalid import destroyed previously loaded inventory')
+                # Existing CSV must never be overwritten, even through the GUI.
+                original_csv = destination.read_bytes()
+                with patch('tkinter.filedialog.asksaveasfilename', return_value=str(destination)):
+                    with patch('tkinter.messagebox.showerror') as overwrite_error:
+                        exporter.invoke()
+                self.assertTrue(overwrite_error.called, 'Existing CSV overwrite was not rejected')
+                self.assertEqual(destination.read_bytes(), original_csv,
+                                 'Existing CSV was unexpectedly modified')
                 root.destroy()
             tk.Tk.mainloop = inspect
             try:
