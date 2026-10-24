@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 
 from storage_observation_time_v6215 import parse_observed_at, summarize_observation_times
 from storage_observation_freshness_v6216 import load_policy, classify_observation, summarize_freshness
+from storage_source_policy_v6218 import load_source_policy, classify_source, summarize_sources
 
 ACTIVE = frozenset({'up', 'active'})
 KNOWN = ACTIVE | {'down', 'disabled', 'unknown'}
@@ -37,6 +38,7 @@ def map_dependencies(topology, risk_report):
         raise ValueError('Unsupported risk report schema')
 
     policy = load_policy(topology)
+    source_policy = load_source_policy(topology)
     assets = topology['assets']
     counts = Counter(_id(a.get('id')) for a in assets if isinstance(a, dict) and _id(a.get('id')))
     trusted = {}
@@ -60,7 +62,8 @@ def map_dependencies(topology, risk_report):
             continue
         host, target, fabric = (_id(item.get(k)) for k in ('host_id', 'storage_id', 'fabric'))
         state = item.get('state')
-        if (parse_observed_at(item)[0] == 'INVALID' or
+        if ((source_policy is not None and classify_source(item, source_policy) != 'ALLOWED') or
+                parse_observed_at(item)[0] == 'INVALID' or
                 (policy is not None and classify_observation(item, policy) != 'FRESH')):
             # An explicitly bad clock value cannot certify the path. Poison
             # the same physical signature even if another sample says "up".
@@ -113,7 +116,8 @@ def map_dependencies(topology, risk_report):
             unresolved_share_observations += 1
             continue
         ident, target = _id(item.get('id')), _id(item.get('nas_id'))
-        if (parse_observed_at(item)[0] == 'INVALID' or
+        if ((source_policy is not None and classify_source(item, source_policy) != 'ALLOWED') or
+                parse_observed_at(item)[0] == 'INVALID' or
                 (policy is not None and classify_observation(item, policy) != 'FRESH')):
             unresolved_share_observations += 1
             if trusted.get(target) == 'nas':
@@ -170,6 +174,7 @@ def map_dependencies(topology, risk_report):
         'unresolved_share_observations': unresolved_share_observations,
         'observation_times': summarize_observation_times(topology['paths'], topology['shares']),
         'freshness_evaluation': summarize_freshness(topology['paths'], topology['shares'], policy),
+        'source_evaluation': summarize_sources(topology['paths'], topology['shares'], source_policy),
         'verified_share_relationships': sum(len(s) for s in shares.values()),
         'scope_note': 'Observed host-array paths and NAS shares only; not service-level impact or a complete CMDB dependency map',
         'automatic_changes': 0,
