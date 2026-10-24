@@ -68,12 +68,14 @@ def format_risk_report(report, limit=200):
         lines.extend(['', f"Dépendances observées : {impact['assessment']}",
                       f"Relations hôtes vérifiées : {impact['verified_host_relationships']}",
                       f"Relations hôtes non vérifiées : {impact['unverified_host_relationships']}",
+                      f"Relations hôtes à preuves mixtes : {impact.get('mixed_evidence_host_relationships', 0)}",
                       f"Partages NAS vérifiés : {impact['verified_share_relationships']}",
                       'Portée : chemins hôte-baie et partages NAS uniquement, sans impact applicatif présumé'])
         for asset in impact['assets'][:limit]:
             lines.append(f"[{asset['scope']}] {asset['asset_id']} ({asset['kind']}) "
                          f"hôtes={asset['verified_host_ids']} "
                          f"non_vérifiés={asset['unverified_host_ids']} "
+                         f"preuves_mixtes={asset.get('mixed_evidence_host_ids', [])} "
                          f"partages={asset['verified_share_ids']}")
         if len(impact['assets']) > limit:
             lines.append(f"… {len(impact['assets']) - limit} équipements supplémentaires non affichés")
