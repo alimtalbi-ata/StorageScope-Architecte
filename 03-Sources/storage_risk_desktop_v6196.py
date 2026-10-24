@@ -103,6 +103,15 @@ def format_risk_report(report, limit=200):
                 f"Sources hors liste : {sources['unlisted_observations']}",
                 'Liste de sources déclarée par opérateur : NON AUTHENTIFIÉE',
             ])
+        auth = impact.get('observation_authentication')
+        if auth is not None:
+            lines.extend([
+                f"Observations HMAC vérifiées : {auth['verified_observations']}",
+                f"Signatures HMAC invalides : {auth['bad_signature_observations']}",
+                f"Clés indisponibles : {auth['key_unavailable_observations']}",
+                f"Observations sans authentification : {auth['missing_auth_observations']}",
+                'HMAC à secret partagé : identité indépendante et horloge NON ATTESTÉES',
+            ])
         for asset in impact['assets'][:limit]:
             lines.append(f"[{asset['scope']}] {asset['asset_id']} ({asset['kind']}) "
                          f"hôtes={asset['verified_host_ids']} "
