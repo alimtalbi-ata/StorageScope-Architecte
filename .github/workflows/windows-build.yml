@@ -208,6 +208,27 @@ jobs:
           if ($times.valid_observations -ne 1 -or $times.invalid_observations -ne 1 -or $times.latest_parsed_utc -ne '2026-10-24T10:00:00Z' -or $times.freshness -ne 'NOT_ASSESSED') { throw 'Frozen timestamp provenance invalid' }
           if ('INVALID_PATH_TIMESTAMP' -notin @($report.findings | ForEach-Object { $_.code })) { throw 'Frozen timestamp finding absent' }
           Write-Host 'Frozen SAN/NAS timestamp provenance PASS (synthetic, read-only)'
+      - name: Verify frozen SAN/NAS freshness policy V6.216
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'freshness-v6216.json'
+          $output = Join-Path $env:RUNNER_TEMP 'freshness-v6216-report.json'
+          # Synthetic: fresh fabric A, stale fabric B, future-dated NAS share.
+          $raw = '{"schema":"storagescope.storage-topology.v1","freshness_policy":{"schema":"storagescope.observation-freshness-policy.v1","reference_time":"2026-10-24T10:00:00Z","max_age_seconds":120,"max_future_skew_seconds":5},"assets":[{"id":"h1","kind":"host"},{"id":"a1","kind":"storage_array","used_gib":20,"total_gib":100},{"id":"n1","kind":"nas","used_gib":20,"total_gib":100}],"paths":[{"host_id":"h1","storage_id":"a1","fabric":"A","state":"up","observed_at":"2026-10-24T09:59:00Z"},{"host_id":"h1","storage_id":"a1","fabric":"B","state":"up","observed_at":"2026-10-24T09:57:59Z"}],"shares":[{"id":"s1","nas_id":"n1","protocol":"NFS","used_gib":1,"quota_gib":10,"observed_at":"2026-10-24T10:00:06Z"}]}'
+          [IO.File]::WriteAllText($input, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--storage-risk-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen freshness review failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          $dep = $report.dependency_impact
+          $fresh = $dep.freshness_evaluation
+          if ($dep.assessment -ne 'INCOMPLETE' -or $dep.verified_host_relationships -ne 1 -or $dep.unverified_host_relationships -ne 1 -or $dep.mixed_evidence_host_relationships -ne 1 -or $dep.verified_share_relationships -ne 0 -or $dep.automatic_changes -ne 0) { throw 'Frozen freshness quarantine contract failed' }
+          if ($fresh.fresh_observations -ne 1 -or $fresh.stale_observations -ne 1 -or $fresh.future_observations -ne 1 -or $fresh.trust -ne 'UNAUTHENTICATED_INPUT_CLOCK') { throw 'Frozen freshness counters invalid' }
+          $codes = @($report.findings | ForEach-Object { $_.code })
+          if ('PATH_STALE_OBSERVATION' -notin $codes -or 'SHARE_FUTURE_OBSERVATION' -notin $codes) { throw 'Frozen freshness findings missing' }
+          Write-Host 'Frozen SAN/NAS freshness policy PASS (synthetic, read-only)'
       - name: Verify frozen CMDB review (provenance and fail-closed)
         shell: pwsh
         run: |
