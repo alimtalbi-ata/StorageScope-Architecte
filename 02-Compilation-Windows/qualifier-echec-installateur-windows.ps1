@@ -2,7 +2,8 @@
 # Author: Abdelhalim Talbi. Never run on a workstation with user data.
 param([string]$Version = '5.89')
 $ErrorActionPreference = 'Stop'
-Set-Location $PSScriptRoot
+# Preserve the caller's working directory: the CI checks the JSON report relative to
+# the repository root after this script returns. All script resources use $PSScriptRoot.
 $setup = Join-Path $PSScriptRoot ("installer\StorageScope-Setup-v{0}.exe" -f $Version)
 $install = Join-Path $env:LOCALAPPDATA 'Programs\StorageScope'
 $data = Join-Path $env:LOCALAPPDATA 'StorageScope'

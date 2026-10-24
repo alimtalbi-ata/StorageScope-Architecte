@@ -12,8 +12,11 @@ class WindowsWorkflow574(unittest.TestCase):
         self.assertIn('tree.selection_set(node)',text)
     def test_stale_build_removed(self):
         text=(ROOT/'build-all-windows.ps1').read_text()
-        self.assertIn('Remove-Item $artifact -Force',text)
-        self.assertIn("$expectedVersion = '6.17'",text)
+        self.assertIn("if (Test-Path -LiteralPath $stage)",text)
+        self.assertIn('Ancien repertoire de compilation a examiner',text)
+        self.assertIn('07-Manifestes/VERSION',text)
     def test_single_installer_check(self):
         text=(ROOT/'build-all-windows.ps1').read_text()
-        self.assertEqual(text.count("if (-not (Test-Path $setup))"),1)
+        self.assertIn('Missing build output: $requiredOutput',text)
+        self.assertIn('installer/StorageScope-Setup-v$releaseVersion.exe',text)
+        self.assertIn('verify-binary-delivery.py',text)

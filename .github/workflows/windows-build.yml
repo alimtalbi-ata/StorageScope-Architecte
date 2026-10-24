@@ -1,6 +1,10 @@
 name: Build and qualify StorageScope Windows
 on:
   workflow_dispatch:
+  pull_request:
+    # Include the stacked SAN/NAS review branch so feature changes receive
+    # a full native Windows qualification, not governance-only CI.
+    branches: [main, feature/storagescope-v6.194-san-nas-risk-20261023, feature/storagescope-v6.195-identity-quarantine-20261023, feature/storagescope-v6.196-desktop-san-nas-review-20261023, feature/storagescope-v6.197-cmdb-provenance-20261023, feature/storagescope-v6.198-cmdb-desktop-20261023, feature/storagescope-v6.199-dependency-impact-20261023, feature/storagescope-v6.200-path-evidence-quarantine-20261023, feature/storagescope-v6.201-offline-vendor-snapshots-20261023, feature/storagescope-v6.202-frozen-vendor-cli-20261023, feature/storagescope-v6.203-vendor-share-evidence-quarantine-20261024, feature/storagescope-v6.204-nas-quarantine-visibility-20261024]
   push:
     branches: [main]
 jobs:
@@ -8,6 +12,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Qualify the PR's exact head, not GitHub's synthetic merge ref.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -30,12 +37,316 @@ jobs:
       - name: Build Windows release
         shell: pwsh
         run: |
+          $global:LASTEXITCODE = 0
           if (Test-Path '02-Compilation-Windows/build-all-windows.ps1') {
             & './02-Compilation-Windows/build-all-windows.ps1'
           } else {
             & './build-all-windows.ps1'
           }
           if (-not $?) { throw 'Build failed' }
+          if ($LASTEXITCODE -ne 0) { throw "Build process returned exit code $LASTEXITCODE" }
+      - name: Verify frozen SAN/NAS assessment (positive and fail-closed)
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'storage-risk-valid.json'
+          $output = Join-Path $env:RUNNER_TEMP 'storage-risk-report.json'
+          $badInput = Join-Path $env:RUNNER_TEMP 'storage-risk-duplicate-key.json'
+          $badOutput = Join-Path $env:RUNNER_TEMP 'storage-risk-invalid-report.json'
+          $topology = @{
+            schema = 'storagescope.storage-topology.v1'
+            assets = @(
+              @{ id = 'host1'; kind = 'host' },
+              @{ id = 'array1'; kind = 'storage_array'; used_gib = 97; total_gib = 100 }
+            )
+            paths = @(@{ host_id = 'host1'; storage_id = 'array1'; fabric = 'A'; state = 'up' })
+            shares = @()
+          }
+          [IO.File]::WriteAllText($input, ($topology | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+          $args = @('--storage-risk-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $args -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Frozen SAN/NAS assessment failed: $($process.ExitCode)" }
+          if (-not (Test-Path -LiteralPath $output -PathType Leaf)) { throw 'Frozen SAN/NAS evidence missing' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          $codes = @($report.findings | ForEach-Object { $_.code })
+          if ($report.schema -ne 'storagescope.storage-risk.v1' -or $report.assessment -ne 'RISKS_FOUND' -or $report.automatic_changes -ne 0) { throw 'Frozen SAN/NAS report contract invalid' }
+          if ('CAPACITY_CRITICAL' -notin $codes -or 'SINGLE_ACTIVE_FABRIC' -notin $codes) { throw 'Frozen SAN/NAS risks not detected' }
+          $dependencies = $report.dependency_impact
+          if ($null -eq $dependencies -or $dependencies.schema -ne 'storagescope.storage-dependencies.v1') { throw 'Frozen dependency report missing' }
+          if ($dependencies.verified_host_relationships -ne 1 -or $dependencies.unverified_host_relationships -ne 0 -or $dependencies.automatic_changes -ne 0) { throw 'Frozen host-array dependency evidence invalid' }
+          if (@($dependencies.assets).Count -ne 1 -or $dependencies.assets[0].asset_id -ne 'array1') { throw 'Frozen dependency asset scope invalid' }
+          [IO.File]::WriteAllText($badInput, '{"schema":"storagescope.storage-topology.v1","assets":[],"assets":[],"paths":[],"shares":[]}', [Text.UTF8Encoding]::new($false))
+          $badArgs = @('--storage-risk-file', ('"{0}"' -f $badInput), ('"{0}"' -f $badOutput))
+          $rejected = Start-Process -FilePath $exe -ArgumentList $badArgs -Wait -PassThru
+          if ($rejected.ExitCode -eq 0 -or (Test-Path -LiteralPath $badOutput)) { throw 'Frozen SAN/NAS parser accepted duplicate JSON property' }
+          Write-Host "Frozen SAN/NAS assessment PASS: $($report.finding_count) findings; invalid input rejected"
+      - name: Verify frozen SAN path conflict quarantine (up/down/up)
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $inputPath = Join-Path $env:RUNNER_TEMP 'storage-path-conflict-v6200.json'
+          $outputPath = Join-Path $env:RUNNER_TEMP 'storage-path-conflict-v6200-report.json'
+          $topology = @{
+            schema = 'storagescope.storage-topology.v1'
+            assets = @(
+              @{ id = 'host1'; kind = 'host' },
+              @{ id = 'array1'; kind = 'storage_array'; used_gib = 20; total_gib = 100 }
+            )
+            paths = @(
+              @{ host_id = 'host1'; storage_id = 'array1'; fabric = 'A'; port = 'p1'; state = 'up' },
+              @{ host_id = 'host1'; storage_id = 'array1'; fabric = 'A'; port = 'p1'; state = 'down' },
+              @{ host_id = 'host1'; storage_id = 'array1'; fabric = 'A'; port = 'p1'; state = 'up' }
+            )
+            shares = @()
+          }
+          [IO.File]::WriteAllText($inputPath, ($topology | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+          $args = @('--storage-risk-file', ('"{0}"' -f $inputPath), ('"{0}"' -f $outputPath))
+          $process = Start-Process -FilePath $exe -ArgumentList $args -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Frozen SAN conflict review failed: $($process.ExitCode)" }
+          if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) { throw 'Frozen conflict evidence missing' }
+          $report = Get-Content -Raw -LiteralPath $outputPath | ConvertFrom-Json
+          if ($report.assessment -ne 'INCOMPLETE' -or $report.verified_active_paths -ne 0) { throw 'Conflicting path incorrectly verified' }
+          if ($report.dependency_impact.verified_host_relationships -ne 0 -or $report.dependency_impact.unverified_host_relationships -ne 1) { throw 'Frozen dependency incorrectly trusted conflicting SAN path' }
+          $codes = @($report.findings | ForEach-Object { $_.code })
+          if ('CONFLICTING_PATH_STATE' -notin $codes -or 'NO_VERIFIED_ACTIVE_PATH' -notin $codes) { throw 'Frozen SAN conflict findings missing' }
+          Write-Host 'Frozen SAN path quarantine PASS: up/down/up remains unverified'
+      - name: Verify frozen mixed SAN path evidence V6.211
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'mixed-san-v6211.json'
+          $output = Join-Path $env:RUNNER_TEMP 'mixed-san-v6211-report.json'
+          # Synthetic: conflicting states on fabric A, independent up path on B.
+          # The verified path must NOT erase the unverified path's evidence.
+          $raw = '{"schema":"storagescope.storage-topology.v1","assets":[{"id":"h1","kind":"host"},{"id":"a1","kind":"storage_array","used_gib":20,"total_gib":100}],"paths":[{"host_id":"h1","storage_id":"a1","fabric":"A","port":"p1","state":"up"},{"host_id":"h1","storage_id":"a1","fabric":"A","port":"p1","state":"down"},{"host_id":"h1","storage_id":"a1","fabric":"B","port":"p2","state":"up"}],"shares":[]}'
+          [IO.File]::WriteAllText($input, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--storage-risk-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen mixed SAN review failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          $dep = $report.dependency_impact
+          if ($dep.assessment -ne 'INCOMPLETE' -or $dep.verified_host_relationships -ne 1 -or $dep.unverified_host_relationships -ne 1 -or $dep.mixed_evidence_host_relationships -ne 1 -or $dep.automatic_changes -ne 0) { throw 'Frozen mixed SAN evidence was hidden or misclassified' }
+          if ((@($dep.assets[0].mixed_evidence_host_ids) -join ',') -ne 'h1') { throw 'Frozen mixed SAN host traceability missing' }
+          Write-Host 'Frozen mixed SAN evidence PASS (synthetic, read-only)'
+      - name: Verify frozen missing SAN fabric evidence V6.212
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'missing-san-fabric-v6212.json'
+          $output = Join-Path $env:RUNNER_TEMP 'missing-san-fabric-v6212-report.json'
+          # Synthetic: one active fabric B and a second path with no fabric ID.
+          $raw = '{"schema":"storagescope.storage-topology.v1","assets":[{"id":"h1","kind":"host"},{"id":"a1","kind":"storage_array","used_gib":20,"total_gib":100}],"paths":[{"host_id":"h1","storage_id":"a1","fabric":"B","port":"p2","state":"up"},{"host_id":"h1","storage_id":"a1","state":"up"}],"shares":[]}'
+          [IO.File]::WriteAllText($input, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--storage-risk-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen missing-fabric SAN review failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          $dep = $report.dependency_impact
+          if ($dep.assessment -ne 'INCOMPLETE' -or $dep.verified_host_relationships -ne 1 -or $dep.unverified_host_relationships -ne 1 -or $dep.mixed_evidence_host_relationships -ne 1 -or $dep.automatic_changes -ne 0) { throw 'Frozen missing-fabric evidence was hidden' }
+          if ((@($dep.assets[0].mixed_evidence_host_ids) -join ',') -ne 'h1') { throw 'Frozen missing-fabric host traceability missing' }
+          if ('INVALID_PATH' -notin @($report.findings | ForEach-Object { $_.code })) { throw 'Frozen invalid SAN fabric finding missing' }
+          Write-Host 'Frozen missing SAN fabric evidence PASS (synthetic, read-only)'
+      - name: Verify frozen unresolved SAN path evidence V6.213
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'orphan-san-v6213.json'
+          $output = Join-Path $env:RUNNER_TEMP 'orphan-san-v6213-report.json'
+          # Synthetic: one trusted host path and one orphan host observation.
+          $raw = '{"schema":"storagescope.storage-topology.v1","assets":[{"id":"h1","kind":"host"},{"id":"a1","kind":"storage_array","used_gib":20,"total_gib":100}],"paths":[{"host_id":"h1","storage_id":"a1","fabric":"A","state":"up"},{"host_id":"missing-host","storage_id":"a1","fabric":"B","state":"up"}],"shares":[]}'
+          [IO.File]::WriteAllText($input, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--storage-risk-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen orphan SAN review failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          $dep = $report.dependency_impact
+          if ($dep.assessment -ne 'INCOMPLETE' -or $dep.verified_host_relationships -ne 1 -or $dep.unresolved_path_observations -ne 1 -or $dep.automatic_changes -ne 0) { throw 'Frozen orphan SAN evidence missing or incorrectly trusted' }
+          if ($dep.assets[0].unresolved_path_observations -ne 1) { throw 'Frozen orphan SAN attribution missing' }
+          if ('ORPHAN_PATH' -notin @($report.findings | ForEach-Object { $_.code })) { throw 'Frozen orphan SAN finding missing' }
+          Write-Host 'Frozen orphan SAN evidence PASS (synthetic, read-only)'
+      - name: Verify frozen CMDB review (provenance and fail-closed)
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'cmdb-review-valid.json'
+          $output = Join-Path $env:RUNNER_TEMP 'cmdb-review-report.json'
+          $badInput = Join-Path $env:RUNNER_TEMP 'cmdb-review-duplicate.json'
+          $badOutput = Join-Path $env:RUNNER_TEMP 'cmdb-review-invalid-report.json'
+          $records = @(
+            @{ source = 'NetApp'; serial = 'S1'; wwn = '5001' },
+            @{ source = 'CMDB'; serial = 'S1'; wwn = '5002' }
+          )
+          [IO.File]::WriteAllText($input, (ConvertTo-Json -InputObject $records -Depth 8), [Text.UTF8Encoding]::new($false))
+          $args = @('--cmdb-review-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $args -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Frozen CMDB review failed: $($process.ExitCode)" }
+          if (-not (Test-Path -LiteralPath $output -PathType Leaf)) { throw 'Frozen CMDB evidence missing' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          if ($report.assessment -ne 'INCOMPLETE' -or $report.candidate_count -ne 1 -or $report.automatic_merges -ne 0 -or $report.destructive_changes -ne 0) { throw 'Frozen CMDB report contract invalid' }
+          if (@($report.quarantined_indices).Count -ne 2 -or $report.candidates[0].action -ne 'QUARANTINE_IDENTITY_CONFLICT') { throw 'Frozen CMDB conflict quarantine absent' }
+          $sourceBytes = [IO.File]::ReadAllBytes($input)
+          $expectedDigest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($sourceBytes)).ToLowerInvariant()
+          if ($report.snapshot_sha256 -ne $expectedDigest -or $report.snapshot_size_bytes -ne $sourceBytes.Length) { throw 'Frozen CMDB snapshot exact-byte SHA256 evidence invalid' }
+          [IO.File]::WriteAllText($badInput, '[{"source":"a","source":"b","serial":"S"}]', [Text.UTF8Encoding]::new($false))
+          $badArgs = @('--cmdb-review-file', ('"{0}"' -f $badInput), ('"{0}"' -f $badOutput))
+          $rejected = Start-Process -FilePath $exe -ArgumentList $badArgs -Wait -PassThru
+          if ($rejected.ExitCode -eq 0 -or (Test-Path -LiteralPath $badOutput)) { throw 'Frozen CMDB parser accepted duplicate JSON property' }
+          Write-Host 'Frozen CMDB provenance and conflict review PASS'
+      - name: Verify frozen CMDB transitive identity quarantine V6.209
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'cmdb-transitive-v6209.json'
+          $output = Join-Path $env:RUNNER_TEMP 'cmdb-transitive-v6209-report.json'
+          # Synthetic evidence: direct serial conflict, two linked WWN observations,
+          # and an unrelated healthy pair that must remain reviewable.
+          $raw = '[{"source":"NetApp","serial":"S1","wwn":"W1"},{"source":"CMDB","serial":"S1","wwn":"W2"},{"source":"Dell","wwn":"W1"},{"source":"Pure","wwn":"W1"},{"source":"CMDB","serial":"S9"},{"source":"NetApp","serial":"S9"}]'
+          [IO.File]::WriteAllText($input, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--cmdb-review-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen CMDB transitive quarantine CLI failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          if ($report.assessment -ne 'INCOMPLETE' -or $report.automatic_merges -ne 0) { throw 'Frozen CMDB accepted ambiguous identity component' }
+          if ((@($report.quarantined_indices) -join ',') -ne '0,1,2,3') { throw 'Frozen CMDB did not quarantine full connected identity component' }
+          if ((@($report.direct_conflict_indices) -join ',') -ne '0,1') { throw 'Frozen CMDB direct contradiction provenance missing' }
+          if ((@($report.propagated_quarantine_indices) -join ',') -ne '2,3') { throw 'Frozen CMDB transitive contradiction provenance missing' }
+          $linked = @($report.candidates | Where-Object { $_.action -eq 'QUARANTINE_LINKED_IDENTITY_CONFLICT' })
+          $healthy = @($report.candidates | Where-Object { $_.action -eq 'REVIEW_REQUIRED' })
+          if ($linked.Count -ne 3 -or $healthy.Count -ne 1) { throw 'Frozen CMDB candidate quarantine propagation or healthy isolation failed' }
+          $expectedDigest = (Get-FileHash -LiteralPath $input -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($report.snapshot_sha256 -ne $expectedDigest) { throw 'Frozen CMDB transitive fixture source digest mismatch' }
+          Write-Host 'Frozen CMDB transitive quarantine PASS (synthetic evidence, read-only)'
+      - name: Verify frozen CMDB asset-kind quarantine V6.210
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'cmdb-kind-v6210.json'
+          $output = Join-Path $env:RUNNER_TEMP 'cmdb-kind-v6210-report.json'
+          # Synthetic records: NAS and host share serial S1; an untyped S1
+          # neighbor must inherit quarantine; independent S2 stays reviewable.
+          $raw = '[{"source":"CMDB","serial":"S1","kind":"nas"},{"source":"collector","serial":"S1","type":"host"},{"source":"other","serial":"S1"},{"source":"CMDB","serial":"S2","kind":"nas"},{"source":"collector","serial":"S2","kind":"nas"}]'
+          [IO.File]::WriteAllText($input, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--cmdb-review-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen CMDB asset-kind review CLI failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          if ($report.assessment -ne 'INCOMPLETE' -or $report.automatic_merges -ne 0) { throw 'Frozen CMDB accepted incompatible asset kinds' }
+          if ((@($report.quarantined_indices) -join ',') -ne '0,1,2') { throw 'Frozen CMDB asset-kind quarantine incomplete' }
+          if ((@($report.direct_conflict_indices) -join ',') -ne '0,1') { throw 'Frozen CMDB direct asset-kind conflict missing' }
+          if ((@($report.propagated_quarantine_indices) -join ',') -ne '2') { throw 'Frozen CMDB asset-kind propagation missing' }
+          $kindConflicts = @($report.candidates | Where-Object { @($_.identity_conflicts | Where-Object { $_.field -eq 'asset_kind' }).Count -gt 0 })
+          $healthy = @($report.candidates | Where-Object { $_.action -eq 'REVIEW_REQUIRED' })
+          if ($kindConflicts.Count -ne 1 -or $healthy.Count -ne 1) { throw 'Frozen CMDB kind-conflict or healthy isolation failed' }
+          Write-Host 'Frozen CMDB asset-kind quarantine PASS (synthetic, read-only)'
+      - name: Verify frozen offline vendor import (three vendors, quarantine and no overwrite)
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          # Force Int64 arithmetic; PowerShell may promote Int32 overflow to Double,
+          # which correctly fails the adapter's strict integer-byte contract.
+          $gib = [long]1073741824
+          $vendorCases = @(
+            @{ vendor = 'netapp_ontap'; serial = 'serial_number'; name = 'cluster_name'; used = 'capacity_used_bytes'; total = 'capacity_total_bytes'; shares = 'volumes'; sid = 'uuid' },
+            @{ vendor = 'dell_powerscale'; serial = 'serial'; name = 'cluster'; used = 'used_bytes'; total = 'total_bytes'; shares = 'exports'; sid = 'id' },
+            @{ vendor = 'pure_flashblade'; serial = 'array_id'; name = 'name'; used = 'space_used_bytes'; total = 'space_total_bytes'; shares = 'shares'; sid = 'id' }
+          )
+          foreach ($v in $vendorCases) {
+            $inputPath = Join-Path $env:RUNNER_TEMP ("vendor-" + $v.vendor + ".json")
+            $outputPath = Join-Path $env:RUNNER_TEMP ("vendor-" + $v.vendor + "-report.json")
+            # Assign dynamic vendor keys explicitly; do not rely on hashtable literal
+            # expression-key parsing, which can silently alter the synthetic fixture.
+            $share = @{}
+            $share[$v.sid] = 'share-1'
+            $share['protocol'] = 'NFS'
+            $share['used_bytes'] = 5 * $gib
+            $share['quota_bytes'] = 10 * $gib
+            $system = @{}
+            $system[$v.serial] = 'SN-001'
+            $system[$v.name] = 'synthetic-array'
+            $system[$v.used] = 20 * $gib
+            $system[$v.total] = 100 * $gib
+            $system[$v.shares] = @($share)
+            $snapshot = @{ schema = 'storagescope.vendor-snapshot.v1'; vendor = $v.vendor; source_ref = 'synthetic-ci-001'; collected_at = '2026-10-23T20:00:00Z'; systems = @($system) }
+            [IO.File]::WriteAllText($inputPath, ($snapshot | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+            $arguments = @('--vendor-snapshot-file', ('"{0}"' -f $inputPath), ('"{0}"' -f $outputPath))
+            $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+            if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) { throw "Frozen vendor CLI failed: $($v.vendor)" }
+            $report = Get-Content -Raw -LiteralPath $outputPath | ConvertFrom-Json
+            if ($report.schema -ne 'storagescope.vendor-import-report.v1' -or $report.vendor -ne $v.vendor -or $report.assessment -ne 'OBSERVED_ONLY' -or $report.automatic_changes -ne 0) { throw "Frozen vendor report invalid: $($v.vendor); schema=$($report.schema); assessment=$($report.assessment); rejected=$(@($report.rejected) -join ',')" }
+            if (@($report.topology.assets).Count -ne 1 -or @($report.topology.shares).Count -ne 1) { throw "Frozen vendor topology incomplete: $($v.vendor)" }
+            $before = (Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash
+            $repeated = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+            $after = (Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash
+            if ($repeated.ExitCode -eq 0 -or $before -ne $after) { throw "Frozen vendor CLI overwrote existing evidence: $($v.vendor)" }
+          }
+          $badInput = Join-Path $env:RUNNER_TEMP 'vendor-ambiguous-v6202.json'
+          $badOutput = Join-Path $env:RUNNER_TEMP 'vendor-ambiguous-v6202-report.json'
+          [IO.File]::WriteAllText($badInput, '{"schema":"storagescope.vendor-snapshot.v1","vendor":"netapp_ontap","vendor":"pure_flashblade"}', [Text.UTF8Encoding]::new($false))
+          $badArgs = @('--vendor-snapshot-file', ('"{0}"' -f $badInput), ('"{0}"' -f $badOutput))
+          $bad = Start-Process -FilePath $exe -ArgumentList $badArgs -Wait -PassThru
+          if ($bad.ExitCode -eq 0 -or (Test-Path -LiteralPath $badOutput)) { throw 'Frozen vendor CLI accepted duplicate JSON keys' }
+          # Regression V6.203: a valid share followed by a duplicate with a
+          # one-byte quota overrun must quarantine *all* shares on that NAS.
+          $conflictInput = Join-Path $env:RUNNER_TEMP 'vendor-conflicting-share-v6203.json'
+          $conflictOutput = Join-Path $env:RUNNER_TEMP 'vendor-conflicting-share-v6203-report.json'
+          $shareGood = @{ uuid = 'share-1'; protocol = 'NFS'; used_bytes = 2 * $gib; quota_bytes = 4 * $gib }
+          $shareBad = @{ uuid = 'share-1'; protocol = 'NFS'; used_bytes = 4 * $gib + [long]1; quota_bytes = 4 * $gib }
+          $conflictSystem = @{ serial_number = 'SN-CONFLICT'; cluster_name = 'synthetic'; capacity_used_bytes = 10 * $gib; capacity_total_bytes = 20 * $gib; volumes = @($shareGood, $shareBad) }
+          $conflictSnapshot = @{ schema = 'storagescope.vendor-snapshot.v1'; vendor = 'netapp_ontap'; source_ref = 'synthetic-v6203'; collected_at = '2026-10-23T20:00:00Z'; systems = @($conflictSystem) }
+          [IO.File]::WriteAllText($conflictInput, ($conflictSnapshot | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+          $conflictArgs = @('--vendor-snapshot-file', ('"{0}"' -f $conflictInput), ('"{0}"' -f $conflictOutput))
+          $conflictProcess = Start-Process -FilePath $exe -ArgumentList $conflictArgs -Wait -PassThru
+          if ($conflictProcess.ExitCode -ne 0) { throw 'Frozen duplicate share regression CLI failed' }
+          $conflictReport = Get-Content -Raw -LiteralPath $conflictOutput | ConvertFrom-Json
+          if ($conflictReport.assessment -ne 'INCOMPLETE' -or @($conflictReport.topology.shares).Count -ne 0 -or $conflictReport.automatic_changes -ne 0) { throw 'Frozen executable certified ambiguous duplicate share evidence' }
+          $sourceHash = (Get-FileHash -LiteralPath $conflictInput -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($conflictReport.snapshot_sha256 -ne $sourceHash) { throw 'Frozen executable source digest does not match the exact input bytes' }
+          if (@($conflictReport.quarantined_share_asset_ids).Count -ne 1 -or $conflictReport.quarantined_share_asset_ids[0] -ne 'netapp_ontap:SN-CONFLICT') { throw 'Frozen executable did not expose quarantined NAS identity' }
+          if (-not (@($conflictReport.rejected) | Where-Object { $_ -match 'conflicting duplicate share evidence' })) { throw 'Frozen duplicate share conflict reason missing' }
+          # V6.206: a different share ID with a malformed quota must also
+          # quarantine every share on the affected NAS, not only that record.
+          $quotaInput = Join-Path $env:RUNNER_TEMP 'vendor-unique-bad-quota-v6206.json'
+          $quotaOutput = Join-Path $env:RUNNER_TEMP 'vendor-unique-bad-quota-v6206-report.json'
+          $uniqueBad = @{ uuid = 'share-2'; protocol = 'SMB'; used_bytes = 4 * $gib + [long]1; quota_bytes = 4 * $gib }
+          $quotaSystem = @{ serial_number = 'SN-QUOTA'; cluster_name = 'synthetic'; capacity_used_bytes = 10 * $gib; capacity_total_bytes = 20 * $gib; volumes = @($shareGood, $uniqueBad) }
+          $quotaSnapshot = @{ schema = 'storagescope.vendor-snapshot.v1'; vendor = 'netapp_ontap'; source_ref = 'synthetic-v6206'; collected_at = '2026-10-24T01:00:00Z'; systems = @($quotaSystem) }
+          [IO.File]::WriteAllText($quotaInput, ($quotaSnapshot | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+          $quotaArgs = @('--vendor-snapshot-file', ('"{0}"' -f $quotaInput), ('"{0}"' -f $quotaOutput))
+          $quotaProcess = Start-Process -FilePath $exe -ArgumentList $quotaArgs -Wait -PassThru
+          if ($quotaProcess.ExitCode -ne 0) { throw 'Frozen unique bad quota CLI failed' }
+          $quotaReport = Get-Content -Raw -LiteralPath $quotaOutput | ConvertFrom-Json
+          if ($quotaReport.assessment -ne 'INCOMPLETE' -or @($quotaReport.topology.shares).Count -ne 0 -or $quotaReport.automatic_changes -ne 0) { throw 'Frozen executable retained shares from NAS with malformed unique quota' }
+          if (@($quotaReport.quarantined_share_asset_ids).Count -ne 1 -or $quotaReport.quarantined_share_asset_ids[0] -ne 'netapp_ontap:SN-QUOTA') { throw 'Frozen unique quota quarantine identity missing' }
+          if (-not (@($quotaReport.rejected) | Where-Object { $_ -match 'inconsistent quota' })) { throw 'Frozen unique quota rejection reason missing' }
+          $quotaHash = (Get-FileHash -LiteralPath $quotaInput -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($quotaReport.snapshot_sha256 -ne $quotaHash) { throw 'Frozen unique quota snapshot digest mismatch' }
+          # V6.207: a non-object share record invalidates sibling share evidence.
+          # The other NAS in the same snapshot must remain unaffected.
+          $malformedInput = Join-Path $env:RUNNER_TEMP 'vendor-malformed-share-v6207.json'
+          $malformedOutput = Join-Path $env:RUNNER_TEMP 'vendor-malformed-share-v6207-report.json'
+          $malformedJson = '{"schema":"storagescope.vendor-snapshot.v1","vendor":"netapp_ontap","source_ref":"synthetic-v6207","collected_at":"2026-10-24T02:00:00Z","systems":[{"serial_number":"SN-MALFORMED","volumes":[{"uuid":"clean","protocol":"NFS","used_bytes":1073741824,"quota_bytes":2147483648},null]},{"serial_number":"SN-OK","volumes":[{"uuid":"safe","protocol":"SMB","used_bytes":1073741824,"quota_bytes":2147483648}]}]}'
+          [IO.File]::WriteAllText($malformedInput, $malformedJson, [Text.UTF8Encoding]::new($false))
+          $malformedArgs = @('--vendor-snapshot-file', ('"{0}"' -f $malformedInput), ('"{0}"' -f $malformedOutput))
+          $malformedProcess = Start-Process -FilePath $exe -ArgumentList $malformedArgs -Wait -PassThru
+          if ($malformedProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $malformedOutput -PathType Leaf)) { throw 'Frozen malformed share CLI failed' }
+          $malformedReport = Get-Content -Raw -LiteralPath $malformedOutput | ConvertFrom-Json
+          if ($malformedReport.assessment -ne 'INCOMPLETE' -or $malformedReport.automatic_changes -ne 0) { throw 'Frozen malformed share report contract invalid' }
+          if (@($malformedReport.quarantined_share_asset_ids).Count -ne 1 -or $malformedReport.quarantined_share_asset_ids[0] -ne 'netapp_ontap:SN-MALFORMED') { throw 'Frozen malformed share quarantine missing' }
+          if (@($malformedReport.topology.shares).Count -ne 1 -or $malformedReport.topology.shares[0].nas_id -ne 'netapp_ontap:SN-OK') { throw 'Frozen executable retained unsafe shares or lost unaffected NAS evidence' }
+          if (-not (@($malformedReport.rejected) | Where-Object { $_ -match 'not an object' })) { throw 'Frozen malformed share rejection reason missing' }
+          $malformedHash = (Get-FileHash -LiteralPath $malformedInput -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($malformedReport.snapshot_sha256 -ne $malformedHash) { throw 'Frozen malformed share snapshot digest mismatch' }
+          Write-Host 'Frozen V6.207 malformed NAS share quarantine PASS'
+          Write-Host 'Frozen offline vendor CLI PASS: 3 vendors, exclusive output, ambiguous JSON, duplicate shares and unique bad quotas quarantined'
       - name: Qualify native binaries
         shell: pwsh
         run: |
@@ -45,15 +356,28 @@ jobs:
           if (-not (Test-Path '02-Compilation-Windows/windows-qualification-report.json')) { throw 'Qualification evidence missing' }
           $native = Get-Content -Raw '02-Compilation-Windows/windows-qualification-report.json' | ConvertFrom-Json
           if ($native.overall -ne 'PASS') { throw 'Native qualification report is not PASS' }
+      - name: Qualify installer rejection
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Installer rejection requires an ephemeral GitHub-hosted runner' }
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          & './02-Compilation-Windows/qualifier-echec-installateur-windows.ps1' -Version $version
+          if (-not $?) { throw 'Installer rejection qualification failed' }
+          $reportPath = Join-Path '02-Compilation-Windows/build-logs' ("installer-rejected-v{0}.json" -f $version)
+          if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) { throw 'Installer rejection evidence missing' }
+          $rejection = Get-Content -Raw $reportPath | ConvertFrom-Json
+          if (-not $rejection.passed -or -not $rejection.source_unchanged -or $rejection.installed_binary_present) { throw 'Unsafe installer rejection outcome' }
       - name: Install and uninstall smoke test
         shell: pwsh
         run: |
+          $global:LASTEXITCODE = 0
           & './02-Compilation-Windows/qualify-installer-smoke-windows.ps1'
           if (-not $?) { throw 'Installer smoke test failed' }
+          if ($LASTEXITCODE -ne 0) { throw "Installer smoke test returned exit code $LASTEXITCODE" }
           $reportPath = '02-Compilation-Windows/windows-installer-smoke-report.json'
           if (-not (Test-Path $reportPath)) { throw 'Installer smoke report missing' }
           $result = Get-Content -Raw $reportPath | ConvertFrom-Json
-          if ($result.status -ne 'PASS' -or -not $result.installed -or -not $result.version_checked -or -not $result.uninstalled) { throw 'Installer smoke evidence is not PASS' }
+          if ($result.status -ne 'PASS' -or -not $result.installed -or -not $result.gate_checked -or -not $result.version_checked -or -not $result.uninstalled) { throw 'Installer smoke evidence is not PASS' }
       - name: Run portable Windows smoke test
         shell: pwsh
         run: |
@@ -93,6 +417,27 @@ jobs:
           $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
           & python '02-Compilation-Windows/verify-binary-delivery.py' --folder (Join-Path 'binary' ('v' + $version)) --version $version
           if ($LASTEXITCODE -ne 0) { throw 'Published binaries failed final verification' }
+      - name: Package exact-head tracked sources with SHA-256
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path 'source-delivery' | Out-Null
+          $archive = 'source-delivery/StorageScope-SOURCES-EXACT-HEAD.zip'
+          $expected = '${{ github.event.pull_request.head.sha || github.sha }}'
+          $actual = (& git rev-parse HEAD).Trim()
+          if ($actual -ne $expected) { throw "Source checkout SHA mismatch: $actual != $expected" }
+          & git archive --format=zip --output=$archive HEAD
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw 'Tracked source archive failed' }
+          $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  StorageScope-SOURCES-EXACT-HEAD.zip" | Set-Content -LiteralPath 'source-delivery/SHA256SUMS.txt' -Encoding ascii
+          Write-Host "Exact-head source archive SHA256: $hash"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: StorageScope-SOURCES-EXACT-HEAD
+          path: |
+            source-delivery/StorageScope-SOURCES-EXACT-HEAD.zip
+            source-delivery/SHA256SUMS.txt
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: success()
         with:
@@ -107,6 +452,7 @@ jobs:
           name: StorageScope-Windows-DIAGNOSTICS
           path: |
             02-Compilation-Windows/build-logs/*
+            02-Compilation-Windows/failed-build-logs/*
             02-Compilation-Windows/windows-qualification-report.json
             02-Compilation-Windows/windows-installer-smoke-report.json
             02-Compilation-Windows/windows-portable-smoke-report.json
