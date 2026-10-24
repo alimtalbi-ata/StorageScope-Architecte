@@ -23,27 +23,46 @@ _DOMAIN = b"StorageScope.observation.hmac-sha256.v1\x00"
 
 
 def load_auth_policy(topology):
-    """Return a bounded source-to-key-ID map, or None for legacy snapshots."""
+    """Return bounded source-to-key IDs; v2 permits a two-key rotation window."""
     enforcement = os.environ.get('STORAGESCOPE_REQUIRE_OBSERVATION_AUTH', '0')
     if enforcement not in ('0', '1'):
         raise ValueError('Invalid observation authentication enforcement setting')
     if 'observation_auth_policy' not in topology:
-        if enforcement == '1':
+        if enforcement == '1' or os.environ.get('STORAGESCOPE_REQUIRE_OBSERVATION_AUTH_V2', '0') != '0':
             raise ValueError('Observation authentication policy required by operator')
         return None
     raw = topology['observation_auth_policy']
-    if (not isinstance(raw, dict) or
-            set(raw) != {'schema', 'source_keys'} or
-            raw.get('schema') != 'storagescope.observation-auth-policy.v1'):
+    require_v2 = os.environ.get('STORAGESCOPE_REQUIRE_OBSERVATION_AUTH_V2', '0')
+    if require_v2 not in ('0', '1'):
+        raise ValueError('Invalid observation authentication v2 enforcement setting')
+    if (not isinstance(raw, dict) or set(raw) != {'schema', 'source_keys'} or
+            raw.get('schema') not in ('storagescope.observation-auth-policy.v1',
+                                      'storagescope.observation-auth-policy.v2')):
         raise ValueError('Invalid observation_auth_policy schema or fields')
+    version = raw['schema'].rsplit('.', 1)[-1]
+    if require_v2 == '1' and version != 'v2':
+        raise ValueError('Operator requires observation authentication policy v2')
     keys = raw['source_keys']
-    if (not isinstance(keys, dict) or not 1 <= len(keys) <= 64 or
-            any(not isinstance(source, str) or not _SOURCE.fullmatch(source) or
-                not isinstance(key_id, str) or not _KEY_ID.fullmatch(key_id)
-                for source, key_id in keys.items()) or
-            len(set(keys.values())) != len(keys)):
-        raise ValueError('source_keys must map distinct bounded sources to distinct key IDs')
-    return dict(keys)
+    if not isinstance(keys, dict) or not 1 <= len(keys) <= 64:
+        raise ValueError('source_keys must contain 1 to 64 sources')
+    all_ids = []
+    for source, configured in keys.items():
+        if not isinstance(source, str) or not _SOURCE.fullmatch(source):
+            raise ValueError('Invalid authentication source reference')
+        if version == 'v1':
+            if not isinstance(configured, str) or not _KEY_ID.fullmatch(configured):
+                raise ValueError('Invalid v1 source key ID')
+            all_ids.append(configured)
+        else:
+            if (not isinstance(configured, list) or not 1 <= len(configured) <= 2 or
+                    any(not isinstance(item, str) or not _KEY_ID.fullmatch(item)
+                        for item in configured)):
+                raise ValueError('v2 source keys must contain one or two valid key IDs')
+            all_ids.extend(configured)
+    if len(all_ids) != len(set(all_ids)):
+        raise ValueError('Key IDs must be unique across all sources and rotation slots')
+    return (dict(keys) if version == 'v1' else
+            {source: tuple(ids) for source, ids in keys.items()})
 
 
 def _canonical_payload(record):
@@ -76,20 +95,21 @@ def classify_auth(record, policy, environ=None):
     source = record.get('source_ref')
     if not isinstance(source, str) or not _SOURCE.fullmatch(source):
         return 'MISSING_SOURCE'
-    expected_key = policy.get(source)
-    if expected_key is None:
+    permitted = policy.get(source)
+    if permitted is None:
         return 'UNKNOWN_SOURCE'
+    permitted_ids = (permitted,) if isinstance(permitted, str) else permitted
     auth = record.get('auth')
     if auth is None:
         return 'MISSING_AUTH'
     if (not isinstance(auth, dict) or set(auth) != {'key_id', 'hmac_sha256'} or
-            auth.get('key_id') != expected_key or
+            auth.get('key_id') not in permitted_ids or
             not isinstance(auth.get('hmac_sha256'), str) or
             not _DIGEST.fullmatch(auth['hmac_sha256'])):
         return 'INVALID_AUTH'
     if environ is None:
         environ = os.environ
-    secret_hex = environ.get('STORAGESCOPE_HMAC_KEY_' + expected_key)
+    secret_hex = environ.get('STORAGESCOPE_HMAC_KEY_' + auth['key_id'])
     if not isinstance(secret_hex, str) or not _HEX_KEY.fullmatch(secret_hex):
         return 'KEY_UNAVAILABLE'
     try:
@@ -115,6 +135,8 @@ def summarize_auth(paths, shares, policy, environ=None):
             'bad_signature_observations': counts['BAD_SIGNATURE'],
             'invalid_payload_observations': counts['INVALID_PAYLOAD'],
             'authentication': 'SHARED_KEY_HMAC_VERIFIED_ONLY',
+            'rotation_active_sources': sum(isinstance(ids, tuple) and len(ids) == 2
+                                           for ids in policy.values()),
             'scope_note': 'HMAC verifies shared-key possession and payload integrity; no independent collector identity, trusted time or replay prevention'}
 
 
