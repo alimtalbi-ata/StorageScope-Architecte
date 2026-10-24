@@ -116,3 +116,28 @@ def summarize_auth(paths, shares, policy, environ=None):
             'invalid_payload_observations': counts['INVALID_PAYLOAD'],
             'authentication': 'SHARED_KEY_HMAC_VERIFIED_ONLY',
             'scope_note': 'HMAC verifies shared-key possession and payload integrity; no independent collector identity, trusted time or replay prevention'}
+
+
+def find_replayed_observations(paths, shares, policy, environ=None):
+    """Quarantine all copies of repeated verified HMAC envelopes in one snapshot.
+
+    This is NOT cross-snapshot replay protection; no persistent ledger or
+    trusted clock exists. Order-independent, read-only and secret-free.
+    """
+    if policy is None:
+        return set(), set()
+    seen, duplicates = {}, set()
+    for kind, records in (('paths', paths), ('shares', shares)):
+        for index, record in enumerate(records):
+            if classify_auth(record, policy, environ) != 'VERIFIED':
+                continue
+            auth = record['auth']
+            signature = (record['source_ref'], auth['key_id'], auth['hmac_sha256'])
+            identity = (kind, index)
+            if signature in seen:
+                duplicates.add(identity)
+                duplicates.add(seen[signature])
+            else:
+                seen[signature] = identity
+    return ({i for kind, i in duplicates if kind == 'paths'},
+            {i for kind, i in duplicates if kind == 'shares'})
