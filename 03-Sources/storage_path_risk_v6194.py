@@ -11,6 +11,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from storage_observation_time_v6215 import parse_observed_at
+from storage_observation_freshness_v6216 import load_policy, classify_observation
 
 LEVELS = ("CRITICAL", "HIGH", "MEDIUM", "INFO")
 VALID_KINDS = {"host", "storage_array", "nas", "san_switch"}
@@ -43,6 +44,7 @@ def assess(topology, warning_percent=85, critical_percent=95):
         if not isinstance(topology.get(name), list):
             raise ValueError(f"{name} must be an array")
 
+    policy = load_policy(topology)
     findings = []
     assets = {}
     hosts = set()
@@ -128,6 +130,16 @@ def assess(topology, warning_percent=85, critical_percent=95):
                 invalid_state_signatures.add(signature)
                 path_states[signature] = "unknown"
             continue
+        freshness = classify_observation(item, policy)
+        if policy is not None and freshness != 'FRESH':
+            invalid_count += 1
+            emit('HIGH', 'PATH_' + freshness + '_OBSERVATION', f'paths[{i}]',
+                 'Observation is not fresh under explicit policy reference time',
+                 'Recollect path telemetry and verify reference clock and source')
+            if endpoints_valid:
+                invalid_state_signatures.add(signature)
+                path_states[signature] = 'unknown'
+            continue
         if not host or not target or not fabric or not isinstance(state, str) or state not in KNOWN_STATES:
             invalid_count += 1
             emit("HIGH", "INVALID_PATH", f"paths[{i}]", "Missing endpoint/fabric or invalid state", "Correct path evidence")
@@ -208,6 +220,13 @@ def assess(topology, warning_percent=85, critical_percent=95):
             emit("HIGH", "INVALID_SHARE_TIMESTAMP", f"shares[{i}]",
                  "observed_at must be a timezone-aware ISO 8601 timestamp",
                  "Recollect share evidence with an authenticated observation time")
+            continue
+        freshness = classify_observation(share, policy)
+        if policy is not None and freshness != 'FRESH':
+            invalid_count += 1
+            emit('HIGH', 'SHARE_' + freshness + '_OBSERVATION', f'shares[{i}]',
+                 'Observation is not fresh under explicit policy reference time',
+                 'Recollect NAS share evidence and verify reference clock and source')
             continue
         target = _identifier(share.get("nas_id"))
         protocol = share.get("protocol")
