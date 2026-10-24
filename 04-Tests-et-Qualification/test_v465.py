@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from portfolio import portfolio_snapshot
 class PaginationTests(unittest.TestCase):
@@ -20,5 +21,5 @@ class PaginationTests(unittest.TestCase):
         for x in (-1,True,1.2):
             with self.assertRaises(ValueError):self.call(offset=x)
     def test_ui_paging(self):
-        source=open('desktop.py',encoding='utf-8').read();self.assertIn('portfolio_page',source);self.assertIn('portfolio_offset',source)
+        source=(Path(__file__).resolve().parents[1] / '03-Sources' / 'desktop.py').read_text(encoding='utf-8');self.assertIn('portfolio_page',source);self.assertIn('portfolio_offset',source)
 if __name__=='__main__':unittest.main()

@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
+from contextlib import closing
 import tempfile
 from upgrade_gate_v581 import prepare_upgrade
 
@@ -23,7 +24,7 @@ def qualify():
             if name == 'corrupt_sqlite':
                 (data / 'campaigns.sqlite').write_bytes(b'not a sqlite database')
             elif name == 'valid_data':
-                with sqlite3.connect(data / 'campaigns.sqlite') as db:
+                with closing(sqlite3.connect(data / 'campaigns.sqlite')) as db, db:
                     db.execute('CREATE TABLE evidence (id INTEGER PRIMARY KEY, value TEXT)')
                     db.execute('INSERT INTO evidence(value) VALUES (?)', ('preserved',))
             elif name == 'unsafe_backup_location':
