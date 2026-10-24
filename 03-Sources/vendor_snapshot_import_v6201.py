@@ -92,7 +92,7 @@ def normalize(snapshot):
         except ValueError:
             rejected.append(f'systems[{index}]: invalid capacity')
             continue
-        if used is not None and total is not None and (total == 0 or used > total):
+        if used is not None and total is not None and (system[total_key] == 0 or system[used_key] > system[total_key]):
             rejected.append(f'systems[{index}]: inconsistent capacity')
             continue
         entries = system.get(shares_key, [])
@@ -128,7 +128,7 @@ def normalize(snapshot):
             except ValueError:
                 rejected.append(f'systems[{index}].shares[{j}]: invalid quota')
                 continue
-            if share_used is not None and quota is not None and (quota == 0 or share_used > quota):
+            if share_used is not None and quota is not None and (entry['quota_bytes'] == 0 or entry['used_bytes'] > entry['quota_bytes']):
                 rejected.append(f'systems[{index}].shares[{j}]: inconsistent quota')
                 continue
             seen_shares.add(share_id)
