@@ -155,10 +155,14 @@ def normalize(snapshot, *, source_sha256=None):
                 quota = _gib(entry.get('quota_bytes'))
             except ValueError:
                 rejected.append(f'systems[{index}].shares[{j}]: invalid quota')
+                # Malformed share evidence makes this NAS share set untrustworthy,
+                # even when other share identifiers are individually valid.
+                quarantined_share_assets.add(asset_id)
                 continue
             # Do not compare rounded GiB; even a 1-byte quota violation matters.
             if entry.get('used_bytes') is not None and entry.get('quota_bytes') is not None and (entry['quota_bytes'] == 0 or entry['used_bytes'] > entry['quota_bytes']):
                 rejected.append(f'systems[{index}].shares[{j}]: inconsistent quota')
+                quarantined_share_assets.add(asset_id)
                 continue
             seen_shares.add(share_id)
             share = {'id': share_id, 'nas_id': asset_id, 'protocol': protocol,
