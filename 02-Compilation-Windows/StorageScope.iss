@@ -18,6 +18,8 @@ UninstallDisplayIcon={app}\StorageScope.exe
 ; Ne jamais les effacer a la desinstallation.
 [Files]
 Source: "dist\StorageScope-UpgradeGate.exe"; Flags: dontcopy
+; Ship the same validated gate in the installed application as well as the pre-upgrade temporary extraction.
+Source: "dist\StorageScope-UpgradeGate.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\StorageScope.exe"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{group}\StorageScope"; Filename: "{app}\StorageScope.exe"

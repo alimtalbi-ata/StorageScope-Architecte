@@ -7,11 +7,18 @@ class InstallerReleaseTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup); d=pathlib.Path(self.tmp.name)
         self.exe=d/'StorageScope-Setup-v6.75.exe'; self.man=d/'manifest.json'
-        payload=bytearray(2048);payload[:2]=b'MZ';struct.pack_into('<I',payload,0x3c,128);payload[128:132]=b'PE\x00\x00';struct.pack_into('<H',payload,132,0x14c);struct.pack_into('<H',payload,148,224);struct.pack_into('<H',payload,152,0x10b)
+        payload=bytearray(2048);payload[:2]=b'MZ';struct.pack_into('<I',payload,0x3c,128);payload[128:132]=b'PE\x00\x00';struct.pack_into('<H',payload,132,0x14c);struct.pack_into('<H',payload,134,1);struct.pack_into('<H',payload,148,224);struct.pack_into('<H',payload,152,0x10b)
         self.exe.write_bytes(payload); self.record={'version':'6.75','artifacts':[{'filename':self.exe.name,'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()}]};self.save()
     def save(self): self.man.write_text(json.dumps(self.record))
     def check(self): return m.verify_installer(self.exe,self.man,'6.75')
     def test_valid_structural_fixture(self): self.assertEqual(self.check()['version'],'6.75')
+    def test_zero_sections_rejected(self):
+        payload=bytearray(self.exe.read_bytes())
+        struct.pack_into('<H',payload,134,0)
+        self.exe.write_bytes(payload)
+        self.record['artifacts'][0]['sha256']=hashlib.sha256(payload).hexdigest()
+        self.save()
+        with self.assertRaisesRegex(ValueError,'section count'): self.check()
     def test_modified_executable(self):
         with self.exe.open('ab') as f:f.write(b'tampered')
         with self.assertRaisesRegex(ValueError,'size mismatch'):self.check()
