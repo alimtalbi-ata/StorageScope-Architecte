@@ -83,6 +83,13 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                 self.assertTrue(details, 'NAS share details widget missing')
                 self.assertTrue(any('vol-gui' in w.get('1.0', 'end') for w in details),
                                 'Selecting NAS asset did not reveal its share details')
+                # Canceling export must not write a file or raise a modal error.
+                with patch('tkinter.filedialog.asksaveasfilename', return_value=''):
+                    with patch('tkinter.messagebox.showerror') as cancel_error:
+                        exporter.invoke()
+                cancel_error.assert_not_called()
+                self.assertFalse((Path(folder) / 'inventory.csv').exists(),
+                                 'Canceled export unexpectedly created a CSV')
                 destination = Path(folder) / 'inventory.csv'
                 with patch('tkinter.filedialog.asksaveasfilename', return_value=str(destination)):
                     with patch('tkinter.messagebox.showinfo'):
