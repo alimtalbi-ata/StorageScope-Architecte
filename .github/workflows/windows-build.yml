@@ -283,7 +283,10 @@ jobs:
             @{ source = '02-Compilation-Windows/windows-release-qualification.json'; target = '04-Tests-et-Qualification/windows-release-qualification.json' },
             @{ source = '02-Compilation-Windows/windows-installer-smoke-report.json'; target = '04-Tests-et-Qualification/windows-installer-smoke-report.json' },
             @{ source = '02-Compilation-Windows/windows-portable-smoke-report.json'; target = '04-Tests-et-Qualification/windows-portable-smoke-report.json' },
-            @{ source = 'source-delivery'; target = '03-Sources-Exact-Head' }
+            @{ source = 'source-delivery'; target = '03-Sources-Exact-Head' },
+            @{ source = '05-Documentation'; target = '05-Documentation' },
+            @{ source = '06-Historique'; target = '06-Historique' },
+            @{ source = '07-Manifestes'; target = '07-Manifestes' }
           )
           foreach ($part in $parts) {
             if (-not (Test-Path -LiteralPath $part.source)) { throw "Missing cumulative input: $($part.source)" }
