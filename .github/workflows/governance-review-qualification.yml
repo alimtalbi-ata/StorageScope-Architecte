@@ -36,6 +36,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_quarantine_v6200.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_missing_fabric_v6212.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_paths_v6213.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_shares_v6214.py' -v
   review-windows:
     runs-on: windows-latest
     steps:
@@ -79,3 +80,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Missing SAN fabric evidence regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_paths_v6213.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Unresolved SAN path evidence regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_shares_v6214.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Unresolved NAS share evidence regression tests failed' }
