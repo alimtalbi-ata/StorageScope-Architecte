@@ -18,7 +18,7 @@ Les snapshots sont des **preuves déclaratives hors ligne** : leur présence ne 
 4. Cliquer **Importer un snapshot** puis annuler : l'inventaire doit rester inchangé.
 5. Importer un JSON conforme à `storagescope.vendor-snapshot.v1`. Vérifier fournisseur, nom, identifiant, capacité utilisée/totale et nombre de partages.
 6. Sélectionner un équipement : les détails NFS/SMB correspondants doivent apparaître dans la zone inférieure.
-7. Exporter le tableau en CSV vers un chemin neuf : ouvrir le fichier et vérifier les valeurs et l'encodage.
+7. Exporter le tableau en CSV vers un chemin neuf : ouvrir le fichier et vérifier les valeurs et l'encodage. Répéter l'export en annulant la boîte de dialogue : aucun fichier ne doit être créé et aucune erreur ne doit être affichée.
 8. Réimporter un JSON invalide : une erreur doit apparaître et **l'inventaire précédent doit être conservé**.
 9. Réexporter vers le CSV existant : l'opération doit être refusée et le fichier initial préservé.
 10. Répéter sur les trois formats fournisseur et sur les versions installée et portable.
