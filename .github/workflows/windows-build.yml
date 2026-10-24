@@ -320,7 +320,7 @@ jobs:
           $cumulative = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $archive).Path)
           try {
             $packaged = @($cumulative.Entries | ForEach-Object FullName)
-            foreach ($required in @('MANIFEST.json', '03-Sources-Exact-Head/StorageScope-V' + $version + '-SOURCES-EXACT-HEAD.zip')) {
+            foreach ($required in @('MANIFEST.json', ('03-Sources-Exact-Head/StorageScope-V' + $version + '-SOURCES-EXACT-HEAD.zip'), '07-Manifestes/VERSION')) {
               if ($required -notin $packaged) { throw "Cumulative archive missing: $required" }
             }
           } finally {
