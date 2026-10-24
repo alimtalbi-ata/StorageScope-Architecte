@@ -1,5 +1,6 @@
 """StorageScope v6.12 SQLite lifecycle regression tests. Author: Abdelhalim Talbi."""
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -29,7 +30,7 @@ class GovernanceSQLiteLifecycleV612(unittest.TestCase):
         reg.db.execute('BEGIN IMMEDIATE')
         reg.db.execute("INSERT INTO decisions(id,title,rationale,author,created_at) VALUES('X','T','R','A','now')")
         reg.close()
-        with sqlite3.connect(self.path) as con:
+        with closing(sqlite3.connect(self.path)) as con, con:
             self.assertEqual(con.execute('SELECT COUNT(*) FROM decisions').fetchone()[0], 0)
 
     def test_reopen_after_close(self):

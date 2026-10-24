@@ -6,7 +6,7 @@ $version = (Get-Content (Join-Path $root '07-Manifestes/VERSION') -Raw).Trim()
 $installer = Join-Path $PSScriptRoot "installer/StorageScope-Setup-v$version.exe"
 if (-not (Test-Path $installer)) { throw "Installer missing: $installer" }
 $target = Join-Path $env:TEMP "StorageScope-CI-$([guid]::NewGuid().ToString('N'))"
-$report = [ordered]@{version=$version; status='FAIL'; installed=$false; version_checked=$false; uninstalled=$false; error=$null}
+$report = [ordered]@{version=$version; status='FAIL'; installed=$false; gate_checked=$false; version_checked=$false; uninstalled=$false; error=$null}
 $failure = $null
 try {
   $p = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$target") -Wait -PassThru
@@ -14,6 +14,10 @@ try {
   $report.installed = $true
   $exe = Join-Path $target 'StorageScope.exe'
   if (-not (Test-Path $exe)) { throw 'Installed EXE missing' }
+  $gate = Join-Path $target 'StorageScope-UpgradeGate.exe'
+  if (-not (Test-Path -LiteralPath $gate -PathType Leaf)) { throw 'Installed upgrade gate missing' }
+  if ((Get-Item -LiteralPath $gate).Length -lt 1024) { throw 'Installed upgrade gate unexpectedly small' }
+  $report.gate_checked = $true
   $probe = Join-Path $env:TEMP "storagescope-version-$([guid]::NewGuid().ToString('N')).txt"
   try {
     $p = Start-Process -FilePath $exe -ArgumentList @('--version-file',"`"$probe`"") -Wait -PassThru
@@ -34,7 +38,7 @@ try {
   } catch {
     if (-not $failure) { $failure = "Cleanup failed: $($_.Exception.Message)" }
   }
-  $report.status = if ($report.installed -and $report.version_checked -and $report.uninstalled -and -not $failure) { 'PASS' } else { 'FAIL' }
+  $report.status = if ($report.installed -and $report.gate_checked -and $report.version_checked -and $report.uninstalled -and -not $failure) { 'PASS' } else { 'FAIL' }
   $report.error = $failure
   $report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $PSScriptRoot 'windows-installer-smoke-report.json') -Encoding UTF8
 }

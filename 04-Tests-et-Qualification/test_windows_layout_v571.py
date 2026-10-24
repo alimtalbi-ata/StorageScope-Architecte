@@ -17,5 +17,7 @@ class LayoutV571Tests(unittest.TestCase):
         self.assertIn("vscroll.grid(row=0, column=1, sticky='ns')",code)
     def test_version(self):
         from storagescope_windows import VERSION
-        self.assertEqual(VERSION,'6.17')
+        release=(ROOT/'VERSION').read_text(encoding='utf-8').strip()
+        self.assertEqual(VERSION,release)
+        self.assertGreaterEqual(tuple(map(int,release.split('.'))),(6,17))
 if __name__=='__main__': unittest.main()

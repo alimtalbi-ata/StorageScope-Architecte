@@ -11,7 +11,7 @@ class ReleaseQualification(unittest.TestCase):
   (self.root/'02-Compilation-Windows'/mod.NAMES[name]).write_text(json.dumps(obj))
  def test_missing_is_failure(self):self.assertEqual(mod.consolidate(self.root)['status'],'FAIL')
  def test_complete_success(self):
-  self.report('native',{'status':'PASS','version':'6.94'})
+  self.report('native',{'overall':'PASS','version':'6.94','checks':[{'name':name,'status':'PASS'} for name in mod.REQUIRED_NATIVE_CHECKS]})
   self.report('installer',{'status':'PASS','version':'6.94','installed':True,'version_checked':True,'uninstalled':True})
   self.report('portable',{'status':'PASS','version':'6.94','archive_present':True,'extracted':True,'version_checked':True,'self_test':True,'cleanup':True})
   self.assertEqual(mod.consolidate(self.root)['status'],'PASS')

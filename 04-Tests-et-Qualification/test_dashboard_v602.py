@@ -1,5 +1,6 @@
 """Dashboard regression tests, v6.17."""
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,14 +18,14 @@ class DashboardTests(unittest.TestCase):
         self.assertTrue(all(not p.exists() for p in self.paths.values()))
 
     def test_decision_counts_exclude_closed(self):
-        with sqlite3.connect(self.paths['decisions']) as db:
+        with closing(sqlite3.connect(self.paths['decisions'])) as db, db:
             db.execute('CREATE TABLE decisions(status TEXT,due_date TEXT)')
             db.executemany('INSERT INTO decisions VALUES (?,?)', [('OPEN','2026-10-16'),('IN_REVIEW','2026-10-17'),('CLOSED','2026-10-15'),('APPROVED','2026-10-18')])
         r=dashboard_summary(self.paths,today='2026-10-17')
         self.assertEqual((r['decisions'],r['overdue'],r['due_today']),(3,1,1))
 
     def test_campaign_count(self):
-        with sqlite3.connect(self.paths['campaigns']) as db:
+        with closing(sqlite3.connect(self.paths['campaigns'])) as db, db:
             db.execute('CREATE TABLE campaigns(id TEXT)')
             db.executemany('INSERT INTO campaigns VALUES (?)',[('a',),('b',)])
         self.assertEqual(dashboard_summary(self.paths)['campaigns'],2)
