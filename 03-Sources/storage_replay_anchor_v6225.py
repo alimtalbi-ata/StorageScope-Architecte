@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import json
 import os
+import stat
 from pathlib import Path
 import uuid
 
@@ -77,7 +78,9 @@ def _checkpoint(ledger_path, secret):
 def _anchor_path(ledger_path, anchor_path):
     ledger = Path(ledger_path)
     anchor = Path(anchor_path)
-    if anchor.is_symlink() or anchor.parent.is_symlink():
+    # A symlink at ANY ancestor may redirect the supposedly independent
+    # checkpoint into the ledger backup domain. Check the whole supplied path.
+    if any(part.is_symlink() for part in (anchor, *anchor.parents)):
         raise ValueError('Replay anchor must not use a symlink')
     if not anchor.parent.is_dir():
         raise ValueError('Replay anchor parent directory is missing')
@@ -113,7 +116,24 @@ def verify_anchor(ledger_path, anchor_path):
     anchor = _anchor_path(ledger_path, anchor_path)
     if not anchor.is_file():
         raise ValueError('Replay anchor missing')
-    with anchor.open('rb') as input_file:
+    # Pin the opened inode rather than trusting a prior path check. POSIX
+    # O_NOFOLLOW prevents a last-component symlink swap between check/open;
+    # fstat + lstat also reject hardlinks and unexpected file types on Windows.
+    flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_BINARY', 0)
+    try:
+        descriptor = os.open(anchor, flags)
+    except OSError as exc:
+        raise ValueError('Replay anchor cannot be opened securely') from exc
+    with os.fdopen(descriptor, 'rb') as input_file:
+        opened = os.fstat(input_file.fileno())
+        current_path = anchor.lstat()
+        if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1 or
+                not stat.S_ISREG(current_path.st_mode) or
+                current_path.st_nlink != 1 or
+                (opened.st_ino and current_path.st_ino and
+                 (opened.st_ino, opened.st_dev) !=
+                 (current_path.st_ino, current_path.st_dev))):
+            raise ValueError('Replay anchor is not an independent regular file')
         raw = input_file.read(_MAX_ANCHOR_BYTES + 1)
     if len(raw) > _MAX_ANCHOR_BYTES:
         raise ValueError('Replay anchor invalid')
@@ -129,6 +149,9 @@ def verify_anchor(ledger_path, anchor_path):
             not isinstance(expected['ledger_mac_sha256'], str) or
             len(expected['ledger_mac_sha256']) != 64):
         raise ValueError('Replay anchor invalid')
+    if raw != _canonical(expected) + b'\n':
+        # Reject duplicate JSON keys, alternate encodings and trailing payloads.
+        raise ValueError('REPLAY_LEDGER_ROLLBACK_OR_TAMPERING: noncanonical anchor')
     current = _checkpoint(ledger_path, _key())
     if (expected['registered_collections'] != current['registered_collections'] or
             not hmac.compare_digest(expected['ledger_mac_sha256'], current['ledger_mac_sha256'])):
