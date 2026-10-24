@@ -110,7 +110,9 @@ def format_risk_report(report, limit=200):
                 f"Signatures HMAC invalides : {auth['bad_signature_observations']}",
                 f"Clés indisponibles : {auth['key_unavailable_observations']}",
                 f"Observations sans authentification : {auth['missing_auth_observations']}",
-                'HMAC à secret partagé : identité indépendante et horloge NON ATTESTÉES',
+                f"Copies signées SAN répétées (snapshot) : {impact.get('replayed_path_observations', 0)}",
+                f"Copies signées NAS répétées (snapshot) : {impact.get('replayed_share_observations', 0)}",
+                'HMAC à secret partagé : identité indépendante et horloge NON ATTESTÉES ; rejeu inter-snapshots NON CONTRÔLÉ',
             ])
         for asset in impact['assets'][:limit]:
             lines.append(f"[{asset['scope']}] {asset['asset_id']} ({asset['kind']}) "
