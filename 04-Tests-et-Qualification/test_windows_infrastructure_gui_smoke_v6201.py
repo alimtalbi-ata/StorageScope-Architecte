@@ -72,6 +72,10 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                 table.selection_set(table.get_children()[0])
                 table.event_generate('<<TreeviewSelect>>')
                 root.update()
+                details = [w for w in widgets if isinstance(w, tk.Text)]
+                self.assertTrue(details, 'NAS share details widget missing')
+                self.assertTrue(any('vol-gui' in w.get('1.0', 'end') for w in details),
+                                'Selecting NAS asset did not reveal its share details')
                 destination = Path(folder) / 'inventory.csv'
                 with patch('tkinter.filedialog.asksaveasfilename', return_value=str(destination)):
                     with patch('tkinter.messagebox.showinfo'):
