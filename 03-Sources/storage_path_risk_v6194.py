@@ -12,6 +12,7 @@ from pathlib import Path
 
 from storage_observation_time_v6215 import parse_observed_at
 from storage_observation_freshness_v6216 import load_policy, classify_observation
+from storage_source_policy_v6218 import load_source_policy, classify_source, summarize_sources
 
 LEVELS = ("CRITICAL", "HIGH", "MEDIUM", "INFO")
 VALID_KINDS = {"host", "storage_array", "nas", "san_switch"}
@@ -45,6 +46,7 @@ def assess(topology, warning_percent=85, critical_percent=95):
             raise ValueError(f"{name} must be an array")
 
     policy = load_policy(topology)
+    source_policy = load_source_policy(topology)
     findings = []
     assets = {}
     hosts = set()
@@ -122,6 +124,15 @@ def assess(topology, warning_percent=85, critical_percent=95):
         endpoints_valid = (host and target and fabric and host in hosts
                            and target in storage and assets[target]["kind"] == "storage_array")
         signature = (host, target, fabric, _identifier(item.get("port")))
+        if source_policy is not None and classify_source(item, source_policy) != 'ALLOWED':
+            invalid_count += 1
+            emit('HIGH', 'UNTRUSTED_PATH_SOURCE', f'paths[{i}]',
+                 'Source missing, invalid or absent from explicit allowlist',
+                 'Recollect with an operator-approved source_ref; verify source independently')
+            if endpoints_valid:
+                invalid_state_signatures.add(signature)
+                path_states[signature] = 'unknown'
+            continue
         if parse_observed_at(item)[0] == "INVALID":
             invalid_count += 1
             emit("HIGH", "INVALID_PATH_TIMESTAMP", f"paths[{i}]",
@@ -216,6 +227,12 @@ def assess(topology, warning_percent=85, critical_percent=95):
         ident = _identifier(share.get("id"))
         if ident in duplicate_shares:
             continue  # All conflicting copies are quarantined.
+        if source_policy is not None and classify_source(share, source_policy) != 'ALLOWED':
+            invalid_count += 1
+            emit('HIGH', 'UNTRUSTED_SHARE_SOURCE', f'shares[{i}]',
+                 'Source missing, invalid or absent from explicit allowlist',
+                 'Recollect with an operator-approved source_ref; verify source independently')
+            continue
         if parse_observed_at(share)[0] == "INVALID":
             invalid_count += 1
             emit("HIGH", "INVALID_SHARE_TIMESTAMP", f"shares[{i}]",
@@ -259,6 +276,7 @@ def assess(topology, warning_percent=85, critical_percent=95):
             "verified_active_paths": sum(state in ACTIVE_STATES for state in path_states.values()),
             "quarantined_asset_ids": sorted(quarantined_assets),
             "quarantined_share_ids": sorted(duplicate_shares),
+            "source_evaluation": summarize_sources(topology['paths'], topology['shares'], source_policy),
             "invalid_records": invalid_count, "counts": dict(sorted(Counter(f["level"] for f in findings).items())),
             "findings": findings, "finding_count": len(findings), "automatic_changes": 0,
             "assessment": "INCOMPLETE" if invalid_count or any(f["code"] == "TOPOLOGY_EMPTY" or f["code"].endswith("UNASSESSED") for f in findings)
