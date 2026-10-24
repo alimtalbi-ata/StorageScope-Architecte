@@ -611,6 +611,16 @@ def main(argv=None):
         from windows_release_check_v567 import runtime_self_test
         with TemporaryDirectory(prefix='storagescope-selftest-') as temporary:
             return runtime_self_test(application_paths(temporary))
+    if len(args) == 2 and args[0] == '--storage-replay-init':
+        from storage_replay_ledger_v6222 import initialize_ledger
+        print(json.dumps(initialize_ledger(args[1]), sort_keys=True))
+        return 0
+    if len(args) == 3 and args[0] == '--storage-replay-register':
+        from storage_replay_ledger_v6222 import register_snapshot
+        from storage_risk_desktop_v6196 import load_topology_file
+        print(json.dumps(register_snapshot(load_topology_file(args[1]), args[2]),
+                         sort_keys=True))
+        return 0
     if len(args) == 3 and args[0] == '--storage-risk-file':
         # Frozen Windows CLI evidence: explicit input and a new, non-overwriting report.
         export_risk_report(args[1], args[2])

@@ -27,8 +27,8 @@ def _reject_constant(value):
     raise ValueError(f"Non-finite JSON value rejected: {value}")
 
 
-def assess_topology_file(source):
-    """Read one bounded UTF-8 JSON snapshot and return explainable risk evidence."""
+def load_topology_file(source):
+    """Read one bounded UTF-8 JSON snapshot, rejecting duplicate properties."""
     source = Path(source)
     if not source.is_file():
         raise ValueError("Topology file does not exist")
@@ -41,6 +41,12 @@ def assess_topology_file(source):
                               parse_constant=_reject_constant)
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ValueError(f"Invalid UTF-8 topology JSON: {exc}") from exc
+    return topology
+
+
+def assess_topology_file(source):
+    """Read one snapshot and return explainable risk evidence."""
+    topology = load_topology_file(source)
     report = assess(topology)
     report['dependency_impact'] = map_dependencies(topology, report)
     return report

@@ -24,6 +24,23 @@ def main():
                                        or path.match('test_*.py')):
                     shutil.copy2(path, stage / path.name)
         shutil.copytree(checkout / '.github', stage / '.github', dirs_exist_ok=True)
+        # Preserve the small historical support fixtures that legacy tests
+        # import/read from their original colocated source layout. Do not
+        # silently overwrite a different file from the active source tree.
+        for name in ('benchmark_governance_compare_v659.py',
+                     'CAPTURES-STATUS-V563.md'):
+            fixture = checkout / '04-Tests-et-Qualification' / name
+            if not fixture.is_file():
+                raise FileNotFoundError('Missing historical test fixture: ' + str(fixture))
+            destination = stage / name
+            if destination.exists() and destination.read_bytes() != fixture.read_bytes():
+                raise RuntimeError('Historical fixture collision: ' + str(destination))
+            if not destination.exists():
+                shutil.copy2(fixture, destination)
+        # Reuse the established archive restorer; never activate the legacy
+        # upgrade workflow in the real .github directory.
+        from run_historical_windows_suite import stage_historical_upgrade_workflow
+        stage_historical_upgrade_workflow(checkout / '03-Sources', stage)
         shutil.copy2(checkout / '07-Manifestes/VERSION', stage / 'VERSION')
         return subprocess.run([
             sys.executable, '-B', '-m', 'unittest', 'discover',
