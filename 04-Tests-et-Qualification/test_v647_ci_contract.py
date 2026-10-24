@@ -14,5 +14,5 @@ class CIContract(unittest.TestCase):
   self.assertIn('Qualification evidence missing',s)
  def test_release_version(self):
   v=(ROOT/'07-Manifestes/VERSION').read_text().strip()
-  self.assertEqual(v,'6.47')
-  self.assertIn('"6.47"',(ROOT/'02-Compilation-Windows/StorageScope.iss').read_text())
+  self.assertRegex(v,r'^\d+\.\d+$'); self.assertGreaterEqual(tuple(map(int,v.split('.'))),(6,47))
+  self.assertIn(f'#define AppVersion "{v}"',(ROOT/'02-Compilation-Windows/StorageScope.iss').read_text(encoding='utf-8'))

@@ -3,17 +3,30 @@ import sqlite3, json, hashlib, datetime
 from pathlib import Path
 SCHEMA_VERSION = 1
 
+class ClosingConnection(sqlite3.Connection):
+    """Commit or roll back, then close the SQLite handle on all platforms."""
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            return super().__exit__(exc_type, exc_value, traceback)
+        finally:
+            self.close()
+
+
 def canonical(value):
     return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 def connect(path):
     p=Path(path); p.parent.mkdir(parents=True,exist_ok=True)
-    conn=sqlite3.connect(str(p), timeout=15, isolation_level=None)
-    conn.execute("PRAGMA busy_timeout=15000")
-    conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=FULL")
-    return conn
+    conn=sqlite3.connect(str(p), timeout=15, isolation_level=None, factory=ClosingConnection)
+    try:
+        conn.execute("PRAGMA busy_timeout=15000")
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=FULL")
+        return conn
+    except BaseException:
+        conn.close()
+        raise
 
 def migrate(conn):
     conn.execute("BEGIN IMMEDIATE")

@@ -16,5 +16,7 @@ class WindowsUsabilityTests(unittest.TestCase):
         self.assertIn('yscrollcommand=vscroll.set',s)
         self.assertIn('xscrollcommand=hscroll.set',s)
     def test_version(self):
-        self.assertIn("VERSION = '6.17'",(ROOT/'storagescope_windows.py').read_text())
+        release=(ROOT/'VERSION').read_text(encoding='utf-8').strip()
+        self.assertIn(f"VERSION = '{release}'",(ROOT/'storagescope_windows.py').read_text(encoding='utf-8'))
+        self.assertGreaterEqual(tuple(map(int,release.split('.'))),(6,17))
 if __name__=='__main__': unittest.main()

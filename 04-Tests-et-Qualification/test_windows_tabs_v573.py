@@ -14,7 +14,11 @@ class TabbedCampaignTests(unittest.TestCase):
     def test_compare_parent(self): self.assertIn('comparison = ttk.LabelFrame(comparison_tab', self.ui)
     def test_review_parent(self): self.assertIn('alert_controls = ttk.Frame(review_tab', self.ui)
     def test_builder_version(self):
-        self.assertIn("$expectedVersion = '6.17'", self.build)
+        engine=(ROOT/'build-engine-windows.ps1').read_text(encoding='utf-8')
+        self.assertIn("$releaseVersion = (Get-Content",self.build)
+        self.assertIn('$expectedVersion = $releaseVersion',engine)
         self.assertNotIn('v5.70.exe', self.build)
-    def test_inno_version(self): self.assertIn('#define AppVersion "6.17"',(ROOT/'StorageScope.iss').read_text())
+    def test_inno_version(self):
+        release=(ROOT/'VERSION').read_text(encoding='utf-8').strip()
+        self.assertIn(f'#define AppVersion "{release}"',(ROOT/'StorageScope.iss').read_text(encoding='utf-8'))
 if __name__ == '__main__': unittest.main()
