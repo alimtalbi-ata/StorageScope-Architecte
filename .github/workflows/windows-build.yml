@@ -454,6 +454,13 @@ jobs:
           $codes = @($report.findings | ForEach-Object { $_.code })
           if ('UNTRUSTED_PATH_SOURCE' -notin $codes -or 'UNTRUSTED_SHARE_SOURCE' -notin $codes) { throw 'Frozen untrusted-source findings missing' }
           Write-Host 'Frozen V6.218 operator-declared source allowlist PASS (synthetic, unauthenticated, read-only)'
+      - name: Verify frozen signed SAN/NAS observations V6.219
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          python '04-Tests-et-Qualification/qualify_frozen_observation_auth_v6219.py' --exe $exe
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen HMAC authentication gate failed' }
       - name: Qualify native binaries
         shell: pwsh
         run: |
