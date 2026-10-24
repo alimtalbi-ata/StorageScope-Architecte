@@ -94,6 +94,15 @@ def format_risk_report(report, limit=200):
                 f"Observations sans date : {freshness['missing_observations']}",
                 'Horloge et origine des données : NON AUTHENTIFIÉES',
             ])
+        sources = impact.get('source_evaluation')
+        if sources is not None:
+            lines.extend([
+                f"Observations de sources autorisées : {sources['allowed_observations']}",
+                f"Observations sans source : {sources['missing_observations']}",
+                f"Sources invalides : {sources['invalid_observations']}",
+                f"Sources hors liste : {sources['unlisted_observations']}",
+                'Liste de sources déclarée par opérateur : NON AUTHENTIFIÉE',
+            ])
         for asset in impact['assets'][:limit]:
             lines.append(f"[{asset['scope']}] {asset['asset_id']} ({asset['kind']}) "
                          f"hôtes={asset['verified_host_ids']} "
