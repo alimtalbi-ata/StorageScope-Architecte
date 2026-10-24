@@ -25,6 +25,8 @@ Chaque élément de `paths` et `shares` doit porter un `source_ref` correspondan
 
 La clé partagée de 32 à 128 octets est provisionnée **hors du snapshot**, via la variable d'environnement `STORAGESCOPE_HMAC_KEY_COLLECTOR_A` en hexadécimal. Utiliser une clé **différente par source** ; le contrat rejette les identifiants de clé réutilisés entre sources. Ne jamais écrire les clés dans le dépôt, les ZIP, les rapports ou les journaux. Dans un environnement Windows, provisionner la variable pour le processus uniquement à l'aide d'un mécanisme sécurisé adapté ; éviter les variables persistantes non protégées.
 
+**Protection anti-downgrade indispensable en environnement sécurisé :** définir `STORAGESCOPE_REQUIRE_OBSERVATION_AUTH=1` dans l'environnement du processus de vérification. Sans ce paramètre indépendant du fichier, un adversaire capable de modifier le snapshot pourrait supprimer `observation_auth_policy` et contourner le contrôle en mode historique. Avec ce paramètre, l'absence de politique est rejetée avant toute évaluation. La valeur doit être exactement `0` (compatibilité legacy) ou `1` (enforcement) ; toute autre valeur échoue explicitement.
+
 La signature est calculée par `hmac.new(key, b"StorageScope.observation.hmac-sha256.v1\x00" + canonical_json, sha256)`, où `canonical_json` est l'objet d'observation sans la propriété `auth`, encodé UTF-8 avec `json.dumps(sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False)`. Utiliser la fonction `sign_observation(record, key_id, secret)` du module `storage_observation_auth_v6219.py` dans le collecteur hors ligne. Cette fonction renvoie une copie ; elle n'écrit aucun fichier et ne modifie pas le record initial.
 
 ## Chaîne de contrôle et décisions
