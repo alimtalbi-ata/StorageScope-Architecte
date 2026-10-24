@@ -182,7 +182,8 @@ def launch():
     from windows_accessibility_v617 import display_metrics
     ui_metrics = display_metrics(root.winfo_screenwidth(), root.winfo_screenheight(),
                                  max(0.5, min(4.0, root.winfo_fpixels('1i') / 96.0)))
-    root.option_add('*Font', 'Segoe UI 10')
+    # Tcl list syntax: brace font families containing spaces to avoid parsing 'UI' as size.
+    root.option_add('*Font', '{Segoe UI} 10')
     style = ttk.Style(root)
     if 'vista' in style.theme_names():
         style.theme_use('vista')
