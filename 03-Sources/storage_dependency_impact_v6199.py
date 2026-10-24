@@ -67,9 +67,10 @@ def map_dependencies(topology, risk_report):
             verified_pairs.add(pair)
         else:
             uncertain_pairs.add(pair)
-    # A host with another independent verified path has a known relationship;
-    # uncertain observations remain visible in the risk findings themselves.
-    uncertain_pairs -= verified_pairs
+    # A healthy alternate fabric must not erase conflicting/unknown evidence
+    # on another path for the same host-array pair. Counts are evidence
+    # categories, not disjoint populations of hosts.
+    mixed_pairs = verified_pairs & uncertain_pairs
 
     share_counts = Counter(_id(s.get('id')) for s in topology['shares']
                            if isinstance(s, dict) and _id(s.get('id')))
@@ -94,10 +95,12 @@ def map_dependencies(topology, risk_report):
             continue
         host_ids = sorted(hosts_by_array.get(ident, set()))
         unverified = sorted(unverified_by_array.get(ident, set()))
+        mixed = sorted(hosts_by_array.get(ident, set()) & unverified_by_array.get(ident, set()))
         share_ids = sorted(shares.get(ident, set()))
         results.append({'asset_id': ident, 'kind': kind,
                         'verified_host_ids': host_ids,
                         'unverified_host_ids': unverified,
+                        'mixed_evidence_host_ids': mixed,
                         'verified_share_ids': share_ids,
                         'scope': 'OBSERVED' if host_ids or share_ids else 'UNASSESSED'})
 
@@ -112,6 +115,7 @@ def map_dependencies(topology, risk_report):
         'asset_count': len(results),
         'verified_host_relationships': len(verified_pairs),
         'unverified_host_relationships': len(uncertain_pairs),
+        'mixed_evidence_host_relationships': len(mixed_pairs),
         'verified_share_relationships': sum(len(s) for s in shares.values()),
         'scope_note': 'Observed host-array paths and NAS shares only; not service-level impact or a complete CMDB dependency map',
         'automatic_changes': 0,
