@@ -239,7 +239,7 @@ def launch():
     navigation_buttons = {}
 
     from windows_page_controller_v590 import PageController
-    controller = PageController(('Accueil', 'Gouvernance', 'Campagnes', 'Diagnostic', 'Maintenance'))
+    controller = PageController(('Accueil', 'Infrastructure', 'Gouvernance', 'Campagnes', 'Diagnostic', 'Maintenance'))
     def show_page(name):
         def render(page):
             previous = current['page']
@@ -450,6 +450,44 @@ def launch():
                    command=review_cmdb_snapshot).pack(anchor='w', pady=(0, 12))
         ttk.Label(page, text='Revue humaine · Provenance et conflits conservés · Aucune fusion automatique',
                   style='Subtle.TLabel').pack(anchor='w')
+        def review_vendor_snapshot():
+            chosen = filedialog.askopenfilename(
+                parent=root, title='Importer un snapshot fournisseur NAS (JSON, lecture seule)',
+                filetypes=[('Snapshot JSON', '*.json'), ('Tous les fichiers', '*.*')])
+            if not chosen:
+                return
+            try:
+                from vendor_snapshot_import_v6201 import load_snapshot, normalize
+                report = normalize(load_snapshot(chosen))
+                topology = report['topology']
+                lines = [
+                    'Inventaire NAS fournisseur — observation hors ligne',
+                    f"Fournisseur : {report['vendor']}",
+                    f"Source : {report['source_ref']}",
+                    f"Collecté le : {report['collected_at']}",
+                    f"Évaluation : {report['assessment']}",
+                    f"Systèmes retenus : {len(topology['assets'])}",
+                    f"Partages retenus : {len(topology['shares'])}",
+                    f"Enregistrements rejetés : {len(report['rejected'])}",
+                    f"Identités système en quarantaine : {len(report['quarantined_system_ids'])}",
+                    'Aucune modification de la CMDB ou des équipements.',
+                ]
+                if report['rejected']:
+                    lines += ['', 'Rejets (20 premiers) :'] + report['rejected'][:20]
+                if report['quarantined_system_ids']:
+                    lines += ['', 'Systèmes en quarantaine (20 premiers) :'] + report['quarantined_system_ids'][:20]
+                rendered = '\n'.join(lines)
+            except (OSError, ValueError, TypeError) as exc:
+                status.set('Snapshot NAS · import refusé')
+                messagebox.showerror('Import fournisseur NAS', str(exc), parent=root)
+                return
+            results.configure(state='normal')
+            results.delete('1.0', 'end')
+            results.insert('1.0', rendered)
+            results.configure(state='disabled')
+            status.set(f"Snapshot NAS · {report['assessment']} · {len(topology['assets'])} système(s)")
+        ttk.Button(page, text='Importer un inventaire NetApp / PowerScale / FlashBlade (JSON)…',
+                   command=review_vendor_snapshot).pack(anchor='w', pady=(0, 12))
         refresh()
         return page
 
@@ -461,7 +499,105 @@ def launch():
         ttk.Label(page, text='Sauvegarde horodatée dans un nouveau dossier, avec empreintes SHA-256 vérifiées.\nAucun écrasement ni restauration automatique.', wraplength=650).pack(anchor='w', pady=12)
         return page
 
+    def infrastructure():
+        page = ttk.Frame(content)
+        ttk.Label(page, text='Inventaire Infrastructure', style='Title.TLabel').pack(anchor='w', pady=(5, 10))
+        ttk.Label(page, text='Inventaire NAS hors ligne, sans modification des équipements.', style='Subtle.TLabel').pack(anchor='w', pady=(0, 12))
+        columns = ('vendor', 'name', 'id', 'used', 'total', 'shares')
+        frame = ttk.Frame(page)
+        frame.pack(fill='both', expand=True)
+        tree = ttk.Treeview(frame, columns=columns, show='headings', height=12)
+        for key, label, width in (
+                ('vendor', 'Fournisseur', 140), ('name', 'Système', 150),
+                ('id', 'Identifiant', 220), ('used', 'Utilisé (GiB)', 110),
+                ('total', 'Total (GiB)', 110), ('shares', 'Partages', 80)):
+            tree.heading(key, text=label)
+            tree.column(key, width=width, minwidth=70, stretch=key in ('name', 'id'))
+        scroll = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
+        tree.configure(yscrollcommand=scroll.set)
+        tree.pack(side='left', fill='both', expand=True)
+        scroll.pack(side='right', fill='y')
+        detail = tk.Text(page, height=7, wrap='word', font=('Consolas', 10), state='disabled')
+        detail.pack(fill='x', pady=(10, 0))
+        share_index = {}
+
+        def show_selected_shares(_event=None):
+            selected = tree.selection()
+            asset_id = tree.item(selected[0], 'values')[2] if selected else None
+            items = share_index.get(asset_id, [])
+            lines = [f'Partages de {asset_id} ({len(items)})'] if asset_id else ['Sélectionnez un système pour afficher ses partages.']
+            for item in items[:100]:
+                lines.append(f"{item['protocol']} · {item['id']} · utilisé {item.get('used_gib', '—')} GiB · quota {item.get('quota_gib', '—')} GiB")
+            if len(items) > 100:
+                lines.append(f'... {len(items) - 100} partage(s) supplémentaire(s) non affiché(s)')
+            detail.configure(state='normal')
+            detail.delete('1.0', 'end')
+            detail.insert('1.0', '\n'.join(lines))
+            detail.configure(state='disabled')
+
+        tree.bind('<<TreeviewSelect>>', show_selected_shares)
+        summary = tk.StringVar(value='Aucun inventaire chargé. Choisissez un snapshot JSON.')
+        ttk.Label(page, textvariable=summary, wraplength=780).pack(anchor='w', pady=10)
+
+        def import_snapshot():
+            chosen = filedialog.askopenfilename(
+                parent=root, title='Inventaire NAS fournisseur (lecture seule)',
+                filetypes=[('Snapshot JSON', '*.json'), ('Tous les fichiers', '*.*')])
+            if not chosen:
+                return
+            try:
+                from vendor_snapshot_import_v6201 import load_snapshot, normalize
+                report = normalize(load_snapshot(chosen))
+                assets = report['topology']['assets']
+                shares = report['topology']['shares']
+                from nas_inventory_desktop_v6201 import inventory_rows
+                rows, next_index = inventory_rows(report)
+            except (OSError, ValueError, TypeError, KeyError) as exc:
+                messagebox.showerror('Inventaire infrastructure', str(exc), parent=root)
+                status.set('Infrastructure · import refusé, inventaire précédent conservé')
+                return
+            share_index.clear()
+            share_index.update(next_index)
+            for item in tree.get_children():
+                tree.delete(item)
+            show_selected_shares()
+            for row in rows:
+                tree.insert('', 'end', values=row)
+            summary.set(
+                f"{report['assessment']} · {len(rows)} système(s) · {len(shares)} partage(s) · "
+                f"{len(report['rejected'])} rejet(s) · source : {report['source_ref']}")
+            status.set(f"Infrastructure · {len(rows)} équipement(s) observé(s)")
+
+        def export_inventory_csv():
+            from csv import writer
+            from tempfile import NamedTemporaryFile
+            if not tree.get_children():
+                messagebox.showinfo('Export infrastructure', 'Importez d’abord un inventaire NAS.', parent=root)
+                return
+            target = filedialog.asksaveasfilename(
+                parent=root, title='Exporter l’inventaire NAS en CSV',
+                defaultextension='.csv', filetypes=[('CSV', '*.csv')])
+            if not target:
+                return
+            destination = Path(target)
+            if destination.exists():
+                messagebox.showerror('Export infrastructure', 'Le fichier existe déjà : export non écrasant.', parent=root)
+                return
+            try:
+                from nas_inventory_desktop_v6201 import export_inventory_csv as write_inventory_csv
+                write_inventory_csv([tree.item(item, 'values') for item in tree.get_children()], destination)
+                status.set(f'Infrastructure · export CSV créé : {destination}')
+                messagebox.showinfo('Export infrastructure', f'Export créé : {destination}', parent=root)
+            except (OSError, ValueError) as exc:
+                messagebox.showerror('Export infrastructure', str(exc), parent=root)
+        ttk.Button(page, text='Exporter le tableau en CSV…',
+                   command=export_inventory_csv).pack(anchor='w', pady=(0, 12))
+        ttk.Button(page, text='Importer un snapshot NetApp / PowerScale / FlashBlade…',
+                   command=import_snapshot).pack(anchor='w', pady=(0, 12))
+        return page
+
     pages['Accueil'] = home()
+    pages['Infrastructure'] = infrastructure()
     governance_page = ttk.Frame(content)
     campaigns_page = ttk.Frame(content)
     pages['Gouvernance'] = governance_page
@@ -492,7 +628,7 @@ def launch():
 
     pages['Diagnostic'] = diagnostics()
     pages['Maintenance'] = settings()
-    for name in ('Accueil', 'Gouvernance', 'Campagnes', 'Diagnostic', 'Maintenance'):
+    for name in ('Accueil', 'Infrastructure', 'Gouvernance', 'Campagnes', 'Diagnostic', 'Maintenance'):
         action = open_governance if name == 'Gouvernance' else open_benchmarks if name == 'Campagnes' else lambda n=name: navigate_safely(n)
         button = ttk.Button(sidebar, text=name, style='Nav.TButton', command=action)
         button.pack(fill='x', pady=4)
@@ -576,6 +712,10 @@ def main(argv=None):
         # Frozen Windows CLI: local provenance-aware review, never overwrite evidence.
         export_cmdb_report(args[1], args[2])
         return 0
+    if len(args) == 3 and args[0] == '--vendor-snapshot-file':
+        # Exercise the same strict vendor importer inside the frozen Windows binary.
+        from vendor_snapshot_import_v6201 import main as import_vendor_snapshot
+        return import_vendor_snapshot(args[1:])
     if args and args[0] == '--benchmarks':
         if len(args) != 2:
             raise SystemExit('Usage: --benchmarks DATABASE')
