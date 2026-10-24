@@ -42,6 +42,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_capacity_threshold_precision_v6217.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_source_allowlist_v6218.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_auth_v6219.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_replay_v6220.py' -v
   review-windows:
     runs-on: windows-latest
     steps:
@@ -97,3 +98,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'SAN/NAS source allowlist regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_auth_v6219.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'SAN/NAS HMAC authentication regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_replay_v6220.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'SAN/NAS signed replay quarantine regression tests failed' }
