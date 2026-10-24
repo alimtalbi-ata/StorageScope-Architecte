@@ -27,6 +27,10 @@ Les snapshots sont des **preuves déclaratives hors ligne** : leur présence ne 
 
 Pour chacun des trois fournisseurs, répéter l'import avec un partage dont `quota_bytes` vaut `-1`, puis avec un partage dont `protocol` vaut `FTP` (protocole non pris en charge), et enfin avec `used_bytes` supérieur à `quota_bytes` (par exemple 21 GiB utilisés pour 20 GiB de quota). Résultat attendu : le système NAS valide reste visible, le partage incorrect est rejeté, le rapport signale une observation `INCOMPLETE` et aucune modification automatique n'est exécutée. Le rejet d'un partage ne doit jamais être présenté comme un inventaire complet. Tester également un **système** déclarant 101 GiB utilisés pour 100 GiB de capacité totale : le système et tous ses partages doivent être écartés, avec un rejet « inconsistent capacity » et une évaluation `INCOMPLETE`. Répéter avec une capacité totale négative (`total_bytes`, `capacity_total_bytes` ou `space_total_bytes` selon le fournisseur) : le système doit être rejeté pour « invalid capacity », sans modification automatique.
 
+## Précision des comparaisons de capacité
+
+Les règles de cohérence comparent **les valeurs entières en octets**, avant toute conversion et tout arrondi en GiB. Pour chaque fournisseur, tester deux cas limites distincts : capacité système utilisée supérieure de **1 octet** à la capacité totale et utilisation d'un partage supérieure de **1 octet** à son quota. Le premier cas rejette le système et ses partages ; le second conserve le système mais rejette le partage. Les deux produisent `INCOMPLETE` et `automatic_changes = 0`. La valeur affichée en GiB, arrondie à six décimales, ne doit jamais servir de référence pour accepter des données.
+
 ## Exemple synthétique (fictif — non issu d'une baie réelle)
 
 ```json
