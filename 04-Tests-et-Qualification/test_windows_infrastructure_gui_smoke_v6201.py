@@ -127,6 +127,26 @@ class WindowsInfrastructureGuiSmoke(unittest.TestCase):
                                  'Failed vendor switch replaced the last valid inventory')
                 self.assertTrue(any('share-smb' in w.get('1.0', 'end') for w in details),
                                 'Failed vendor switch erased selected SMB share details')
+                # An invalid semantic snapshot must also preserve the selected
+                # FlashBlade inventory (not only malformed JSON syntax).
+                unsupported = Path(folder) / 'unsupported-vendor.json'
+                unsupported.write_text(json.dumps({
+                    'schema': 'storagescope.vendor-snapshot.v1',
+                    'vendor': 'unknown_vendor',
+                    'source_ref': 'gui-acceptance',
+                    'collected_at': '2026-10-24T10:00:00Z',
+                    'systems': []
+                }), encoding='utf-8')
+                with patch('tkinter.filedialog.askopenfilename', return_value=str(unsupported)):
+                    with patch('tkinter.messagebox.showerror') as unsupported_error:
+                        importer.invoke()
+                self.assertTrue(unsupported_error.called,
+                                'Unsupported vendor did not surface an error')
+                self.assertEqual(len(table.get_children()), 1)
+                self.assertEqual(table.item(table.get_children()[0], 'values')[2],
+                                 'pure_flashblade:GUI-002')
+                self.assertTrue(any('share-smb' in w.get('1.0', 'end') for w in details),
+                                'Unsupported vendor import erased selected SMB details')
                 # Restore NetApp for the existing CSV and fail-closed regression assertions.
                 with patch('tkinter.filedialog.askopenfilename', return_value=str(snapshot)):
                     importer.invoke()
