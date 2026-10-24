@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -35,6 +36,6 @@ class GovernanceTests(unittest.TestCase):
         self.db.export_governance(target,today='2026-10-16')
         self.assertEqual(json.loads(target.read_text())['kpis']['overdue'],1)
     def test_audit_tamper_detected(self):
-        with sqlite3.connect(self.path) as db:db.execute("UPDATE decision_audit SET payload='{}' WHERE seq=1")
+        with closing(sqlite3.connect(self.path)) as db, db:db.execute("UPDATE decision_audit SET payload='{}' WHERE seq=1")
         with self.assertRaises(ValueError):self.db.governance_report()
     def test_no_production_activation(self):self.assertFalse(self.db.governance_report()['production_activation'])

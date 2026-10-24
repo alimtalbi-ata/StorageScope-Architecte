@@ -13,5 +13,8 @@ class InstallerRejection(unittest.TestCase):
             self.assertIn(x,self.ps)
     def test_cleanup_exact_fixture_only(self): self.assertIn('Fixture modified: left in place',self.ps)
     def test_ci_order(self):
-        self.assertLess(self.ci.index('Qualify installer rejection'),self.ci.index('Qualify silent install'))
-        self.assertIn('installer-rejected-v6.17.json',self.ci)
+        self.assertLess(self.ci.index('Qualify installer rejection'),self.ci.index('Install and uninstall smoke test'))
+        self.assertIn('installer-rejected-v{0}.json',self.ci)
+        self.assertIn('RUNNER_ENVIRONMENT',self.ci)
+        self.assertIn('source_unchanged',self.ci)
+        self.assertIn('installed_binary_present',self.ci)
