@@ -167,6 +167,30 @@ class VendorSnapshotTests(unittest.TestCase):
                 self.assertTrue(any('invalid capacity' in entry for entry in report['rejected']))
                 self.assertEqual(report['automatic_changes'], 0)
 
+    def test_one_byte_capacity_overage_is_not_hidden_by_gib_rounding(self):
+        for vendor in ('netapp_ontap', 'dell_powerscale', 'pure_flashblade'):
+            with self.subTest(vendor=vendor):
+                data = sample(vendor)
+                used_key, total_key, shares_key = {
+                    'netapp_ontap': ('capacity_used_bytes', 'capacity_total_bytes', 'volumes'),
+                    'dell_powerscale': ('used_bytes', 'total_bytes', 'exports'),
+                    'pure_flashblade': ('space_used_bytes', 'space_total_bytes', 'shares'),
+                }[vendor]
+                data['systems'][0][used_key] = data['systems'][0][total_key] + 1
+                report = normalize(data)
+                self.assertEqual(report['topology']['assets'], [])
+                self.assertEqual(report['assessment'], 'INCOMPLETE')
+                self.assertTrue(any('inconsistent capacity' in x for x in report['rejected']))
+                data = sample(vendor)
+                data['systems'][0][shares_key][0]['used_bytes'] = (
+                    data['systems'][0][shares_key][0]['quota_bytes'] + 1)
+                report = normalize(data)
+                self.assertEqual(len(report['topology']['assets']), 1)
+                self.assertEqual(report['topology']['shares'], [])
+                self.assertEqual(report['assessment'], 'INCOMPLETE')
+                self.assertTrue(any('inconsistent quota' in x for x in report['rejected']))
+                self.assertEqual(report['automatic_changes'], 0)
+
     def test_duplicate_system_quarantined(self):
         data = sample('netapp_ontap')
         data['systems'].append(copy.deepcopy(data['systems'][0]))
