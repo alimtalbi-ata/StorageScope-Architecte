@@ -59,11 +59,11 @@ def initialize_ledger(path):
     return {'schema': 'storagescope.replay-ledger.v1', 'status': 'INITIALIZED'}
 
 
-def _open_existing(path):
+def _open_existing(path, *, read_only=False):
     target = _path(path)
     if not target.is_file() or not stat.S_ISREG(target.stat().st_mode):
         raise ValueError('Replay ledger missing or not a regular file; explicit initialization required')
-    db = sqlite3.connect(target.resolve().as_uri() + '?mode=rw', uri=True,
+    db = sqlite3.connect(target.resolve().as_uri() + ('?mode=ro' if read_only else '?mode=rw'), uri=True,
                          isolation_level=None, timeout=3)
     try:
         if db.execute('PRAGMA quick_check').fetchone() != ('ok',):
@@ -88,6 +88,38 @@ def _open_existing(path):
         raise
     return db
 
+
+
+def inspect_ledger(path):
+    """Read-only aggregate health view; never consumes collection IDs.
+
+    Exposes only totals and time bounds, not collector identities, signed
+    observations or key material. The ledger must already exist and pass the
+    same schema/integrity gate as a registration. SQLite mode=ro is mandatory.
+    """
+    with closing(_open_existing(path, read_only=True)) as db:
+        db.execute('PRAGMA query_only=ON')
+        row = db.execute(
+            'SELECT COUNT(*), COUNT(DISTINCT source_ref), '
+            'COALESCE(SUM(observation_count), 0), '
+            'MIN(accepted_utc), MAX(accepted_utc) FROM collection_seen'
+        ).fetchone()
+        count, sources, observations, first, last = row
+        # Timestamps are generated in UTC by register_snapshot. If altered,
+        # never report a healthy registry based on malformed time bounds.
+        for value in (first, last):
+            if value is not None:
+                parsed = datetime.fromisoformat(value)
+                if parsed.tzinfo is None or parsed.utcoffset().total_seconds() != 0:
+                    raise ValueError('Replay ledger contains non-UTC timestamp')
+        return {'schema': 'storagescope.replay-ledger-audit.v1',
+                'status': 'READ_ONLY', 'integrity': 'PASS',
+                'registered_collections': count,
+                'distinct_sources': sources,
+                'registered_observations': observations,
+                'first_accepted_utc': first, 'last_accepted_utc': last,
+                'automatic_changes': 0,
+                'scope_note': 'Local SQLite audit only; rollback and tampering by local administrator are not detectable'}
 
 def _collection_groups(topology):
     if not isinstance(topology, dict) or topology.get('schema') != 'storagescope.storage-topology.v1':

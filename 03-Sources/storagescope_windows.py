@@ -611,6 +611,10 @@ def main(argv=None):
         from windows_release_check_v567 import runtime_self_test
         with TemporaryDirectory(prefix='storagescope-selftest-') as temporary:
             return runtime_self_test(application_paths(temporary))
+    if len(args) == 2 and args[0] == '--storage-replay-audit':
+        from storage_replay_ledger_v6222 import inspect_ledger
+        print(json.dumps(inspect_ledger(args[1]), sort_keys=True))
+        return 0
     if len(args) == 2 and args[0] == '--storage-replay-init':
         from storage_replay_ledger_v6222 import initialize_ledger
         print(json.dumps(initialize_ledger(args[1]), sort_keys=True))
