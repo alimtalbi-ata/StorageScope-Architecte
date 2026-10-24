@@ -247,14 +247,17 @@ def assess(topology, warning_percent=85, critical_percent=95):
             emit("HIGH", "INVALID_SHARE", f"shares[{i}]", "Expected object", "Correct NAS share record")
             continue
         ident = _identifier(share.get("id"))
-        if ident in duplicate_shares:
-            continue  # All conflicting copies are quarantined.
+        # Duplicate share identity and verified replay are independent findings.
+        # Report each replayed copy before the duplicate-ID quarantine so audit
+        # evidence is not hidden, while never assessing its quota as trusted.
         if i in replayed_shares:
             invalid_count += 1
             emit('HIGH', 'REPLAYED_SHARE_OBSERVATION', f'shares[{i}]',
                  'Repeated verified HMAC envelope within this snapshot',
                  'Recollect independently; investigate duplicate collector output')
             continue
+        if ident in duplicate_shares:
+            continue  # All conflicting copies are quarantined.
         if auth_policy is not None and classify_auth(share, auth_policy) != 'VERIFIED':
             invalid_count += 1
             emit('HIGH', 'UNAUTHENTICATED_SHARE_OBSERVATION', f'shares[{i}]',
