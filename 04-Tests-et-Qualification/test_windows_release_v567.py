@@ -33,8 +33,17 @@ class WindowsReleaseTests(unittest.TestCase):
         for action in ('Couper','Copier','Coller','Tout sélectionner','Effacer'):
             self.assertIn(action,source)
     def test_installer_version_matches_runtime(self):
-        self.assertIn('#define AppVersion "6.17"',(Path(__file__).parent/'StorageScope.iss').read_text())
+        root=Path(__file__).parent
+        release=(root/'VERSION').read_text(encoding='utf-8').strip()
+        self.assertEqual(app.VERSION,release)
+        self.assertIn(f'#define AppVersion "{release}"',(root/'StorageScope.iss').read_text(encoding='utf-8'))
     def test_ci_includes_frozen_probe(self):
-        self.assertIn('Construire-StorageScope.cmd',(Path(__file__).parent/'.github/workflows/windows-build.yml').read_text())
+        root=Path(__file__).parent
+        workflow=(root/'.github/workflows/windows-build.yml').read_text(encoding='utf-8')
+        engine=(root/'build-engine-windows.ps1').read_text(encoding='utf-8')
+        self.assertIn('Qualify native binaries',workflow)
+        self.assertIn('windows-qualification-report.json',workflow)
+        self.assertIn('--version-file',engine)
+        self.assertIn('--self-test',engine)
 
 if __name__=='__main__': unittest.main()

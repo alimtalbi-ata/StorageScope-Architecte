@@ -14,5 +14,9 @@ class CIContract(unittest.TestCase):
  def test_binary_not_fabricated(self):
   self.assertFalse(list((ROOT/'binary').rglob('*.exe')))
  def test_version(self):
-  self.assertEqual((ROOT/'07-Manifestes/VERSION').read_text().strip(),'6.91')
+  version=(ROOT/'07-Manifestes/VERSION').read_text(encoding='utf-8').strip()
+  self.assertEqual(version,(ROOT/'03-Sources/VERSION').read_text(encoding='utf-8').strip())
+  self.assertEqual(version,(ROOT/'01-Application/VERSION.txt').read_text(encoding='utf-8').strip())
+  major,minor=map(int,version.split('.'))
+  self.assertGreaterEqual((major,minor),(6,91))
 if __name__=='__main__': unittest.main()

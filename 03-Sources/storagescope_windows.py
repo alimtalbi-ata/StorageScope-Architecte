@@ -10,6 +10,8 @@ import json
 from datetime import datetime, timezone
 from uuid import uuid4
 from pathlib import Path
+from storage_risk_desktop_v6196 import assess_topology_file, format_risk_report, export_risk_report
+from cmdb_review_desktop_v6198 import review_cmdb_file, format_cmdb_report, export_cmdb_report
 
 APP_NAME = 'StorageScope'
 VERSION = '6.108'
@@ -404,6 +406,93 @@ def launch():
             results.insert('1.0', '\n'.join(lines))
             results.configure(state='disabled')
         ttk.Button(page, text='Actualiser le diagnostic', command=refresh).pack(anchor='w', pady=12)
+        def review_storage_topology():
+            chosen = filedialog.askopenfilename(
+                parent=root, title='Choisir un inventaire SAN/NAS JSON (lecture seule)',
+                filetypes=[('Topologie JSON', '*.json'), ('Tous les fichiers', '*.*')])
+            if not chosen:
+                return
+            try:
+                report = assess_topology_file(chosen)
+                rendered = format_risk_report(report)
+            except (OSError, ValueError) as exc:
+                status.set('SAN/NAS · fichier non analysé')
+                messagebox.showerror('Analyse SAN/NAS', str(exc), parent=root)
+                return
+            results.configure(state='normal')
+            results.delete('1.0', 'end')
+            results.insert('1.0', rendered)
+            results.configure(state='disabled')
+            status.set(f"SAN/NAS · {report['assessment']} · {report['finding_count']} constat(s)")
+        ttk.Button(page, text='Analyser une topologie SAN/NAS (JSON)…',
+                   command=review_storage_topology).pack(anchor='w', pady=(0, 12))
+        ttk.Label(page, text='Analyse locale en lecture seule · Aucun accès aux équipements ou à la CMDB',
+                  style='Subtle.TLabel').pack(anchor='w')
+        def review_cmdb_snapshot():
+            chosen = filedialog.askopenfilename(
+                parent=root, title='Choisir un inventaire CMDB JSON (lecture seule)',
+                filetypes=[('Inventaire JSON', '*.json'), ('Tous les fichiers', '*.*')])
+            if not chosen:
+                return
+            try:
+                report = review_cmdb_file(chosen)
+                rendered = format_cmdb_report(report)
+            except (OSError, ValueError) as exc:
+                status.set('CMDB · fichier non analysé')
+                messagebox.showerror('Réconciliation CMDB', str(exc), parent=root)
+                return
+            results.configure(state='normal')
+            results.delete('1.0', 'end')
+            results.insert('1.0', rendered)
+            results.configure(state='disabled')
+            status.set(f"CMDB · {report['assessment']} · {report['candidate_count']} candidat(s)")
+        ttk.Button(page, text='Réconcilier un inventaire CMDB (JSON)…',
+                   command=review_cmdb_snapshot).pack(anchor='w', pady=(0, 12))
+        ttk.Label(page, text='Revue humaine · Provenance et conflits conservés · Aucune fusion automatique',
+                  style='Subtle.TLabel').pack(anchor='w')
+        def review_vendor_snapshot():
+            chosen = filedialog.askopenfilename(
+                parent=root, title='Importer un snapshot fournisseur NAS (JSON, lecture seule)',
+                filetypes=[('Snapshot JSON', '*.json'), ('Tous les fichiers', '*.*')])
+            if not chosen:
+                return
+            try:
+                from vendor_snapshot_import_v6201 import load_snapshot_with_digest, normalize
+                snapshot, digest = load_snapshot_with_digest(chosen)
+                report = normalize(snapshot, source_sha256=digest)
+                topology = report['topology']
+                lines = [
+                    'Inventaire NAS fournisseur — observation hors ligne',
+                    f"Fournisseur : {report['vendor']}",
+                    f"Source : {report['source_ref']}",
+                    f"SHA-256 du fichier source : {report['snapshot_sha256']}",
+                    f"Collecté le : {report['collected_at']}",
+                    f"Évaluation : {report['assessment']}",
+                    f"Systèmes retenus : {len(topology['assets'])}",
+                    f"Partages retenus : {len(topology['shares'])}",
+                    f"Enregistrements rejetés : {len(report['rejected'])}",
+                    f"Identités système en quarantaine : {len(report['quarantined_system_ids'])}",
+                    f"NAS avec partages en quarantaine : {len(report['quarantined_share_asset_ids'])}",
+                    'Aucune modification de la CMDB ou des équipements.',
+                ]
+                if report['rejected']:
+                    lines += ['', 'Rejets (20 premiers) :'] + report['rejected'][:20]
+                if report['quarantined_system_ids']:
+                    lines += ['', 'Systèmes en quarantaine (20 premiers) :'] + report['quarantined_system_ids'][:20]
+                if report['quarantined_share_asset_ids']:
+                    lines += ['', 'NAS dont les partages sont en quarantaine (20 premiers) :'] + report['quarantined_share_asset_ids'][:20]
+                rendered = '\n'.join(lines)
+            except (OSError, ValueError, TypeError) as exc:
+                status.set('Snapshot NAS · import refusé')
+                messagebox.showerror('Import fournisseur NAS', str(exc), parent=root)
+                return
+            results.configure(state='normal')
+            results.delete('1.0', 'end')
+            results.insert('1.0', rendered)
+            results.configure(state='disabled')
+            status.set(f"Snapshot NAS · {report['assessment']} · {len(topology['assets'])} système(s)")
+        ttk.Button(page, text='Importer un inventaire NetApp / PowerScale / FlashBlade (JSON)…',
+                   command=review_vendor_snapshot).pack(anchor='w', pady=(0, 12))
         refresh()
         return page
 
@@ -515,8 +604,26 @@ def main(argv=None):
         Path(args[1]).write_text(VERSION + '\n', encoding='utf-8')
         return 0
     if args == ['--self-test']:
+        # The frozen smoke test must not create a persistent user-data folder:
+        # Inno Setup treats an existing data folder as an upgrade and requires
+        # a verified backup. Use an isolated temporary directory instead.
+        from tempfile import TemporaryDirectory
         from windows_release_check_v567 import runtime_self_test
-        return runtime_self_test(application_paths())
+        with TemporaryDirectory(prefix='storagescope-selftest-') as temporary:
+            return runtime_self_test(application_paths(temporary))
+    if len(args) == 3 and args[0] == '--storage-risk-file':
+        # Frozen Windows CLI evidence: explicit input and a new, non-overwriting report.
+        export_risk_report(args[1], args[2])
+        return 0
+    if len(args) == 3 and args[0] == '--cmdb-review-file':
+        # Frozen Windows CLI: local provenance-aware review, never overwrite evidence.
+        export_cmdb_report(args[1], args[2])
+        return 0
+    if len(args) == 3 and args[0] == '--vendor-snapshot-file':
+        # Offline vendor import: frozen Windows CLI, strictly read-only input,
+        # exclusive output, no live array access or CMDB writes.
+        from vendor_snapshot_import_v6201 import main as vendor_snapshot_main
+        return vendor_snapshot_main(args[1:])
     if args and args[0] == '--benchmarks':
         if len(args) != 2:
             raise SystemExit('Usage: --benchmarks DATABASE')

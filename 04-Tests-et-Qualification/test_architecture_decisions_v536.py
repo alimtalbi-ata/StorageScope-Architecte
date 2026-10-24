@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,7 +32,7 @@ class DecisionTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.db.transition('ADR-1','APPROVED','A','r')
     def test_audit_integrity(self):
         self.create();self.assertTrue(self.db.report()['audit_verified'])
-        with sqlite3.connect(self.path) as conn: conn.execute("UPDATE decision_audit SET payload='{}' WHERE seq=1")
+        with closing(sqlite3.connect(self.path)) as conn, conn: conn.execute("UPDATE decision_audit SET payload='{}' WHERE seq=1")
         with self.assertRaises(ValueError): self.db.report()
     def test_export(self):
         self.create();target=Path(self.tmp.name)/'export.json'
