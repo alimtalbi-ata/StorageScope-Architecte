@@ -46,3 +46,24 @@ qu'après leur exécution réelle sur le commit exact.
 Aucune connexion infrastructure, écriture CMDB, remédiation ou donnée réelle.
 Alignement visé : ISO/IEC/IEEE 42010, ITIL 4, ISO/IEC 27001 et ISO/IEC 27040 ;
 aucune certification revendiquée.
+
+## Correctif CI natif Windows — 24 octobre 2026
+
+Le run Windows #40107618806 a **échoué** au test de l'exécutable
+`qualify_frozen_observation_replay_v6220.py`, après compilation réussie.
+Cause racine : `DUPLICATE_SHARE` était évalué avant
+`REPLAYED_SHARE_OBSERVATION`, masquant le constat HMAC pour chaque copie
+d'un partage à identifiant répété. La quarantaine était appliquée, mais le
+rapport perdait des preuves de rejeu. La correction émet les constats de
+rejeu avant le `continue` sur l'identifiant dupliqué ; les quotas restent
+exclus de l'évaluation. Un doublon non authentifié ne doit pas être déclaré
+comme rejeu vérifié.
+
+Tests ajoutés : deux constats de rejeu pour deux copies signées, conservation
+du constat d'identité dupliquée, et cas mixte avec troisième observation
+de signature invalide. Tests exécutés localement sur l'espace de travail
+V6.220 : **8/8 anti-rejeu, 13/13 HMAC et 145/145 stockage PASS**.
+Cette validation Linux n'atteste ni le binaire Windows ni son installateur.
+Le nouveau commit doit réussir toute la CI native avant publication d'une
+release Windows qualifiée.
+
