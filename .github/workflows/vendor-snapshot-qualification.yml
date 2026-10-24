@@ -4,9 +4,11 @@ on:
     paths:
       - '03-Sources/vendor_snapshot_import_v6201.py'
       - '03-Sources/storagescope_windows.py'
+      - '03-Sources/nas_inventory_desktop_v6201.py'
       - '04-Tests-et-Qualification/test_vendor_snapshot_import_v6201.py'
       - '04-Tests-et-Qualification/test_vendor_desktop_integration_v6201.py'
       - '04-Tests-et-Qualification/test_inventory_journey_v6201.py'
+      - '04-Tests-et-Qualification/test_nas_desktop_journey_v6201.py'
       - '.github/workflows/vendor-snapshot-qualification.yml'
   workflow_dispatch:
 jobs:
@@ -31,3 +33,4 @@ jobs:
           python -m py_compile 03-Sources/storagescope_windows.py
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_vendor_desktop_integration_v6201.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_inventory_journey_v6201.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_nas_desktop_journey_v6201.py' -v
