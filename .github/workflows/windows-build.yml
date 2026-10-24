@@ -433,6 +433,27 @@ jobs:
           if (-not (HasFinding 'share-warning' 'SHARE_QUOTA_WARNING') -or (HasFinding 'share-warning' 'SHARE_QUOTA_CRITICAL')) { throw 'Sub-critical share quota misclassified' }
           if (-not (HasFinding 'share-critical' 'SHARE_QUOTA_CRITICAL')) { throw 'Exact critical share boundary missed' }
           Write-Host 'Frozen SAN/NAS capacity precision PASS (synthetic, read-only)'
+      - name: Verify frozen SAN/NAS source allowlist V6.218
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $inputPath = Join-Path $env:RUNNER_TEMP 'storage-sources-v6218.json'
+          $outputPath = Join-Path $env:RUNNER_TEMP 'storage-sources-v6218-report.json'
+          # Synthetic: an approved up path cannot rescue the same unlisted physical path.
+          $raw = '{"schema":"storagescope.storage-topology.v1","source_policy":{"schema":"storagescope.observation-source-policy.v1","allowed_source_refs":["approved"]},"assets":[{"id":"h1","kind":"host"},{"id":"a1","kind":"storage_array","used_gib":20,"total_gib":100},{"id":"n1","kind":"nas","used_gib":20,"total_gib":100}],"paths":[{"host_id":"h1","storage_id":"a1","fabric":"A","state":"up","source_ref":"approved"},{"host_id":"h1","storage_id":"a1","fabric":"A","state":"up","source_ref":"unlisted"}],"shares":[{"id":"s1","nas_id":"n1","protocol":"NFS","used_gib":1,"quota_gib":10,"source_ref":"unlisted"}]}'
+          [IO.File]::WriteAllText($inputPath, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--storage-risk-file', ('"{0}"' -f $inputPath), ('"{0}"' -f $outputPath))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath)) { throw 'Frozen source review failed' }
+          $report = Get-Content -Raw -LiteralPath $outputPath | ConvertFrom-Json
+          $dep = $report.dependency_impact
+          if ($report.assessment -ne 'INCOMPLETE' -or $report.verified_active_paths -ne 0 -or $report.automatic_changes -ne 0) { throw 'Frozen unlisted source certified SAN path' }
+          if ($dep.verified_host_relationships -ne 0 -or $dep.unverified_host_relationships -ne 1 -or $dep.verified_share_relationships -ne 0 -or $dep.unresolved_share_observations -ne 1) { throw 'Frozen dependency map trusted unlisted source' }
+          if ($dep.source_evaluation.unlisted_observations -ne 2 -or $dep.source_evaluation.authentication -ne 'NOT_AUTHENTICATED') { throw 'Frozen source evidence disclaimer or counts missing' }
+          $codes = @($report.findings | ForEach-Object { $_.code })
+          if ('UNTRUSTED_PATH_SOURCE' -notin $codes -or 'UNTRUSTED_SHARE_SOURCE' -notin $codes) { throw 'Frozen untrusted-source findings missing' }
+          Write-Host 'Frozen V6.218 operator-declared source allowlist PASS (synthetic, unauthenticated, read-only)'
       - name: Qualify native binaries
         shell: pwsh
         run: |
