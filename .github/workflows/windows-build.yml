@@ -169,6 +169,25 @@ jobs:
           if ($dep.assets[0].unresolved_path_observations -ne 1) { throw 'Frozen orphan SAN attribution missing' }
           if ('ORPHAN_PATH' -notin @($report.findings | ForEach-Object { $_.code })) { throw 'Frozen orphan SAN finding missing' }
           Write-Host 'Frozen orphan SAN evidence PASS (synthetic, read-only)'
+      - name: Verify frozen unresolved NAS share evidence V6.214
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'orphan-nas-v6214.json'
+          $output = Join-Path $env:RUNNER_TEMP 'orphan-nas-v6214-report.json'
+          # Synthetic: valid NFS, malformed SMB on the same NAS, unknown NAS.
+          $raw = '{"schema":"storagescope.storage-topology.v1","assets":[{"id":"n1","kind":"nas","used_gib":10,"total_gib":100}],"paths":[],"shares":[{"id":"good","nas_id":"n1","protocol":"NFS","used_gib":1,"quota_gib":10},{"nas_id":"n1","protocol":"SMB"},{"id":"unknown","nas_id":"missing","protocol":"SMB"}]}'
+          [IO.File]::WriteAllText($input, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--storage-risk-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen orphan NAS review failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          $dep = $report.dependency_impact
+          if ($dep.assessment -ne 'INCOMPLETE' -or $dep.unresolved_share_observations -ne 2 -or $dep.verified_share_relationships -ne 1 -or $dep.automatic_changes -ne 0) { throw 'Frozen orphan NAS evidence missing or incorrectly trusted' }
+          if ($dep.assets[0].unresolved_share_observations -ne 1 -or (@($dep.assets[0].verified_share_ids) -join ',') -ne 'good') { throw 'Frozen orphan NAS attribution invalid' }
+          if ('INVALID_SHARE' -notin @($report.findings | ForEach-Object { $_.code })) { throw 'Frozen orphan NAS risk finding missing' }
+          Write-Host 'Frozen orphan NAS evidence PASS (synthetic, read-only)'
       - name: Verify frozen CMDB review (provenance and fail-closed)
         shell: pwsh
         run: |
