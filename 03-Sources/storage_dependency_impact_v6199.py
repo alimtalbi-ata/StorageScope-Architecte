@@ -66,7 +66,7 @@ def map_dependencies(topology, risk_report):
             continue
         host, target, fabric = (_id(item.get(k)) for k in ('host_id', 'storage_id', 'fabric'))
         state = item.get('state')
-        if ((index in (replayed_paths if 'host_id' in item else replayed_shares)) or
+        if ((index in replayed_paths) or
                 (auth_policy is not None and classify_auth(item, auth_policy) != 'VERIFIED') or
                 (source_policy is not None and classify_source(item, source_policy) != 'ALLOWED') or
                 parse_observed_at(item)[0] == 'INVALID' or
@@ -122,7 +122,7 @@ def map_dependencies(topology, risk_report):
             unresolved_share_observations += 1
             continue
         ident, target = _id(item.get('id')), _id(item.get('nas_id'))
-        if ((index in (replayed_paths if 'host_id' in item else replayed_shares)) or
+        if ((index in replayed_shares) or
                 (auth_policy is not None and classify_auth(item, auth_policy) != 'VERIFIED') or
                 (source_policy is not None and classify_source(item, source_policy) != 'ALLOWED') or
                 parse_observed_at(item)[0] == 'INVALID' or
