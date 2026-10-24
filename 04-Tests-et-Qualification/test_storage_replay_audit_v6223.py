@@ -1,4 +1,5 @@
 """V6.223 read-only replay ledger audit qualification (synthetic)."""
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -56,13 +57,28 @@ class ReplayAuditTests(unittest.TestCase):
         self.assertEqual(before, hashlib.sha256(self.ledger.read_bytes()).hexdigest())
 
     def test_forged_schema_rejected_without_modification(self):
-        with sqlite3.connect(self.ledger) as db:
-            db.execute('PRAGMA user_version=1')
-            db.execute('CREATE TABLE collection_seen (source_ref TEXT, collection_id TEXT, observation_count INTEGER, accepted_utc TEXT)')
+        # sqlite3.Connection.__exit__ commits, but does not close the handle.
+        # An unclosed fixture prevents TemporaryDirectory cleanup on Windows.
+        with closing(sqlite3.connect(self.ledger)) as db:
+            with db:
+                db.execute('PRAGMA user_version=1')
+                db.execute('CREATE TABLE collection_seen (source_ref TEXT, collection_id TEXT, observation_count INTEGER, accepted_utc TEXT)')
         before = hashlib.sha256(self.ledger.read_bytes()).hexdigest()
         with self.assertRaisesRegex(ValueError, 'primary key'):
             inspect_ledger(self.ledger)
         self.assertEqual(before, hashlib.sha256(self.ledger.read_bytes()).hexdigest())
+        # Windows refuses rename while any SQLite handle is still open.
+        moved = self.root / 'ledger-moved.sqlite'
+        self.ledger.rename(moved)
+        moved.rename(self.ledger)
+
+    def test_audit_releases_sqlite_file_handle(self):
+        initialize_ledger(self.ledger)
+        inspect_ledger(self.ledger)
+        moved = self.root / 'ledger-moved.sqlite'
+        self.ledger.rename(moved)
+        moved.rename(self.ledger)
+        self.assertEqual(inspect_ledger(self.ledger)['integrity'], 'PASS')
 
     def test_audit_cli_json(self):
         initialize_ledger(self.ledger)
