@@ -1,12 +1,10 @@
 """Native Tkinter Infrastructure smoke test (requires Windows interactive desktop).
 
-This deliberately uses the real application process and OS-level key events.
-The workflow must fail if no desktop or UI is available.
+This creates actual Tkinter widgets and invokes their button callbacks.
+Native file pickers are mocked to keep acceptance deterministic.
 """
 import os
-import subprocess
 import sys
-import time
 import unittest
 from pathlib import Path
 
@@ -14,7 +12,6 @@ from pathlib import Path
                      'Native Windows desktop GUI smoke only')
 class WindowsInfrastructureGuiSmoke(unittest.TestCase):
     def test_infrastructure_window_opens_and_navigation_exists(self):
-        import ctypes
         import tkinter as tk
         from tkinter import ttk
         sources = Path(__file__).resolve().parents[1] / '03-Sources'
