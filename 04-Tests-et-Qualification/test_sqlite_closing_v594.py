@@ -1,5 +1,6 @@
 """Regression tests for explicit SQLite resource closure. Author: Abdelhalim Talbi."""
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -29,7 +30,7 @@ class SQLiteClosingTests(unittest.TestCase):
 
     def test_health_success_closes_connection(self):
         db = self.root / 'test.sqlite'
-        with sqlite3.connect(db) as con: con.execute('CREATE TABLE t(x)')
+        with closing(sqlite3.connect(db)) as con, con: con.execute('CREATE TABLE t(x)')
         with self._track(app): self.assertEqual(app.database_health(db), 'OK')
         self.assertEqual(TrackedConnection.closed_count, 1)
 
@@ -42,7 +43,7 @@ class SQLiteClosingTests(unittest.TestCase):
 
     def test_backup_closes_source_and_destination(self):
         paths = app.application_paths(self.root / 'data')
-        with sqlite3.connect(paths['decisions']) as con: con.execute('CREATE TABLE t(x)')
+        with closing(sqlite3.connect(paths['decisions'])) as con, con: con.execute('CREATE TABLE t(x)')
         with self._track(app):
             files = app.backup_databases(paths, self.root / 'backup')
         self.assertEqual(len(files), 1)
@@ -50,7 +51,7 @@ class SQLiteClosingTests(unittest.TestCase):
 
     def test_preflight_closes_readonly_connection(self):
         data = self.root / 'data'; data.mkdir()
-        with sqlite3.connect(data / 'campaigns.sqlite') as con: con.execute('CREATE TABLE t(x)')
+        with closing(sqlite3.connect(data / 'campaigns.sqlite')) as con, con: con.execute('CREATE TABLE t(x)')
         import upgrade_preflight_v580 as preflight
         with self._track(preflight): self.assertTrue(inspect_data_directory(data)['safe'])
         self.assertEqual(TrackedConnection.closed_count, 1)
