@@ -11,7 +11,7 @@ from collections import Counter, defaultdict
 from storage_observation_time_v6215 import parse_observed_at, summarize_observation_times
 from storage_observation_freshness_v6216 import load_policy, classify_observation, summarize_freshness
 from storage_source_policy_v6218 import load_source_policy, classify_source, summarize_sources
-from storage_observation_auth_v6219 import load_auth_policy, classify_auth, summarize_auth
+from storage_observation_auth_v6219 import load_auth_policy, classify_auth, summarize_auth, find_replayed_observations
 
 ACTIVE = frozenset({'up', 'active'})
 KNOWN = ACTIVE | {'down', 'disabled', 'unknown'}
@@ -41,6 +41,8 @@ def map_dependencies(topology, risk_report):
     policy = load_policy(topology)
     source_policy = load_source_policy(topology)
     auth_policy = load_auth_policy(topology)
+    replayed_paths, replayed_shares = find_replayed_observations(
+        topology['paths'], topology['shares'], auth_policy)
     assets = topology['assets']
     counts = Counter(_id(a.get('id')) for a in assets if isinstance(a, dict) and _id(a.get('id')))
     trusted = {}
@@ -58,13 +60,14 @@ def map_dependencies(topology, risk_report):
     unresolved_fabric_pairs = set()
     unresolved_paths_by_array = Counter()
     unresolved_path_observations = 0
-    for item in topology['paths']:
+    for index, item in enumerate(topology['paths']):
         if not isinstance(item, dict):
             unresolved_path_observations += 1
             continue
         host, target, fabric = (_id(item.get(k)) for k in ('host_id', 'storage_id', 'fabric'))
         state = item.get('state')
-        if ((auth_policy is not None and classify_auth(item, auth_policy) != 'VERIFIED') or
+        if ((index in (replayed_paths if 'host_id' in item else replayed_shares)) or
+                (auth_policy is not None and classify_auth(item, auth_policy) != 'VERIFIED') or
                 (source_policy is not None and classify_source(item, source_policy) != 'ALLOWED') or
                 parse_observed_at(item)[0] == 'INVALID' or
                 (policy is not None and classify_observation(item, policy) != 'FRESH')):
@@ -114,12 +117,13 @@ def map_dependencies(topology, risk_report):
     shares = defaultdict(set)
     unresolved_shares_by_nas = Counter()
     unresolved_share_observations = 0
-    for item in topology['shares']:
+    for index, item in enumerate(topology['shares']):
         if not isinstance(item, dict):
             unresolved_share_observations += 1
             continue
         ident, target = _id(item.get('id')), _id(item.get('nas_id'))
-        if ((auth_policy is not None and classify_auth(item, auth_policy) != 'VERIFIED') or
+        if ((index in (replayed_paths if 'host_id' in item else replayed_shares)) or
+                (auth_policy is not None and classify_auth(item, auth_policy) != 'VERIFIED') or
                 (source_policy is not None and classify_source(item, source_policy) != 'ALLOWED') or
                 parse_observed_at(item)[0] == 'INVALID' or
                 (policy is not None and classify_observation(item, policy) != 'FRESH')):
@@ -180,6 +184,8 @@ def map_dependencies(topology, risk_report):
         'freshness_evaluation': summarize_freshness(topology['paths'], topology['shares'], policy),
         'source_evaluation': summarize_sources(topology['paths'], topology['shares'], source_policy),
         'observation_authentication': summarize_auth(topology['paths'], topology['shares'], auth_policy),
+        'replayed_path_observations': len(replayed_paths),
+        'replayed_share_observations': len(replayed_shares),
         'verified_share_relationships': sum(len(s) for s in shares.values()),
         'scope_note': 'Observed host-array paths and NAS shares only; not service-level impact or a complete CMDB dependency map',
         'automatic_changes': 0,
