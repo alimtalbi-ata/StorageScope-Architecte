@@ -615,6 +615,14 @@ def main(argv=None):
         from storage_replay_ledger_v6222 import inspect_ledger
         print(json.dumps(inspect_ledger(args[1]), sort_keys=True))
         return 0
+    if len(args) == 3 and args[0] == '--storage-replay-anchor-create':
+        from storage_replay_anchor_v6225 import create_anchor
+        print(json.dumps(create_anchor(args[1], args[2]), sort_keys=True))
+        return 0
+    if len(args) == 3 and args[0] == '--storage-replay-anchor-check':
+        from storage_replay_anchor_v6225 import verify_anchor
+        print(json.dumps(verify_anchor(args[1], args[2]), sort_keys=True))
+        return 0
     if len(args) == 2 and args[0] == '--storage-replay-init':
         from storage_replay_ledger_v6222 import initialize_ledger
         print(json.dumps(initialize_ledger(args[1]), sort_keys=True))

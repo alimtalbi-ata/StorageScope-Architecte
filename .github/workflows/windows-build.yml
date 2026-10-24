@@ -494,6 +494,13 @@ jobs:
           $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
           python '04-Tests-et-Qualification/qualify_frozen_replay_audit_v6224.py' --exe $exe
           if ($LASTEXITCODE -ne 0) { throw 'Frozen V6.224 full-row replay audit failed' }
+      - name: Verify frozen independent replay anchor V6.225
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          python '04-Tests-et-Qualification/qualify_frozen_replay_anchor_v6225.py' --exe $exe
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen V6.225 independent replay anchor failed' }
       - name: Qualify native binaries
         shell: pwsh
         run: |
