@@ -141,6 +141,31 @@ jobs:
           $rejected = Start-Process -FilePath $exe -ArgumentList $badArgs -Wait -PassThru
           if ($rejected.ExitCode -eq 0 -or (Test-Path -LiteralPath $badOutput)) { throw 'Frozen CMDB parser accepted duplicate JSON property' }
           Write-Host 'Frozen CMDB provenance and conflict review PASS'
+      - name: Verify frozen CMDB transitive identity quarantine V6.209
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          $input = Join-Path $env:RUNNER_TEMP 'cmdb-transitive-v6209.json'
+          $output = Join-Path $env:RUNNER_TEMP 'cmdb-transitive-v6209-report.json'
+          # Synthetic evidence: direct serial conflict, two linked WWN observations,
+          # and an unrelated healthy pair that must remain reviewable.
+          $raw = '[{"source":"NetApp","serial":"S1","wwn":"W1"},{"source":"CMDB","serial":"S1","wwn":"W2"},{"source":"Dell","wwn":"W1"},{"source":"Pure","wwn":"W1"},{"source":"CMDB","serial":"S9"},{"source":"NetApp","serial":"S9"}]'
+          [IO.File]::WriteAllText($input, $raw, [Text.UTF8Encoding]::new($false))
+          $arguments = @('--cmdb-review-file', ('"{0}"' -f $input), ('"{0}"' -f $output))
+          $process = Start-Process -FilePath $exe -ArgumentList $arguments -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Frozen CMDB transitive quarantine CLI failed' }
+          $report = Get-Content -Raw -LiteralPath $output | ConvertFrom-Json
+          if ($report.assessment -ne 'INCOMPLETE' -or $report.automatic_merges -ne 0) { throw 'Frozen CMDB accepted ambiguous identity component' }
+          if ((@($report.quarantined_indices) -join ',') -ne '0,1,2,3') { throw 'Frozen CMDB did not quarantine full connected identity component' }
+          if ((@($report.direct_conflict_indices) -join ',') -ne '0,1') { throw 'Frozen CMDB direct contradiction provenance missing' }
+          if ((@($report.propagated_quarantine_indices) -join ',') -ne '2,3') { throw 'Frozen CMDB transitive contradiction provenance missing' }
+          $linked = @($report.candidates | Where-Object { $_.action -eq 'QUARANTINE_LINKED_IDENTITY_CONFLICT' })
+          $healthy = @($report.candidates | Where-Object { $_.action -eq 'REVIEW_REQUIRED' })
+          if ($linked.Count -ne 3 -or $healthy.Count -ne 1) { throw 'Frozen CMDB candidate quarantine propagation or healthy isolation failed' }
+          $expectedDigest = (Get-FileHash -LiteralPath $input -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($report.snapshot_sha256 -ne $expectedDigest) { throw 'Frozen CMDB transitive fixture source digest mismatch' }
+          Write-Host 'Frozen CMDB transitive quarantine PASS (synthetic evidence, read-only)'
       - name: Verify frozen offline vendor import (three vendors, quarantine and no overwrite)
         shell: pwsh
         run: |
