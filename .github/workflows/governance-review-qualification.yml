@@ -38,6 +38,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_paths_v6213.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_orphan_shares_v6214.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_time_v6215.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_freshness_v6216.py' -v
   review-windows:
     runs-on: windows-latest
     steps:
@@ -85,3 +86,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Unresolved NAS share evidence regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_time_v6215.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'SAN/NAS timestamp provenance regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_freshness_v6216.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'SAN/NAS freshness policy regression tests failed' }
