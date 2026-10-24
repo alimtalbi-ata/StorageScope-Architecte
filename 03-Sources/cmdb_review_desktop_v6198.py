@@ -5,6 +5,7 @@ Author: Abdelhalim Talbi.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -41,7 +42,12 @@ def review_cmdb_file(source):
                              parse_constant=_reject_constant)
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ValueError(f'Invalid UTF-8 CMDB JSON: {exc}') from exc
-    return reconcile(records)
+    report = reconcile(records)
+    # Hash the exact bytes parsed above, not a second read of a mutable file.
+    # This proves evidence integrity, not authenticity of the CMDB or its source.
+    report['snapshot_sha256'] = hashlib.sha256(raw).hexdigest()
+    report['snapshot_size_bytes'] = len(raw)
+    return report
 
 
 def format_cmdb_report(report, limit=100):
@@ -49,6 +55,8 @@ def format_cmdb_report(report, limit=100):
     if type(limit) is not int or not 1 <= limit <= 1000:
         raise ValueError('Invalid CMDB display limit')
     lines = [f"Évaluation CMDB : {report['assessment']}",
+             f"Empreinte du snapshot (SHA-256) : {report.get('snapshot_sha256', 'non disponible')}",
+             f"Taille du snapshot : {report.get('snapshot_size_bytes', 'non disponible')} octets",
              f"Enregistrements : {report['records']}",
              f"Candidats à revue : {report['candidate_count']}",
              f"Enregistrements invalides : {len(report['invalid_records'])}",
