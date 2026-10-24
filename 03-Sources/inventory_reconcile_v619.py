@@ -68,7 +68,8 @@ def reconcile(records):
                     raise ValueError(f'Reconciliation exceeds {MAX_CANDIDATE_PAIRS} candidate pairs')
 
     candidates = []
-    quarantined = set()
+    direct_conflicts = set()
+    adjacency = collections.defaultdict(set)
     for (left, right), evidence in sorted(pairs.items()):
         a, b = records[left], records[right]
         conflicts = []
@@ -80,8 +81,10 @@ def reconcile(records):
             av, bv = identities[left][field], identities[right][field]
             if av is not None and bv is not None and av != bv:
                 identity_conflicts.append({'field': field, 'left': av, 'right': bv})
+        adjacency[left].add(right)
+        adjacency[right].add(left)
         if identity_conflicts:
-            quarantined.update((left, right))
+            direct_conflicts.update((left, right))
         candidates.append({
             'indices': [left, right],
             'identity_evidence': sorted(evidence),
@@ -95,6 +98,23 @@ def reconcile(records):
             'action': 'QUARANTINE_IDENTITY_CONFLICT' if identity_conflicts else 'REVIEW_REQUIRED',
         })
 
+    # Identity evidence forms an undirected graph. A direct contradiction
+    # taints the entire connected component: otherwise a third observation
+    # could still appear REVIEW_REQUIRED through a conflicted neighbor.
+    # Bound traversal by the existing record/pair limits; never auto-merge.
+    quarantined = set(direct_conflicts)
+    pending = collections.deque(sorted(direct_conflicts))
+    while pending:
+        index = pending.popleft()
+        for neighbor in sorted(adjacency[index]):
+            if neighbor not in quarantined:
+                quarantined.add(neighbor)
+                pending.append(neighbor)
+    for candidate in candidates:
+        if (candidate['action'] == 'REVIEW_REQUIRED' and
+                candidate['indices'][0] in quarantined):
+            candidate['action'] = 'QUARANTINE_LINKED_IDENTITY_CONFLICT'
+
     return {
         'schema': 'storagescope.reconciliation.v1',
         'records': len(records),
@@ -102,6 +122,8 @@ def reconcile(records):
         'candidates': candidates,
         'invalid_records': invalid,
         'quarantined_indices': sorted(quarantined),
+        'direct_conflict_indices': sorted(direct_conflicts),
+        'propagated_quarantine_indices': sorted(quarantined - direct_conflicts),
         'assessment': ('INCOMPLETE' if invalid or quarantined else
                        'REVIEW_REQUIRED' if candidates else 'NO_CANDIDATES'),
         'automatic_merges': 0,
