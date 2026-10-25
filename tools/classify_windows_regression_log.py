@@ -151,9 +151,9 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
                 summary["result_summary_lines"] += 1
                 summary["result_status"] = "FAILED"
                 summary["summary_present"] = True
-                count_pairs = re.findall(r"\\b(failures|errors|skipped)=(\\d+)\\b", failed.group(1))
+                count_pairs = re.findall(r"\b(failures|errors|skipped)=(\d+)\b", failed.group(1))
                 declared = dict(count_pairs)
-                residual = re.sub(r"\\b(?:failures|errors|skipped)=\\d+\\b", "", failed.group(1))
+                residual = re.sub(r"\b(?:failures|errors|skipped)=\d+\b", "", failed.group(1))
                 residual = residual.replace(",", "").strip()
                 if len(count_pairs) != len(declared):
                     summary["failed_summary_fields_valid"] = False
