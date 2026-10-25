@@ -175,7 +175,10 @@ def main(argv=None):
     parser.add_argument('input', type=Path)
     parser.add_argument('--output', type=Path)
     args = parser.parse_args(argv)
-    report = reconcile(json.loads(args.input.read_text(encoding='utf-8')))
+    # Reuse the same bounded, strict parser as the Windows desktop review.
+    # Never allow CLI JSON semantics to weaken evidence provenance checks.
+    from cmdb_review_desktop_v6198 import review_cmdb_file
+    report = review_cmdb_file(args.input)
     content = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + '\n'
     if args.output:
         # A review report must never silently overwrite an existing artifact.
