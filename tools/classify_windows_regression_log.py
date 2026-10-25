@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""Rule-based triage of unittest FAIL/ERROR records from Windows build logs.
+
+A triage aid only: it keeps ambiguous rows visible and never claims a source bug
+has been fixed. Author: Abdelhalim Talbi.
+"""
+from __future__ import annotations
+import argparse
+from collections import Counter
+from datetime import datetime, timezone
+import json
+from pathlib import Path
+import re
+import sys
+
+ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\S+Z\s?")
+RECORD = re.compile(r"^(FAIL|ERROR):\s+(.+)$")
+SUMMARY = re.compile(r"^(?:Ran\s+\d+\s+tests?\b|FAILED\s*\(|OK(?:\s*\(.*\))?\s*$)")
+
+DESCRIPTIONS = {
+    "IMPORT_ROOT_OR_SOURCE_PATH": "Source imports fail because the test process cannot resolve modules or its import root.",
+    "TEST_ARBORESCENCE_OR_CWD": "A test looks for a source/build file relative to the wrong directory or test tree.",
+    "SQLITE_HANDLE_LIFECYCLE": "An open SQLite/file handle prevents Windows cleanup or a database lifecycle check fails.",
+    "STALE_VERSION_EXPECTATION": "A historical assertion hard-codes a version inconsistent with canonical release metadata.",
+    "STALE_SOURCE_CONTRACT": "A static source-fragment assertion no longer matches the implementation.",
+    "WINDOWS_FIXTURE_OR_EXECUTABLE_STRUCTURE": "A synthetic PE/portable fixture is structurally invalid.",
+    "RELEASE_BUILD_OR_SOURCE_CONTRACT": "A packaging/build/qualification contract fails and needs test-by-test review.",
+    "ENCODING": "A Unicode codec exception is explicit in the log.",
+    "MISSING_TEST_DEPENDENCY": "A test explicitly requires an optional library that is absent from the test environment.",
+    "MISSING_PATH_OR_FIXTURE": "A file/fixture is missing without a narrower root-cause signature.",
+    "OTHER_NEEDS_MANUAL_TRIAGE": "No safe signature matched; do not guess the cause.",
+}
+
+
+def clean(line: str) -> str:
+    return TIMESTAMP.sub("", ANSI.sub("", line.rstrip("\r\n"))).strip()
+
+
+def classify_failure(detail: str, test_name: str = "") -> tuple[str, str, str]:
+    """Classify from the terminal exception and test name, not arbitrary source excerpts.
+
+    Tracebacks can embed source lines containing words such as VERSION or "not found in".
+    Those excerpts must not override the exception that actually caused the test failure.
+    """
+    lines = [line.strip() for line in detail.splitlines() if line.strip()]
+    exception_re = re.compile(r"(?:[A-Za-z_]\w*(?:Error|Exception)|AssertionError):\s*.*")
+    exception_lines = [line for line in lines if exception_re.search(line)]
+    signature_text = exception_lines[-1] if exception_lines else (lines[-1] if lines else detail)
+    signature = signature_text.replace("\\", "/")
+    context = detail.replace("\\", "/")
+    name = test_name.lower()
+    assertion_claim = signature.split(" not found in ", 1)[0]
+
+    checks = [
+        (r"Unicode(?:Decode|Encode)Error|codec can't (?:decode|encode)", "ENCODING", "explicit Unicode codec exception", "high"),
+        (r"WinError\s*32|unclosed database|database is locked|(?:PermissionError.*(?:sqlite|\.db|database))", "SQLITE_HANDLE_LIFECYCLE", "Windows file-lock/database-lifecycle signature", "high"),
+        (r"FileNotFoundError|can't open file|No such file or directory", "TEST_ARBORESCENCE_OR_CWD", "missing path under the repository test/qualification tree", "high"),
+        (r"PNG export requires Pillow|No module named ['\"]?PIL|No module named ['\"]?Pillow", "MISSING_TEST_DEPENDENCY", "test environment lacks the Pillow imaging dependency", "high"),
+    ]
+    for pattern, category, message, confidence in checks:
+        if re.search(pattern, signature, re.I | re.M):
+            if category == "TEST_ARBORESCENCE_OR_CWD" and "04-Tests-et-Qualification" not in context:
+                continue
+            if category == "SQLITE_HANDLE_LIFECYCLE" and not re.search(
+                r"WinError\s*32|unclosed database|database is locked|(?:PermissionError.*(?:sqlite|\.db|database))",
+                signature, re.I
+            ):
+                continue
+            return category, message, confidence
+
+    # Release tests explicitly named "version"/"manifest" frequently assert against a
+    # legacy version literal rather than a runtime defect. Use only the assertion claim
+    # (the text before "not found in") and the test identity, never source excerpt text.
+    version_test = re.search(r"test.*(?:version|versions|manifest)", name, re.I) is not None
+    version_claim = re.search(
+        r"\b\d+\.\d+\b|AppVersion|VERSION\s*=|expectedVersion|StorageScope-Setup-v\d+\.\d+",
+        assertion_claim, re.I
+    ) is not None
+    direct_version_mismatch = re.search(
+        r"AssertionError:.*(?:\b6\.108\b.*\b6\.\d+\b|\b6\.\d+\b.*\b6\.108\b)",
+        signature, re.I
+    ) is not None
+    if "AssertionError" in signature and (direct_version_mismatch or (version_test and version_claim)):
+        return "STALE_VERSION_EXPECTATION", "release-version assertion uses a legacy literal", "high"
+
+    if re.search(r"ValueError: substring not found", signature, re.I) or (
+        "AssertionError" in signature and "not found in" in signature
+    ):
+        return "STALE_SOURCE_CONTRACT", "static source-fragment assertion no longer matches the implementation", "high"
+
+    if re.search(r"Invalid PE section count|Entry module absent", signature, re.I):
+        return "WINDOWS_FIXTURE_OR_EXECUTABLE_STRUCTURE", "synthetic executable/portable fixture rejected", "high"
+
+    if re.search(r"ModuleNotFoundError: No module named|ImportError: Failed to import test module", signature, re.I):
+        return "IMPORT_ROOT_OR_SOURCE_PATH", "test import chain failed", "medium"
+
+    if re.search(r"FileNotFoundError|can't open file|No such file or directory", signature, re.I):
+        return "MISSING_PATH_OR_FIXTURE", "missing path/fixture outside the known test-tree signature", "medium"
+
+    if re.search(r"AssertionError|ValueError|TypeError|AttributeError|KeyError|OSError|ImportError|NameError", signature, re.I):
+        return "RELEASE_BUILD_OR_SOURCE_CONTRACT", "build/source assertion or exception requiring review", "low"
+
+    return "OTHER_NEEDS_MANUAL_TRIAGE", "no known exception signature matched", "low"
+
+def parse_unittest_log(text: str):
+    entries, summary, current = [], {}, None
+
+    def flush():
+        nonlocal current
+        if current is None:
+            return
+        detail = "\n".join(current.pop("_detail", []))
+        category, signature, confidence = classify_failure(detail, current["test"])
+        current.update(detail=detail, category=category, signature=signature, confidence=confidence)
+        entries.append(current)
+        current = None
+
+    for raw in text.splitlines():
+        line = clean(raw)
+        match = RECORD.match(line)
+        if match:
+            flush()
+            current = {"kind": match.group(1), "test": match.group(2), "_detail": []}
+            continue
+        if SUMMARY.match(line):
+            flush()
+            ran = re.match(r"Ran\s+(\d+)\s+tests?\s+in\s+([0-9.]+)s", line)
+            failed = re.match(r"FAILED\s*\(\s*failures=(\d+)\s*,\s*errors=(\d+)\s*\)", line)
+            if ran:
+                summary.update(tests_run=int(ran.group(1)), duration_seconds=float(ran.group(2)))
+            if failed:
+                summary.update(failures=int(failed.group(1)), errors=int(failed.group(2)))
+            continue
+        if current is not None:
+            current["_detail"].append(line)
+    flush()
+    summary.update(
+        observed_records=len(entries),
+        observed_failures=sum(e["kind"] == "FAIL" for e in entries),
+        observed_errors=sum(e["kind"] == "ERROR" for e in entries),
+    )
+    summary["counts_match_summary"] = (
+        summary.get("failures", summary["observed_failures"]) == summary["observed_failures"]
+        and summary.get("errors", summary["observed_errors"]) == summary["observed_errors"]
+    )
+    return entries, summary
+
+
+def make_report(entries, summary, run_id, source):
+    counts = {}
+    for entry in entries:
+        bucket = counts.setdefault(entry["category"], Counter())
+        bucket[entry["kind"]] += 1
+    return {
+        "schema": "storagescope.windows-historical-failure-taxonomy.v1",
+        "author": "Abdelhalim Talbi",
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "run_id": run_id,
+        "source_log": source,
+        "summary": summary,
+        "classification_is_heuristic": True,
+        "unclassified_count": counts.get("OTHER_NEEDS_MANUAL_TRIAGE", Counter()).total(),
+        "categories": [
+            {"category": name, "description": DESCRIPTIONS[name], "failures": bucket["FAIL"],
+             "errors": bucket["ERROR"], "total": bucket["FAIL"] + bucket["ERROR"]}
+            for name, bucket in sorted(counts.items())
+        ],
+        "items": [{k: v for k, v in entry.items() if k != "detail"} for entry in entries],
+        "limitations": [
+            "Classification is heuristic and does not prove a defect is fixed.",
+            "Broad release/build-contract categories require full-traceback review.",
+            "Zero codec-error matches only describes this log, not encoding correctness in general.",
+        ],
+    }
+
+
+def render_markdown(report):
+    s = report["summary"]
+    lines = ["# StorageScope - classification des echecs Windows historiques", "",
+             "**Auteur :** " + report["author"],
+             "**Run :** " + str(report.get("run_id") or "non precise"),
+             "**Log :** " + str(report["source_log"]),
+             "**Genere UTC :** " + report["generated_at_utc"], "",
+             "## Synthese", "",
+             "- Tests declares : " + str(s.get("tests_run", "non trouve")),
+             "- Echecs : " + str(s["observed_failures"]) + " (resume " + str(s.get("failures", "absent")) + ")",
+             "- Erreurs : " + str(s["observed_errors"]) + " (resume " + str(s.get("errors", "absent")) + ")",
+             "- Enregistrements : " + str(s["observed_records"]),
+             "- Comptes coherents : " + str(s["counts_match_summary"]),
+             "- Cas non classes automatiquement : " + str(report["unclassified_count"]), "",
+             "## Causes racines probables", "",
+             "| Categorie | Echecs | Erreurs | Total | Interpretation |",
+             "|---|---:|---:|---:|---|"]
+    for c in report["categories"]:
+        lines.append("| " + c["category"] + " | " + str(c["failures"]) + " | " + str(c["errors"]) + " | " + str(c["total"]) + " | " + c["description"].replace("|", "\\|") + " |")
+    lines += ["", "## Detail test par test", "", "| Type | Test | Categorie | Signature | Confiance |", "|---|---|---|---|---|"]
+    for item in report["items"]:
+        lines.append("| " + item["kind"] + " | " + item["test"].replace("|", "\\|") + " | " + item["category"] + " | " + item["signature"].replace("|", "\\|") + " | " + item["confidence"] + " |")
+    lines += ["", "Ne desactiver aucun controle historique. Corriger les racines d'import/chemins, fermer les handles SQLite, puis rapprocher les contrats de version et packaging des sources canoniques.", ""]
+    return "\n".join(lines)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("log", type=Path, help="Raw UTF-8 GitHub Actions job log")
+    parser.add_argument("--run-id")
+    parser.add_argument("--json-output", type=Path)
+    parser.add_argument("--markdown-output", type=Path)
+    args = parser.parse_args(argv)
+    try:
+        raw = args.log.read_text(encoding="utf-8", errors="strict")
+    except (OSError, UnicodeError) as exc:
+        parser.error("cannot read UTF-8 log: " + str(exc))
+    entries, summary = parse_unittest_log(raw)
+    if not entries:
+        print("No unittest FAIL/ERROR records found; refusing empty classification.", file=sys.stderr)
+        return 2
+    report = make_report(entries, summary, args.run_id, str(args.log))
+    serialized = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
+    if args.json_output:
+        args.json_output.parent.mkdir(parents=True, exist_ok=True)
+        args.json_output.write_text(serialized, encoding="utf-8", newline="\n")
+    if args.markdown_output:
+        args.markdown_output.parent.mkdir(parents=True, exist_ok=True)
+        args.markdown_output.write_text(render_markdown(report), encoding="utf-8", newline="\n")
+    if not args.json_output and not args.markdown_output:
+        print(serialized, end="")
+    if not summary["counts_match_summary"]:
+        print("WARNING: extracted counts disagree with unittest summary; manual review required.", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
