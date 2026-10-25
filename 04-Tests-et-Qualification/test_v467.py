@@ -4,6 +4,8 @@ from cursor_pagination import decision_page
 class CursorTests(unittest.TestCase):
  def setUp(self):
   self.g=Governance(':memory:')
+  # Ensure the historical cursor fixture closes its in-memory SQLite handle.
+  self.addCleanup(self.g.close)
   for i in range(105):self.g.propose(f'D-{i:03}','title','rationale','author')
  def test_no_duplicates_and_complete(self):
   ids=[];cursor=None
