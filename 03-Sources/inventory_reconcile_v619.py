@@ -97,6 +97,15 @@ def reconcile(records):
         if manufacturer_error:
             invalid.append({'index': index, 'reason': manufacturer_error})
             continue  # Untrusted manufacturer cannot become identity evidence.
+        # A supplied but non-string strong ID is malformed evidence, not an
+        # absent ID. Silently discarding it could let another matching field
+        # conceal a contradictory or incorrectly serialized identifier.
+        invalid_field = next((field for field in IDENTITY_FIELDS
+                              if item.get(field) is not None and
+                              not isinstance(item[field], str)), None)
+        if invalid_field is not None:
+            invalid.append({'index': index, 'reason': f'invalid_identity_type:{invalid_field}'})
+            continue  # Fail closed; do not use any other ID from this record.
         asset_kinds[index] = kind
         manufacturers[index] = manufacturer
         strong = {field: _identity(item.get(field)) for field in IDENTITY_FIELDS}
