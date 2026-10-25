@@ -17,6 +17,14 @@ ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\S+Z\s?")
 RECORD = re.compile(r"^(FAIL|ERROR):\s+(.+)$")
 SUMMARY = re.compile(r"^(?:Ran\s+\d+\s+tests?\b|FAILED\s*\(|OK(?:\s*\(.*\))?\s*$)")
+RUN_SUMMARY_LINE = re.compile(r"Ran\s+(?P<count>\d+)\s+tests?\s+in\s+(?P<seconds>[0-9]+(?:\.[0-9]+)?)s")
+FAILED_SUMMARY_LINE = re.compile(r"FAILED\s*\((.*)\)")
+# Standard unittest success details may report skipped tests and expected failures.
+# Unknown payloads are not evidence of a successful test run.
+OK_SUMMARY_LINE = re.compile(
+    r"OK(?:\s*\((?:skipped=\d+(?:,\s*expected failures=\d+)?|"
+    r"expected failures=\d+(?:,\s*skipped=\d+)?)\))?"
+)
 
 DESCRIPTIONS = {
     "IMPORT_ROOT_OR_SOURCE_PATH": "Source imports fail because the test process cannot resolve modules or its import root.",
@@ -137,7 +145,12 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
             continue
         # The input contract is one isolated unittest invocation. Once its final
         # OK/FAILED line appears, non-summary output makes the evidence ambiguous.
-        if summary.get("result_summary_lines", 0) and not SUMMARY.match(line):
+        is_complete_summary = bool(
+            RUN_SUMMARY_LINE.fullmatch(line)
+            or FAILED_SUMMARY_LINE.fullmatch(line)
+            or OK_SUMMARY_LINE.fullmatch(line)
+        )
+        if summary.get("result_summary_lines", 0) and not is_complete_summary:
             summary["trailing_output_lines"] += 1
         match = RECORD.match(line)
         if match:
@@ -146,14 +159,17 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
             continue
         if SUMMARY.match(line):
             flush()
-            ran = re.fullmatch(r"Ran\s+(\d+)\s+tests?\s+in\s+([0-9]+(?:\.[0-9]+)?)s", line)
+            ran = RUN_SUMMARY_LINE.fullmatch(line)
             if ran:
                 summary["run_summary_lines"] += 1
-                summary.update(tests_run=int(ran.group(1)), duration_seconds=float(ran.group(2)))
+                summary.update(
+                    tests_run=int(ran.group("count")),
+                    duration_seconds=float(ran.group("seconds")),
+                )
                 summary["summary_present"] = True
                 continue
 
-            failed = re.fullmatch(r"FAILED\s*\((.*)\)", line)
+            failed = FAILED_SUMMARY_LINE.fullmatch(line)
             if failed:
                 summary["result_summary_lines"] += 1
                 summary["result_status"] = "FAILED"
@@ -185,7 +201,7 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
                         summary["failed_summary_problem"].append("FAILED summary does not contain parseable failure/error totals")
                 continue
 
-            if re.fullmatch(r"OK(?:\s*\(.*\))?\s*", line):
+            if OK_SUMMARY_LINE.fullmatch(line):
                 summary["result_summary_lines"] += 1
                 summary["result_status"] = "OK"
                 summary.update(failures=0, errors=0)
