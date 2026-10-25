@@ -111,5 +111,31 @@ FAILED (failures=1, errors=0)
             self.assertIn("refusing to qualify", stderr.getvalue())
 
 
+    def test_duplicate_failure_count_fields_are_rejected(self):
+        log = """FAIL: test_one (sample.Test.test_one)
+AssertionError: expected value
+Ran 1 test in 0.01s
+FAILED (failures=1, errors=0, failures=1)
+"""
+        _, summary = parse_unittest_log(log)
+        self.assertFalse(summary["summary_complete"])
+        self.assertFalse(summary["counts_match_summary"])
+        self.assertIn(
+            "FAILED summary contains duplicate count fields",
+            summary["summary_problem"],
+        )
+
+    def test_trailing_garbage_after_run_summary_is_rejected(self):
+        log = """FAIL: test_one (sample.Test.test_one)
+AssertionError: expected value
+Ran 1 test in 0.01s trailing-data
+FAILED (failures=1, errors=0)
+"""
+        _, summary = parse_unittest_log(log)
+        self.assertFalse(summary["summary_complete"])
+        self.assertFalse(summary["counts_match_summary"])
+        self.assertIn("missing Ran <n> tests summary", summary["summary_problem"])
+
+
 if __name__ == "__main__":
     unittest.main()
