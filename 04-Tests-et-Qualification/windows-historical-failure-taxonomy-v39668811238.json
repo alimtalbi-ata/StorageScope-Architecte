@@ -129,7 +129,7 @@
           "test_release_package_v615.test_bootstrap_files_exist",
           "test_publication_v678.test_backup_recovery"
         ],
-        "next_fix": "Review all 14 test IDs individually against the current build/qualification contract; keep this bucket open until ownership is recorded."
+        "next_fix": "Review all 13 test IDs individually against the current build/qualification contract; keep this bucket open until ownership is recorded."
       }
     ]
   },
