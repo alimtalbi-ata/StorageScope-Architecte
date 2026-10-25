@@ -37,25 +37,43 @@ def clean(line: str) -> str:
 
 
 def classify_failure(detail: str) -> tuple[str, str, str]:
-    d = detail.replace("\\", "/")
+    """Classify from the terminal exception line, not arbitrary traceback source excerpts.
+
+    unittest tracebacks may include the tested source file as assertion context.
+    Such source text can contain words like VERSION or 'not found in' and must not
+    override the actual exception signature.
+    """
+    lines = [line.strip() for line in detail.splitlines() if line.strip()]
+    exception_re = re.compile(
+        r"(?:[A-Za-z_]\w*(?:Error|Exception)|AssertionError):\s*.*"
+    )
+    exception_lines = [line for line in lines if exception_re.search(line)]
+    signature_text = exception_lines[-1] if exception_lines else (lines[-1] if lines else detail)
+    signature = signature_text.replace("\\", "/")
+    context = detail.replace("\\", "/")
+
     checks = [
         (r"Unicode(?:Decode|Encode)Error|codec can't (?:decode|encode)", "ENCODING", "explicit Unicode codec exception", "high"),
-        (r"WinError\s*32|unclosed database|database is locked|(?=.*PermissionError)(?=.*(?:sqlite|\.db|database))", "SQLITE_HANDLE_LIFECYCLE", "Windows file-lock/database-lifecycle signature", "high"),
-        (r"FileNotFoundError|can't open file|No such file or directory", "TEST_ARBORESCENCE_OR_CWD", "missing path in qualification tree", "high"),
-        (r"AssertionError:.*(?:6\.108.*6\.\d+|6\.\d+.*6\.108|AppVersion|release version|VERSION)", "STALE_VERSION_EXPECTATION", "hard-coded/drifted release-version contract", "high"),
-        (r"ValueError: substring not found|AssertionError:.*(?:not found in|substring not found)", "STALE_SOURCE_CONTRACT", "static source-fragment contract no longer matches", "high"),
+        (r"WinError\s*32|unclosed database|database is locked|(?:PermissionError.*(?:sqlite|\.db|database))", "SQLITE_HANDLE_LIFECYCLE", "Windows file-lock/database-lifecycle signature", "high"),
+        (r"FileNotFoundError|can't open file|No such file or directory", "TEST_ARBORESCENCE_OR_CWD", "missing path under the repository test/qualification tree", "high"),
+        (r"AssertionError:.*(?:\b6\.108\b.*\b6\.\d+\b|\b6\.\d+\b.*\b6\.108\b|AppVersion|release version)", "STALE_VERSION_EXPECTATION", "hard-coded/drifted release-version assertion", "high"),
+        (r"ValueError: substring not found|AssertionError:.*(?:not found in|substring not found)", "STALE_SOURCE_CONTRACT", "static source-fragment assertion no longer matches the implementation", "high"),
         (r"Invalid PE section count|Entry module absent", "WINDOWS_FIXTURE_OR_EXECUTABLE_STRUCTURE", "synthetic executable/portable fixture rejected", "high"),
         (r"ModuleNotFoundError: No module named|ImportError: Failed to import test module", "IMPORT_ROOT_OR_SOURCE_PATH", "test import chain failed", "medium"),
-        (r"FileNotFoundError|can't open file|No such file or directory", "MISSING_PATH_OR_FIXTURE", "missing path/fixture", "medium"),
-        (r"AssertionError|ValueError|TypeError|AttributeError|KeyError|OSError|ImportError", "RELEASE_BUILD_OR_SOURCE_CONTRACT", "build/source assertion or exception", "low"),
+        (r"FileNotFoundError|can't open file|No such file or directory", "MISSING_PATH_OR_FIXTURE", "missing path/fixture outside the known test-tree signature", "medium"),
+        (r"AssertionError|ValueError|TypeError|AttributeError|KeyError|OSError|ImportError|NameError", "RELEASE_BUILD_OR_SOURCE_CONTRACT", "build/source assertion or exception requiring review", "low"),
     ]
-    for pattern, category, signature, confidence in checks:
-        if re.search(pattern, d, re.I | re.M):
-            if category == "TEST_ARBORESCENCE_OR_CWD" and "04-Tests-et-Qualification" not in d:
+    for pattern, category, message, confidence in checks:
+        if re.search(pattern, signature, re.I | re.M):
+            if category == "TEST_ARBORESCENCE_OR_CWD" and "04-Tests-et-Qualification" not in context:
                 continue
-            return category, signature, confidence
-    return "OTHER_NEEDS_MANUAL_TRIAGE", "no known signature matched", "low"
-
+            if category == "SQLITE_HANDLE_LIFECYCLE" and not re.search(
+                r"WinError\s*32|unclosed database|database is locked|(?:PermissionError.*(?:sqlite|\.db|database))",
+                signature, re.I
+            ):
+                continue
+            return category, message, confidence
+    return "OTHER_NEEDS_MANUAL_TRIAGE", "no known exception signature matched", "low"
 
 def parse_unittest_log(text: str):
     entries, summary, current = [], {}, None
