@@ -27,6 +27,7 @@ DESCRIPTIONS = {
     "WINDOWS_FIXTURE_OR_EXECUTABLE_STRUCTURE": "A synthetic PE/portable fixture is structurally invalid.",
     "RELEASE_BUILD_OR_SOURCE_CONTRACT": "A packaging/build/qualification contract fails and needs test-by-test review.",
     "ENCODING": "A Unicode codec exception is explicit in the log.",
+    "MISSING_TEST_DEPENDENCY": "A test explicitly requires an optional library that is absent from the test environment.",
     "MISSING_PATH_OR_FIXTURE": "A file/fixture is missing without a narrower root-cause signature.",
     "OTHER_NEEDS_MANUAL_TRIAGE": "No safe signature matched; do not guess the cause.",
 }
@@ -36,32 +37,26 @@ def clean(line: str) -> str:
     return TIMESTAMP.sub("", ANSI.sub("", line.rstrip("\r\n"))).strip()
 
 
-def classify_failure(detail: str) -> tuple[str, str, str]:
-    """Classify from the terminal exception line, not arbitrary traceback source excerpts.
+def classify_failure(detail: str, test_name: str = "") -> tuple[str, str, str]:
+    """Classify from the terminal exception and test name, not arbitrary source excerpts.
 
-    unittest tracebacks may include the tested source file as assertion context.
-    Such source text can contain words like VERSION or 'not found in' and must not
-    override the actual exception signature.
+    Tracebacks can embed source lines containing words such as VERSION or "not found in".
+    Those excerpts must not override the exception that actually caused the test failure.
     """
     lines = [line.strip() for line in detail.splitlines() if line.strip()]
-    exception_re = re.compile(
-        r"(?:[A-Za-z_]\w*(?:Error|Exception)|AssertionError):\s*.*"
-    )
+    exception_re = re.compile(r"(?:[A-Za-z_]\w*(?:Error|Exception)|AssertionError):\s*.*")
     exception_lines = [line for line in lines if exception_re.search(line)]
     signature_text = exception_lines[-1] if exception_lines else (lines[-1] if lines else detail)
     signature = signature_text.replace("\\", "/")
     context = detail.replace("\\", "/")
+    name = test_name.lower()
+    assertion_claim = signature.split(" not found in ", 1)[0]
 
     checks = [
         (r"Unicode(?:Decode|Encode)Error|codec can't (?:decode|encode)", "ENCODING", "explicit Unicode codec exception", "high"),
         (r"WinError\s*32|unclosed database|database is locked|(?:PermissionError.*(?:sqlite|\.db|database))", "SQLITE_HANDLE_LIFECYCLE", "Windows file-lock/database-lifecycle signature", "high"),
         (r"FileNotFoundError|can't open file|No such file or directory", "TEST_ARBORESCENCE_OR_CWD", "missing path under the repository test/qualification tree", "high"),
-        (r"AssertionError:.*(?:\b6\.108\b.*\b6\.\d+\b|\b6\.\d+\b.*\b6\.108\b|AppVersion|release version)", "STALE_VERSION_EXPECTATION", "hard-coded/drifted release-version assertion", "high"),
-        (r"ValueError: substring not found|AssertionError:.*(?:not found in|substring not found)", "STALE_SOURCE_CONTRACT", "static source-fragment assertion no longer matches the implementation", "high"),
-        (r"Invalid PE section count|Entry module absent", "WINDOWS_FIXTURE_OR_EXECUTABLE_STRUCTURE", "synthetic executable/portable fixture rejected", "high"),
-        (r"ModuleNotFoundError: No module named|ImportError: Failed to import test module", "IMPORT_ROOT_OR_SOURCE_PATH", "test import chain failed", "medium"),
-        (r"FileNotFoundError|can't open file|No such file or directory", "MISSING_PATH_OR_FIXTURE", "missing path/fixture outside the known test-tree signature", "medium"),
-        (r"AssertionError|ValueError|TypeError|AttributeError|KeyError|OSError|ImportError|NameError", "RELEASE_BUILD_OR_SOURCE_CONTRACT", "build/source assertion or exception requiring review", "low"),
+        (r"PNG export requires Pillow|No module named ['\"]?PIL|No module named ['\"]?Pillow", "MISSING_TEST_DEPENDENCY", "test environment lacks the Pillow imaging dependency", "high"),
     ]
     for pattern, category, message, confidence in checks:
         if re.search(pattern, signature, re.I | re.M):
@@ -73,6 +68,39 @@ def classify_failure(detail: str) -> tuple[str, str, str]:
             ):
                 continue
             return category, message, confidence
+
+    # Release tests explicitly named "version"/"manifest" frequently assert against a
+    # legacy version literal rather than a runtime defect. Use only the assertion claim
+    # (the text before "not found in") and the test identity, never source excerpt text.
+    version_test = re.search(r"test.*(?:version|versions|manifest)", name, re.I) is not None
+    version_claim = re.search(
+        r"\b\d+\.\d+\b|AppVersion|VERSION\s*=|expectedVersion|StorageScope-Setup-v\d+\.\d+",
+        assertion_claim, re.I
+    ) is not None
+    direct_version_mismatch = re.search(
+        r"AssertionError:.*(?:\b6\.108\b.*\b6\.\d+\b|\b6\.\d+\b.*\b6\.108\b)",
+        signature, re.I
+    ) is not None
+    if "AssertionError" in signature and (direct_version_mismatch or (version_test and version_claim)):
+        return "STALE_VERSION_EXPECTATION", "release-version assertion uses a legacy literal", "high"
+
+    if re.search(r"ValueError: substring not found", signature, re.I) or (
+        "AssertionError" in signature and "not found in" in signature
+    ):
+        return "STALE_SOURCE_CONTRACT", "static source-fragment assertion no longer matches the implementation", "high"
+
+    if re.search(r"Invalid PE section count|Entry module absent", signature, re.I):
+        return "WINDOWS_FIXTURE_OR_EXECUTABLE_STRUCTURE", "synthetic executable/portable fixture rejected", "high"
+
+    if re.search(r"ModuleNotFoundError: No module named|ImportError: Failed to import test module", signature, re.I):
+        return "IMPORT_ROOT_OR_SOURCE_PATH", "test import chain failed", "medium"
+
+    if re.search(r"FileNotFoundError|can't open file|No such file or directory", signature, re.I):
+        return "MISSING_PATH_OR_FIXTURE", "missing path/fixture outside the known test-tree signature", "medium"
+
+    if re.search(r"AssertionError|ValueError|TypeError|AttributeError|KeyError|OSError|ImportError|NameError", signature, re.I):
+        return "RELEASE_BUILD_OR_SOURCE_CONTRACT", "build/source assertion or exception requiring review", "low"
+
     return "OTHER_NEEDS_MANUAL_TRIAGE", "no known exception signature matched", "low"
 
 def parse_unittest_log(text: str):
@@ -83,7 +111,7 @@ def parse_unittest_log(text: str):
         if current is None:
             return
         detail = "\n".join(current.pop("_detail", []))
-        category, signature, confidence = classify_failure(detail)
+        category, signature, confidence = classify_failure(detail, current["test"])
         current.update(detail=detail, category=category, signature=signature, confidence=confidence)
         entries.append(current)
         current = None
