@@ -93,6 +93,7 @@ def reconcile(records):
 
     candidates = []
     direct_conflicts = set()
+    duplicate_source_indices = set()
     adjacency = collections.defaultdict(set)
     for (left, right), evidence in sorted(pairs.items()):
         a, b = records[left], records[right]
@@ -110,9 +111,14 @@ def reconcile(records):
         ak, bk = asset_kinds[left], asset_kinds[right]
         if ak is not None and bk is not None and ak != bk:
             identity_conflicts.append({'field': 'asset_kind', 'left': ak, 'right': bk})
+        # Repeated strong identity from the SAME collector is not independent
+        # reconciliation evidence. Quarantine its connected identity component.
+        same_source_duplicate = a['source'].strip().casefold() == b['source'].strip().casefold()
         adjacency[left].add(right)
         adjacency[right].add(left)
-        if identity_conflicts:
+        if same_source_duplicate:
+            duplicate_source_indices.update((left, right))
+        if identity_conflicts or same_source_duplicate:
             direct_conflicts.update((left, right))
         candidates.append({
             'indices': [left, right],
@@ -123,8 +129,11 @@ def reconcile(records):
                 for i, item in ((left, a), (right, b))
             ],
             'identity_conflicts': identity_conflicts,
+            'same_source_duplicate': same_source_duplicate,
             'conflicts': conflicts,
-            'action': 'QUARANTINE_IDENTITY_CONFLICT' if identity_conflicts else 'REVIEW_REQUIRED',
+            'action': ('QUARANTINE_IDENTITY_CONFLICT' if identity_conflicts else
+                       'QUARANTINE_DUPLICATE_SOURCE_OBSERVATION' if same_source_duplicate
+                       else 'REVIEW_REQUIRED'),
         })
 
     # Identity evidence forms an undirected graph. A direct contradiction
@@ -152,6 +161,7 @@ def reconcile(records):
         'invalid_records': invalid,
         'quarantined_indices': sorted(quarantined),
         'direct_conflict_indices': sorted(direct_conflicts),
+        'duplicate_source_indices': sorted(duplicate_source_indices),
         'propagated_quarantine_indices': sorted(quarantined - direct_conflicts),
         'assessment': ('INCOMPLETE' if invalid or quarantined else
                        'REVIEW_REQUIRED' if candidates else 'NO_CANDIDATES'),

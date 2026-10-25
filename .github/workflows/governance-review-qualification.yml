@@ -32,6 +32,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_snapshot_digest_v6208.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_transitive_quarantine_v6209.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_asset_kind_quarantine_v6210.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_same_source_duplicate_v6228.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_impact_v6199.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_quarantine_v6200.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_missing_fabric_v6212.py' -v
@@ -79,6 +80,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'CMDB transitive identity quarantine regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_asset_kind_quarantine_v6210.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'CMDB asset kind quarantine regression tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_same_source_duplicate_v6228.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'CMDB same-source duplicate quarantine regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_impact_v6199.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'Storage dependency impact regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_quarantine_v6200.py' -v
