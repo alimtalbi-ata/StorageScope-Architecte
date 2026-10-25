@@ -116,6 +116,7 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
         "run_summary_lines": 0,
         "result_summary_lines": 0,
         "summary_problem": [],
+        "failed_summary_fields_valid": True,
     }, None
 
     def flush():
@@ -137,7 +138,7 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
             continue
         if SUMMARY.match(line):
             flush()
-            ran = re.match(r"Ran\s+(\d+)\s+tests?\s+in\s+([0-9.]+)s", line)
+            ran = re.fullmatch(r"Ran\s+(\d+)\s+tests?\s+in\s+([0-9]+(?:\.[0-9]+)?)s", line)
             if ran:
                 summary["run_summary_lines"] += 1
                 summary.update(tests_run=int(ran.group(1)), duration_seconds=float(ran.group(2)))
@@ -149,9 +150,22 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
                 summary["result_summary_lines"] += 1
                 summary["result_status"] = "FAILED"
                 summary["summary_present"] = True
-                declared = dict(re.findall(r"\b(failures|errors|skipped)=(\d+)\b", failed.group(1)))
-                if "failures" in declared and "errors" in declared:
+                count_pairs = re.findall(r"\\b(failures|errors|skipped)=(\\d+)\\b", failed.group(1))
+                declared = dict(count_pairs)
+                residual = re.sub(r"\\b(?:failures|errors|skipped)=\\d+\\b", "", failed.group(1))
+                residual = residual.replace(",", "").strip()
+                if len(count_pairs) != len(declared):
+                    summary["failed_summary_fields_valid"] = False
+                    summary["summary_problem"].append("FAILED summary contains duplicate count fields")
+                if residual:
+                    summary["failed_summary_fields_valid"] = False
+                    summary["summary_problem"].append("FAILED summary contains unrecognized count fields")
+                if "failures" in declared and "errors" in declared and summary["failed_summary_fields_valid"]:
                     summary.update(failures=int(declared["failures"]), errors=int(declared["errors"]))
+                else:
+                    summary["failed_summary_fields_valid"] = False
+                    if "failures" not in declared or "errors" not in declared:
+                        summary["summary_problem"].append("FAILED summary does not contain parseable failures and errors totals")
                 continue
 
             if re.fullmatch(r"OK(?:\s*\(.*\))?\s*", line):
@@ -182,7 +196,8 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
         problems.append("FAILED summary does not contain parseable failures and errors totals")
 
     summary["summary_complete"] = (
-        summary["run_summary_lines"] == 1
+        summary["failed_summary_fields_valid"]
+        and summary["run_summary_lines"] == 1
         and summary["result_summary_lines"] == 1
         and "tests_run" in summary
         and summary.get("result_status") in ("FAILED", "OK")
