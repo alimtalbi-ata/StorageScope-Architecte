@@ -1,0 +1,156 @@
+{
+  "schema": "storagescope.windows-historical-failure-taxonomy-summary.v1",
+  "author": "Abdelhalim Talbi",
+  "run_id": 39668811238,
+  "run_url": "https://github.com/alimtalbi-ata/StorageScope-Architecte/actions/runs/39668811238",
+  "job_id": 119460870039,
+  "commit": "70220f62575e964b62a87db82e9f579a75f21569",
+  "branch": "feature/audit-coherence-review-20261020",
+  "observed_at_utc": "2026-10-21T20:17:01Z",
+  "suite": {
+    "tests_run": 958,
+    "duration_seconds": 21.042,
+    "failures": 52,
+    "errors": 173,
+    "failure_error_records": 225,
+    "build_step": "02-Compilation-Windows/build-all-windows.ps1 -> build-engine-windows.ps1",
+    "native_qualification_reached": false,
+    "installer_smoke_reached": false,
+    "portable_smoke_reached": false
+  },
+  "classification": {
+    "method": "First-pass rule-based classification of raw GitHub Actions job output; counts cross-checked against all 225 unittest FAIL/ERROR headings and final summary.",
+    "is_heuristic": true,
+    "encoding_exception_signatures_observed": 0,
+    "manual_follow_up_count": 14,
+    "categories": [
+      {
+        "id": "IMPORT_ROOT_OR_SOURCE_PATH",
+        "failures": 0,
+        "errors": 51,
+        "total": 51,
+        "confidence": "high",
+        "evidence": "Many ModuleNotFoundError and test-module import failures for modules under 03-Sources.",
+        "examples": [
+          "test_accessibility_v610",
+          "test_architecture_decisions_v536",
+          "test_backup_snapshot_v572",
+          "test_benchmark_v523",
+          "test_campaign_alerts_v532"
+        ],
+        "next_fix": "Run from repository root with 03-Sources on PYTHONPATH; retain all import tests."
+      },
+      {
+        "id": "TEST_ARBORESCENCE_OR_CWD",
+        "failures": 1,
+        "errors": 99,
+        "total": 100,
+        "confidence": "high",
+        "evidence": "FileNotFoundError for source/build files resolved under the wrong directory, including desktop.py, storagescope_windows.py, decision_workspace_ui_v543.py, StorageScope.iss and VERSION.",
+        "examples": [
+          "test_desktop_has_expected_commands",
+          "test_desktop_syntax",
+          "test_governance_presets_v605",
+          "test_grid_search_fields",
+          "test_ui_compiles"
+        ],
+        "next_fix": "Centralize repository-root discovery and resolve source/build paths from that root."
+      },
+      {
+        "id": "SQLITE_HANDLE_LIFECYCLE",
+        "failures": 0,
+        "errors": 17,
+        "total": 17,
+        "confidence": "high",
+        "evidence": "Windows WinError 32/PermissionError prevented removal of temporary SQLite files.",
+        "examples": [
+          "test_close_rolls_back_pending_transaction",
+          "test_approve",
+          "test_duplicate_denied",
+          "test_backup_closes_source_and_destination",
+          "test_dashboard_read_closes_connection"
+        ],
+        "next_fix": "Close connection owners deterministically; retain ResourceWarning-as-error checks."
+      },
+      {
+        "id": "STALE_VERSION_EXPECTATION",
+        "failures": 37,
+        "errors": 0,
+        "total": 37,
+        "confidence": "high",
+        "evidence": "Assertions compare canonical VERSION 6.108 with older cycle expectations such as 6.87/6.88 or legacy AppVersion strings.",
+        "examples": [
+          "test_version test_binary_v687",
+          "test_version test_binary_v688",
+          "test_release_contract_v635",
+          "test_release_v633"
+        ],
+        "next_fix": "Read the canonical VERSION or explicit compatibility contract; do not bump product VERSION just to silence tests."
+      },
+      {
+        "id": "STALE_SOURCE_CONTRACT",
+        "failures": 0,
+        "errors": 4,
+        "total": 4,
+        "confidence": "high",
+        "evidence": "ValueError: substring not found in static assertions over publication/rollback source.",
+        "examples": [
+          "test_backup_before_promote",
+          "test_sha_before_promotion",
+          "test_hashes_checked_before_replacement",
+          "test_publish_staging_precedes_replacement"
+        ],
+        "next_fix": "Prefer behavioral rollback and hash-before-replacement tests; update static checks only after confirming the intended invariant."
+      },
+      {
+        "id": "WINDOWS_FIXTURE_OR_EXECUTABLE_STRUCTURE",
+        "failures": 0,
+        "errors": 2,
+        "total": 2,
+        "confidence": "high",
+        "evidence": "Synthetic samples rejected as Invalid PE section count and Entry module absent.",
+        "examples": [
+          "test_valid_structural_fixture",
+          "test_import_closure_excludes_unrelated_scripts"
+        ],
+        "next_fix": "Use a structurally valid minimal PE/portable fixture and keep malformed-input rejection tests."
+      },
+      {
+        "id": "RELEASE_BUILD_OR_SOURCE_CONTRACT",
+        "failures": 14,
+        "errors": 0,
+        "total": 14,
+        "confidence": "low",
+        "evidence": "Packaging/version/qualification assertions, including missing bootstrap/preflight contracts and native report status FAIL.",
+        "examples": [
+          "test_real_native_schema_passes",
+          "test_release_contract_v635.test_scripts",
+          "test_release_package_v615.test_bootstrap_files_exist",
+          "test_publication_v678.test_backup_recovery"
+        ],
+        "next_fix": "Review all 14 test IDs individually against the current build/qualification contract; keep this bucket open until ownership is recorded."
+      }
+    ]
+  },
+  "artifact_evidence": {
+    "diagnostics_artifact_id": 12378148737,
+    "diagnostics_artifact_name": "StorageScope-Windows-DIAGNOSTICS",
+    "diagnostics_artifact_size_bytes": 337,
+    "diagnostics_artifact_sha256": "a5441e9ec354f52968542a4fbd2a5a8023e3b57674f8651104449cf4bf553236",
+    "limitation": "The artifact only contained a qualification JSON reporting missing native evidence; the detailed classification came from the job log."
+  },
+  "follow_up_state_as_of_2026_10_25": {
+    "latest_native_windows_run": 40179494598,
+    "latest_native_windows_conclusion": "success",
+    "latest_native_windows_commit": "672a2acd6114943d44532b434bddcfeeba7ab877",
+    "latest_governance_run": 40179494604,
+    "latest_governance_conclusion": "success",
+    "note": "Later workflow/code changes address several root classes, but the old run was not re-executed and every original symptom is not linked individually to a later corrective commit."
+  },
+  "limitations": [
+    "Heuristic triage is not proof every original defect is fixed.",
+    "No codec exception signature appeared in the scanned log; this is not a general encoding guarantee.",
+    "The 14 release/build-contract failures remain low-confidence until individual review.",
+    "Product VERSION remains 6.108; V6.236 is only a development-cycle label."
+  ]
+}
