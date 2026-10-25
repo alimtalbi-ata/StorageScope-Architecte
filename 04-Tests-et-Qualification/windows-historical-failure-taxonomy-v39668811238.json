@@ -19,7 +19,7 @@
     "portable_smoke_reached": false
   },
   "classification": {
-    "method": "First-pass rule-based classification of raw GitHub Actions job output; counts cross-checked against all 225 unittest FAIL/ERROR headings and final summary.",
+    "method": "Rule-based reclassification from the terminal exception signature plus test identity; traceback source excerpts are deliberately excluded from version/source-root-cause decisions. Counts cross-checked against the 225 FAIL/ERROR headings and final unittest summary.",
     "is_heuristic": true,
     "encoding_exception_signatures_observed": 0,
     "manual_follow_up_count": 13,
@@ -27,15 +27,16 @@
       {
         "id": "IMPORT_ROOT_OR_SOURCE_PATH",
         "failures": 0,
-        "errors": 51,
-        "total": 51,
+        "errors": 50,
+        "total": 50,
         "confidence": "high",
-        "evidence": "Many ModuleNotFoundError and test-module import failures for modules under 03-Sources.",
+        "evidence": "50 import/test-module errors such as ModuleNotFoundError for modules expected under 03-Sources; the historical command did not consistently put that source root on PYTHONPATH.",
         "examples": [
           "test_accessibility_v610",
           "test_architecture_decisions_v536",
           "test_backup_snapshot_v572",
           "test_benchmark_v523",
+          "test_calendar",
           "test_campaign_alerts_v532"
         ],
         "next_fix": "Run from repository root with 03-Sources on PYTHONPATH; retain all import tests."
@@ -46,13 +47,14 @@
         "errors": 99,
         "total": 100,
         "confidence": "high",
-        "evidence": "FileNotFoundError for source/build files resolved under the wrong directory, including desktop.py, storagescope_windows.py, decision_workspace_ui_v543.py, StorageScope.iss and VERSION.",
+        "evidence": "100 failures/errors refer to absent source/build files under 04-Tests-et-Qualification, including desktop.py, storagescope_windows.py, decision_workspace_ui_v543.py, StorageScope.iss and VERSION.",
         "examples": [
+          "test_decision_ui_qualification_v548",
           "test_desktop_has_expected_commands",
           "test_desktop_syntax",
           "test_governance_presets_v605",
           "test_grid_search_fields",
-          "test_ui_compiles"
+          "test_version_cli"
         ],
         "next_fix": "Centralize repository-root discovery and resolve source/build paths from that root."
       },
@@ -62,46 +64,66 @@
         "errors": 17,
         "total": 17,
         "confidence": "high",
-        "evidence": "Windows WinError 32/PermissionError prevented removal of temporary SQLite files.",
+        "evidence": "Windows WinError 32/PermissionError prevented cleanup of temporary SQLite database files while handles were still open.",
         "examples": [
           "test_close_rolls_back_pending_transaction",
           "test_approve",
           "test_duplicate_denied",
           "test_backup_closes_source_and_destination",
+          "test_health_success_closes_connection",
           "test_dashboard_read_closes_connection"
         ],
         "next_fix": "Close connection owners deterministically; retain ResourceWarning-as-error checks."
       },
       {
-        "id": "STALE_VERSION_EXPECTATION",
-        "failures": 37,
-        "errors": 0,
-        "total": 37,
+        "id": "MISSING_TEST_DEPENDENCY",
+        "failures": 0,
+        "errors": 1,
+        "total": 1,
         "confidence": "high",
-        "evidence": "Assertions compare canonical VERSION 6.108 with older cycle expectations such as 6.87/6.88 or legacy AppVersion strings.",
+        "evidence": "The PNG graph export test raised RuntimeError: PNG export requires Pillow.",
         "examples": [
-          "test_version test_binary_v687",
-          "test_version test_binary_v688",
-          "test_release_contract_v635",
-          "test_release_v633"
+          "test_png (test_graph_export.ExportTests.test_png)"
         ],
-        "next_fix": "Read the canonical VERSION or explicit compatibility contract; do not bump product VERSION just to silence tests."
+        "next_fix": "Declare/install Pillow in the Windows test dependency set or explicitly test the documented optional-dependency rejection; do not silently skip the test."
+      },
+      {
+        "id": "STALE_VERSION_EXPECTATION",
+        "failures": 29,
+        "errors": 0,
+        "total": 29,
+        "confidence": "high",
+        "evidence": "29 assertions in version/manifest/release tests use older literal expectations (for example canonical 6.108 versus cycle-specific 6.87); classification uses the terminal assertion and test identity, not arbitrary source excerpts.",
+        "examples": [
+          "test_version (test_binary_v687)",
+          "test_version (test_binary_v688)",
+          "test_release_version (test_release_v633)",
+          "test_versions (test_release_v633)",
+          "test_installer_version (test_release_v636)",
+          "test_version_build (test_v638_stage_contract)",
+          "test_versions_aligned (test_v645_bootstrap_contract)",
+          "test_version_consistency (test_v649_installer_smoke_contract)"
+        ],
+        "next_fix": "Read canonical VERSION or explicit compatibility contract; do not bump product VERSION solely to silence old tests."
       },
       {
         "id": "STALE_SOURCE_CONTRACT",
-        "failures": 1,
+        "failures": 9,
         "errors": 4,
-        "total": 5,
+        "total": 13,
         "confidence": "high",
-        "evidence": "ValueError: substring not found in static assertions over publication/rollback source.",
+        "evidence": "Four ValueError: substring not found errors and nine assertions over historical source strings/keywords; these are contract drift signals and require behavioral confirmation before changing source or tests.",
         "examples": [
           "test_backup_before_promote",
           "test_sha_before_promotion",
           "test_hashes_checked_before_replacement",
           "test_publish_staging_precedes_replacement",
-          "test_portable_status_is_visible"
+          "test_backup_recovery",
+          "test_portable_status_is_visible",
+          "test_build_engine_native_exit_code",
+          "test_preserve_pending_when_backup_exists"
         ],
-        "next_fix": "Prefer behavioral rollback and hash-before-replacement tests; update static checks only after confirming the intended invariant."
+        "next_fix": "Replace brittle text-only checks with behavior/contract checks after verifying rollback, hash-before-promotion and exit-code semantics."
       },
       {
         "id": "WINDOWS_FIXTURE_OR_EXECUTABLE_STRUCTURE",
@@ -109,12 +131,12 @@
         "errors": 2,
         "total": 2,
         "confidence": "high",
-        "evidence": "Synthetic samples rejected as Invalid PE section count and Entry module absent.",
+        "evidence": "Two structural fixture errors: Invalid PE section count and Entry module absent.",
         "examples": [
           "test_valid_structural_fixture",
           "test_import_closure_excludes_unrelated_scripts"
         ],
-        "next_fix": "Use a structurally valid minimal PE/portable fixture and keep malformed-input rejection tests."
+        "next_fix": "Generate minimally valid deterministic PE/portable fixtures for positive cases while retaining malformed-fixture rejection tests."
       },
       {
         "id": "RELEASE_BUILD_OR_SOURCE_CONTRACT",
@@ -122,15 +144,48 @@
         "errors": 0,
         "total": 13,
         "confidence": "low",
-        "evidence": "Packaging/version/qualification assertions, including missing bootstrap/preflight contracts and native report status FAIL.",
+        "evidence": "Thirteen build/packaging/native-qualification failures remain for individual manual review; this category is deliberately unresolved.",
         "examples": [
           "test_real_native_schema_passes",
-          "test_release_contract_v635.test_scripts",
-          "test_release_package_v615.test_bootstrap_files_exist",
-          "test_publication_v678.test_backup_recovery"
+          "test_scripts",
+          "test_bootstrap_files_exist: Construire-StorageScope.cmd",
+          "test_bootstrap_files_exist: build-all-windows.ps1",
+          "test_bootstrap_files_exist: StorageScope.spec",
+          "test_bootstrap_files_exist: StorageScope.iss",
+          "test_preflight",
+          "test_cumulative_packaging",
+          "test_script_present",
+          "test_installer_files",
+          "test_complete_success"
         ],
-        "next_fix": "Review all 13 test IDs individually against the current build/qualification contract; keep this bucket open until ownership is recorded."
+        "next_fix": "Review all 13 test IDs individually against the current build/qualification contract; keep them open until each root cause is linked to a corrective commit."
       }
+    ],
+    "manual_follow_up_tests": [
+      "test_real_native_schema_passes",
+      "test_scripts",
+      "test_bootstrap_files_exist: Construire-StorageScope.cmd",
+      "test_bootstrap_files_exist: build-all-windows.ps1",
+      "test_bootstrap_files_exist: StorageScope.spec",
+      "test_bootstrap_files_exist: StorageScope.iss",
+      "test_bootstrap_files_exist: requirements-build.txt",
+      "test_bootstrap_files_exist: verify-windows-build.py",
+      "test_preflight",
+      "test_cumulative_packaging",
+      "test_script_present",
+      "test_installer_files",
+      "test_complete_success"
+    ],
+    "overall": {
+      "failures": 52,
+      "errors": 173,
+      "total": 225
+    },
+    "limitations": [
+      "Heuristic first-pass classification from the historical job log; it is not proof that any later code change fixed each individual symptom.",
+      "13 release/build/qualification failures remain manually unresolved.",
+      "No UnicodeDecodeError/UnicodeEncodeError signature appeared in this log; this is not a general guarantee about encoding.",
+      "The canonical product version remains 6.108; V6.236 is a development-cycle label."
     ]
   },
   "artifact_evidence": {
