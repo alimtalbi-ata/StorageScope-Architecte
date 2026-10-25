@@ -66,6 +66,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6236.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6237.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_extraction_v6241.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_decoding_v6242.py' -v
       - name: Classify the original Windows historical job log (diagnostic evidence)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -77,28 +78,35 @@ jobs:
           out="$RUNNER_TEMP/storagescope-historical-taxonomy"
           mkdir -p "$out"
           gh api --allow-escape-sequences "repos/${GH_REPO}/actions/jobs/119460870039/logs" > "$download"
-          python - "$download" "$log" <<'PY'
+          python - "$download" "$log" "$out/decoding-provenance.json" <<'PY'
           from pathlib import Path
-          import io, sys, zipfile
+          import json, sys
+          from tools.strict_job_log_payload import decode_github_actions_job_log_payload
           source = Path(sys.argv[1]).read_bytes()
-          text = None
-          if zipfile.is_zipfile(io.BytesIO(source)):
-              with zipfile.ZipFile(io.BytesIO(source)) as archive:
-                  candidates = [n for n in archive.namelist() if n.lower().endswith((".txt", ".log"))]
-                  if len(candidates) != 1:
-                      raise SystemExit(f"Expected one job log in archive; found {len(candidates)}")
-                  text = archive.read(candidates[0]).decode("utf-8", errors="replace")
-          else:
-              text = source.decode("utf-8", errors="replace")
+          try:
+              text, provenance = decode_github_actions_job_log_payload(source)
+          except (ValueError, TypeError) as exc:
+              raise SystemExit("Refusing ambiguous or lossy historical log decoding: " + str(exc)) from exc
           if "Ran 958 tests" not in text or "FAILED (failures=52, errors=173)" not in text:
               raise SystemExit("Historical job log does not contain the expected 958-test baseline summary")
+          provenance["expected_baseline_signature_verified"] = True
           Path(sys.argv[2]).write_text(text, encoding="utf-8", newline="\n")
-          print(f"Retrieved historical job log; characters={len(text)}; archive={zipfile.is_zipfile(io.BytesIO(source))}")
+          Path(sys.argv[3]).write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print("Retrieved historical job log using strict UTF-8; "
+                + f"characters={len(text)}; payload_sha256={provenance['payload_sha256']}; "
+                + f"transport={provenance['transport']}")
           PY
           python tools/classify_windows_regression_log.py "$log" --run-id 39668811238 --expected-tests 958 --extract-failed-unittest-block --json-output "$out/taxonomy.json" --markdown-output "$out/taxonomy.md"
-          python - "$out/taxonomy.json" <<'PY'
+          python - "$out/taxonomy.json" "$out/decoding-provenance.json" <<'PY'
           import json, sys
           report = json.load(open(sys.argv[1], encoding="utf-8"))
+          decoding = json.load(open(sys.argv[2], encoding="utf-8"))
+          if decoding.get("lossy_decoding_used") is not False:
+              raise SystemExit("Historical log decoding must remain strict and lossless")
+          if not decoding.get("expected_baseline_signature_verified"):
+              raise SystemExit("Raw historical log byte provenance has no verified baseline signature")
+          if len(decoding.get("payload_sha256", "")) != 64 or decoding.get("payload_byte_count", 0) <= 0:
+              raise SystemExit("Raw historical log decoding provenance lacks a valid SHA-256/byte count")
           summary = report["summary"]
           expected = {"tests_run": 958, "observed_failures": 52, "observed_errors": 173, "observed_records": 225}
           for key, value in expected.items():
@@ -215,3 +223,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'V6.237 fail-closed taxonomy summary tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_extraction_v6241.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'V6.241 bounded job-log extraction tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_decoding_v6242.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'V6.242 strict historical job-log decoding tests failed' }
+          python -m py_compile tools/strict_job_log_payload.py
+          if ($LASTEXITCODE -ne 0) { throw 'V6.242 strict job-log decoder syntax failed' }
