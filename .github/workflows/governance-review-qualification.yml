@@ -60,6 +60,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_auth_v6219.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_observation_replay_v6220.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_key_rotation_v6221.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6236.py' -v
   review-windows:
     runs-on: windows-latest
     steps:
@@ -145,3 +146,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'SAN/NAS signed replay quarantine regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_key_rotation_v6221.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'SAN/NAS HMAC key rotation regression tests failed' }
+          python -m py_compile tools/classify_windows_regression_log.py
+          if ($LASTEXITCODE -ne 0) { throw 'Historical Windows failure taxonomy script syntax failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6236.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Historical Windows failure taxonomy tests failed' }
