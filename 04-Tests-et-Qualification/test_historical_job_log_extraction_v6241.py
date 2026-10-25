@@ -19,7 +19,7 @@ from tools.classify_windows_regression_log import (
 
 
 def failed_job_log(tail: str = "##[error]Process completed with exit code 1.") -> str:
-    return "\\n".join([
+    return "\n".join([
         "2026-10-21T20:17:00.0000000Z ##[group]Run historical suite",
         "2026-10-21T20:17:00.1000000Z ERROR: test_missing (sample.Test.test_missing)",
         "2026-10-21T20:17:00.1100000Z Traceback (most recent call last):",
