@@ -84,7 +84,13 @@ def _anchor_path(ledger_path, anchor_path):
         raise ValueError('Replay anchor must not use a symlink')
     if not anchor.parent.is_dir():
         raise ValueError('Replay anchor parent directory is missing')
-    if anchor.parent.resolve() == ledger.parent.resolve():
+    # Checking only equal parents leaves ledger/backups/checkpoint.json inside
+    # the restore domain whose rollback this checkpoint is meant to detect.
+    # Resolve lexical '..' before containment testing; the symlink checks
+    # above still apply to each supplied path component.
+    ledger_directory = ledger.parent.resolve()
+    anchor_directory = anchor.parent.resolve()
+    if anchor_directory == ledger_directory or ledger_directory in anchor_directory.parents:
         raise ValueError('Replay anchor must be stored outside ledger directory')
     return anchor
 
