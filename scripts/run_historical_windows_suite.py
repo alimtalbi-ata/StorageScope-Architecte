@@ -22,6 +22,9 @@ import tempfile
 
 COUNT = re.compile(r"\bRan\s+(\d+)\s+tests?\s+in\b")
 CASE = re.compile(r"^(ERROR|FAIL):\s+(.+)$", re.MULTILINE)
+RESULT_SUMMARY = re.compile(r"^(?P<status>OK|FAILED)(?:\s*\((?P<details>[^()]*)\))?\s*$")
+RUNNER_RESULT_PREFIX = "STORAGESCOPE_UNITTEST_RESULT: "
+SUMMARY_DETAIL = re.compile(r"^(?P<name>skipped|expected failures|failures|errors|unexpected successes)\s*=\s*(?P<count>\d+)$")
 # The two files have distinct purposes; source variant is for legacy tests.
 KNOWN_DIFFERENT_FILES = {"verify-windows-build.py"}
 
@@ -49,6 +52,141 @@ def classify(output: str) -> dict[str, int]:
     return dict(sorted(result.items()))
 
 
+
+def parse_terminal_summary(output: str) -> dict:
+    """Parse the authoritative unittest result marker, with a legacy log fallback."""
+    lines = output.splitlines()
+    marker_indexes = [i for i, line in enumerate(lines)
+                      if line.startswith(RUNNER_RESULT_PREFIX)]
+    if marker_indexes:
+        problems = []
+        if len(marker_indexes) != 1:
+            problems.append("expected exactly one runner result marker")
+        marker_index = marker_indexes[-1]
+        trailing = sum(bool(line.strip()) for line in lines[marker_index + 1:])
+        if trailing:
+            problems.append("non-empty output follows runner result marker")
+        try:
+            payload = json.loads(lines[marker_index][len(RUNNER_RESULT_PREFIX):])
+            status = payload.get("status")
+            tests_run = payload.get("tests_run")
+            numeric_fields = ("failures", "errors", "skipped",
+                              "expected_failures", "unexpected_successes")
+            required_fields = {"status", "tests_run", *numeric_fields}
+            missing_fields = sorted(required_fields - set(payload))
+            if missing_fields:
+                problems.append("runner result marker missing required fields: " + ", ".join(missing_fields))
+            if status not in {"OK", "FAILED"}:
+                problems.append("runner result marker has unsupported status")
+            if not isinstance(tests_run, int) or isinstance(tests_run, bool) or tests_run < 0:
+                problems.append("runner result marker has invalid tests_run")
+            counts = {}
+            for field in numeric_fields:
+                value = payload.get(field)
+                if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                    problems.append("runner result marker has invalid " + field)
+                else:
+                    counts[field] = value
+            if status == "OK" and any(counts.get(field, 0) for field in
+                                      ("failures", "errors", "unexpected_successes")):
+                problems.append("OK runner result marker contains failing counts")
+            if status == "FAILED" and not any(counts.get(field, 0) for field in
+                                               ("failures", "errors", "unexpected_successes")):
+                problems.append("FAILED runner result marker declares no failure")
+            valid_tests = tests_run if isinstance(tests_run, int) and not isinstance(tests_run, bool) else None
+            return {
+                "status": status if status in {"OK", "FAILED"} else "UNKNOWN",
+                "summary_line": lines[marker_index],
+                "tests_run": valid_tests,
+                "failures": counts.get("failures", 0),
+                "errors": counts.get("errors", 0),
+                "skipped": counts.get("skipped", 0),
+                "expected_failures": counts.get("expected_failures", 0),
+                "unexpected_successes": counts.get("unexpected_successes", 0),
+                "summary_complete": not problems and valid_tests is not None,
+                "trailing_output_lines": trailing,
+                "problems": problems,
+                "summary_source": "runner_result_marker",
+            }
+        except (json.JSONDecodeError, AttributeError, TypeError) as exc:
+            problems.append("invalid runner result marker: " + str(exc))
+            return {
+                "status": "UNKNOWN", "summary_line": lines[marker_index],
+                "tests_run": None, "failures": 0, "errors": 0, "skipped": 0,
+                "expected_failures": 0, "unexpected_successes": 0,
+                "summary_complete": False, "trailing_output_lines": trailing,
+                "problems": problems, "summary_source": "runner_result_marker",
+            }
+
+    result_positions = []
+    for index, raw in enumerate(lines):
+        match = RESULT_SUMMARY.fullmatch(raw.strip())
+        if match:
+            result_positions.append((index, match))
+    counts = list(COUNT.finditer(output))
+    base = {
+        "status": "UNKNOWN",
+        "summary_line": None,
+        "tests_run": int(counts[-1].group(1)) if counts else None,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "expected_failures": 0,
+        "unexpected_successes": 0,
+        "summary_complete": False,
+        "trailing_output_lines": 0,
+        "problems": [],
+        "summary_source": "text_fallback",
+    }
+    if not result_positions:
+        base["problems"].append("terminal unittest result summary missing")
+        return base
+
+    index, match = result_positions[-1]
+    line = lines[index].strip()
+    base["status"] = match.group("status")
+    base["summary_line"] = line
+    base["trailing_output_lines"] = sum(bool(x.strip()) for x in lines[index + 1:])
+    final_count_end = counts[-1].end() if counts else None
+    line_start = sum(len(x) + 1 for x in lines[:index])
+    if final_count_end is None:
+        base["problems"].append("test-count summary missing")
+    elif final_count_end > line_start:
+        base["problems"].append("terminal result summary precedes the final test-count summary")
+
+    details = match.group("details") or ""
+    allowed = {
+        "OK": {"skipped", "expected failures"},
+        "FAILED": {"failures", "errors", "skipped", "expected failures", "unexpected successes"},
+    }[base["status"]]
+    seen = set()
+    if details:
+        for part in details.split(","):
+            field = SUMMARY_DETAIL.fullmatch(part.strip())
+            if not field:
+                base["problems"].append("unparseable terminal unittest summary detail")
+                continue
+            name = field.group("name")
+            if name not in allowed:
+                base["problems"].append("unsupported terminal unittest summary field: " + name)
+                continue
+            if name in seen:
+                base["problems"].append("duplicate terminal unittest summary field: " + name)
+                continue
+            seen.add(name)
+            key = {"expected failures": "expected_failures", "unexpected successes": "unexpected_successes"}.get(name, name)
+            base[key] = int(field.group("count"))
+
+    if base["status"] == "FAILED" and not (
+        base["failures"] + base["errors"] + base["unexpected_successes"]
+    ):
+        base["problems"].append("FAILED terminal summary declares no failure, error, or unexpected success")
+    if base["trailing_output_lines"]:
+        base["problems"].append("non-empty output follows terminal unittest result summary")
+    base["summary_complete"] = not base["problems"] and base["tests_run"] is not None
+    return base
+
+
 def stage_historical_upgrade_workflow(sources: Path, tests: Path) -> None:
     """Restore the archived v5.89 workflow as a test fixture, not live CI.
 
@@ -73,8 +211,11 @@ def stage_historical_upgrade_workflow(sources: Path, tests: Path) -> None:
 
 def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
               minimum: int, label: str, evidence_dir: Path | None = None) -> dict:
-    command = [sys.executable, "-B", "-m", "unittest", "discover",
-               "-s", str(start), "-p", pattern, "-q"]
+    discovery_runner = root / "scripts" / "unittest_discover_with_result.py"
+    if not discovery_runner.is_file():
+        raise FileNotFoundError("Authoritative unittest discovery runner is missing: " + str(discovery_runner))
+    command = [sys.executable, "-B", str(discovery_runner),
+               "--start", str(start), "--pattern", pattern]
     completed = subprocess.run(command, cwd=root, env=env, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, encoding="utf-8",
                                errors="replace", check=False)
@@ -94,12 +235,24 @@ def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
         log_evidence = {"log_file": log_name,
                         "log_sha256": hashlib.sha256(payload).hexdigest(),
                         "log_bytes": len(payload)}
-    counts = COUNT.findall(completed.stdout)
-    executed = int(counts[-1]) if counts else None
-    ok = completed.returncode == 0 and executed is not None and executed >= minimum
-    return {"suite": label, "executed": executed, "minimum": minimum,
-            "exit_code": completed.returncode, "status": "PASS" if ok else "FAIL",
-            "symptom_counts": classify(completed.stdout), **log_evidence}
+    terminal = parse_terminal_summary(completed.stdout)
+    executed = terminal["tests_run"]
+    output_signatures = classify(completed.stdout)
+    ok = (completed.returncode == 0 and executed is not None and executed >= minimum
+          and terminal["summary_complete"] and terminal["status"] == "OK")
+    return {
+        "suite": label, "executed": executed, "minimum": minimum,
+        "exit_code": completed.returncode, "status": "PASS" if ok else "FAIL",
+        "terminal_unittest_summary": terminal,
+        "symptom_counts": output_signatures,
+        "captured_output_symptom_counts": output_signatures,
+        "symptom_counts_scope": (
+            "all captured subprocess output, including nested unittest runs and "
+            "intentional negative controls; use terminal_unittest_summary for "
+            "the authoritative status/counts of this suite invocation"
+        ),
+        **log_evidence,
+    }
 
 
 def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
@@ -114,6 +267,13 @@ def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
             ".git", "__pycache__", ".venv", ".build-venv", ".build-stage",
             ".pytest_cache", ".publish-pending", ".publish-backup",
             "build-logs", "failed-build-logs", "dist", ".binary-staging"))
+        # Synthetic regression checkouts may omit scripts/; stage the tracked helper.
+        helper_source = Path(__file__).resolve().with_name("unittest_discover_with_result.py")
+        if not helper_source.is_file():
+            raise FileNotFoundError("Tracked unittest discovery helper is missing: " + str(helper_source))
+        helper_target = checkout / "scripts" / helper_source.name
+        helper_target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(helper_source, helper_target)
         sources = checkout / "03-Sources"
         build = checkout / "02-Compilation-Windows"
         tests = checkout / "04-Tests-et-Qualification"
