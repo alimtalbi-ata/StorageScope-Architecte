@@ -256,6 +256,13 @@ jobs:
           $rejected = Start-Process -FilePath $exe -ArgumentList $badArgs -Wait -PassThru
           if ($rejected.ExitCode -eq 0 -or (Test-Path -LiteralPath $badOutput)) { throw 'Frozen CMDB parser accepted duplicate JSON property' }
           Write-Host 'Frozen CMDB provenance and conflict review PASS'
+      - name: Verify frozen CMDB duplicate-source quarantine V6.228
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          python '04-Tests-et-Qualification/qualify_frozen_cmdb_duplicate_v6228.py' --exe $exe
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen V6.228 CMDB duplicate-source quarantine failed' }
       - name: Verify frozen CMDB transitive identity quarantine V6.209
         shell: pwsh
         run: |
