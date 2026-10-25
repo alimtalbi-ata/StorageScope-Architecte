@@ -9,7 +9,7 @@ Le classificateur historique pouvait considérer les nombres d'anomalies observ�
 
 ## Comportement V6.237
 
-Le parseur exige désormais exactement une ligne `Ran <n> tests` et exactement une synthèse finale `FAILED (...)` ou `OK`. Il vérifie que les totaux annoncés correspondent aux enregistrements `FAIL` et `ERROR`, et que le nombre déclaré de tests n'est pas inférieur au nombre d'anomalies extraites. L'absence, la duplication ou l'incohérence des synthèses force `counts_match_summary=false` et un code de sortie non nul.
+Le parseur exige désormais exactement une ligne `Ran <n> tests` et exactement une synthèse finale `FAILED (...)` ou `OK`. Il vérifie que les totaux annoncés correspondent aux enregistrements `FAIL` et `ERROR`, et que le nombre déclaré de tests n'est pas inférieur au nombre d'anomalies extraites. Une synthèse `FAILED` qui annonce zéro échec et zéro erreur est impossible pour une sortie unittest cohérente et est rejetée. Tout contenu non vide après la synthèse finale est aussi refusé, car l'entrée doit contenir une invocation isolée, pas un journal concaténé avec la sortie d'une autre étape. L'absence, la duplication, la sortie terminale supplémentaire ou l'incohérence des synthèses force `counts_match_summary=false` et un code de sortie non nul.
 
 L'option `--expected-tests N` permet d'imposer un nombre historique attendu. Pour le journal de qualification #39668811238, la commande de contrôle devient :
 
@@ -22,7 +22,7 @@ Le journal doit être un export UTF-8 d'une seule invocation unittest. Si un exp
 
 ## Régressions ajoutées
 
-Le nouveau module `test_historical_failure_taxonomy_v6237.py` couvre : synthèse valide, synthèse absente, totaux contradictoires, invocations concaténées, test-count attendu de 958, rendu du rapport incomplet et code de sortie CLI sur journal tronqué.
+Le module `test_historical_failure_taxonomy_v6237.py` couvre les cas positifs, synthèses absentes ou contradictoires, invocations concaténées, `--expected-tests 958`, code de sortie CLI, comptes `FAILED` nuls et contenu terminal inattendu.
 
 La suite est intégrée à la CI de gouvernance et au workflow Windows natif. Aucune suite historique n'est désactivée et aucune anomalie n'est annoncée comme corrigée sur la seule base de sa classification.
 
@@ -40,3 +40,7 @@ Cette modification ne reconstitue pas les causes racines par elle-même : elle r
 - TOGAF et ArchiMate : correspondance entre exigence de qualité, processus de vérification et livrable ; aucun modèle de conformité certifié n'est revendiqué.
 - ISO/IEC 27040 : non applicable directement à ce parseur de journaux, mais pertinent aux contrôles de stockage couverts ailleurs par StorageScope.
 
+
+## Durcissement additionnel V6.238 — intégrité terminale
+
+Deux faux positifs étaient encore possibles : une ligne arbitraire ajoutée après `OK` pouvait être ignorée, et un résumé `FAILED (failures=0, errors=0)` pouvait être marqué cohérent si aucun enregistrement n'était extrait. V6.238 rejette ces cas, expose `trailing_output_lines`, valide la grammaire des synthèses `OK` (seulement `skipped=N` et `expected failures=N` non dupliqués), rend la synthèse incomplète et conserve un code retour non nul. Les nouveaux tests couvrent ces deux contre-exemples ; ils s'exécutent dans les mêmes jobs de gouvernance et de qualification Windows natifs.

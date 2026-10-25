@@ -137,5 +137,59 @@ FAILED (failures=1, errors=0)
         self.assertIn("missing Ran <n> tests summary", summary["summary_problem"])
 
 
+
+    def test_failed_summary_with_zero_failure_and_error_counts_is_rejected(self):
+        log = """Ran 1 test in 0.01s
+FAILED (failures=0, errors=0)
+"""
+        _, summary = parse_unittest_log(log)
+        self.assertFalse(summary["summary_complete"])
+        self.assertFalse(summary["counts_match_summary"])
+        self.assertIn(
+            "FAILED summary declares zero failures and errors",
+            summary["summary_problem"],
+        )
+
+    def test_nonempty_output_after_final_summary_is_rejected(self):
+        log = """Ran 1 test in 0.01s
+OK
+Build step: artifact upload failed
+"""
+        _, summary = parse_unittest_log(log)
+        self.assertEqual(summary["trailing_output_lines"], 1)
+        self.assertFalse(summary["summary_complete"])
+        self.assertFalse(summary["counts_match_summary"])
+        self.assertTrue(any(
+            "unexpected non-empty output after unittest result summary" in item
+            for item in summary["summary_problem"]
+        ))
+
+
+    def test_malformed_run_summary_after_ok_is_rejected(self):
+        log = """Ran 1 test in 0.01s
+OK
+Ran 99 tests in ???s
+"""
+        _, summary = parse_unittest_log(log)
+        self.assertEqual(summary["trailing_output_lines"], 1)
+        self.assertFalse(summary["summary_complete"])
+        self.assertFalse(summary["counts_match_summary"])
+
+    def test_ok_summary_payload_must_match_supported_unittest_fields(self):
+        for payload in ("nonsense", "skipped=1, skipped=2", "unexpected successes=1"):
+            with self.subTest(payload=payload):
+                _, summary = parse_unittest_log(
+                    "Ran 1 test in 0.01s\nOK (" + payload + ")\n"
+                )
+                self.assertFalse(summary["summary_complete"])
+                self.assertFalse(summary["counts_match_summary"])
+
+    def test_standard_unittest_skipped_and_expected_failure_payload_is_accepted(self):
+        _, summary = parse_unittest_log(
+            "Ran 2 tests in 0.01s\nOK (skipped=1, expected failures=1)\n"
+        )
+        self.assertTrue(summary["summary_complete"])
+        self.assertTrue(summary["counts_match_summary"])
+
 if __name__ == "__main__":
     unittest.main()
