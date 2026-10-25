@@ -68,15 +68,15 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_extraction_v6241.py' -v
       - name: Classify the original Windows historical job log (diagnostic evidence)
         env:
-          GH_TOKEN: \${{ github.token }}
-          GH_REPO: \${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           download="$RUNNER_TEMP/historical-windows-job.download"
           log="$RUNNER_TEMP/historical-windows-job.log"
           out="$RUNNER_TEMP/storagescope-historical-taxonomy"
           mkdir -p "$out"
-          gh api "repos/\${GH_REPO}/actions/jobs/119460870039/logs" > "$download"
+          gh api "repos/${GH_REPO}/actions/jobs/119460870039/logs" > "$download"
           python - "$download" "$log" <<'PY'
           from pathlib import Path
           import io, sys, zipfile
@@ -119,7 +119,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: StorageScope-Historical-Windows-Taxonomy-39668811238
-          path: \${{ runner.temp }}/storagescope-historical-taxonomy/*
+          path: ${{ runner.temp }}/storagescope-historical-taxonomy/*
           if-no-files-found: error
           retention-days: 90
   review-windows:
