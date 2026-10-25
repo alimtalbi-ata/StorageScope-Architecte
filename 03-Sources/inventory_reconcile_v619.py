@@ -43,6 +43,27 @@ def _asset_kind(item):
     return (observed[0] if observed else None), None
 
 
+def _manufacturer(item):
+    """Canonicalize vendor/manufacturer evidence without guessing vendor aliases.
+
+    Missing or explicitly unknown values remain unknown. Two contradictory
+    descriptions on one record make that record untrustworthy for matching.
+    """
+    observed = []
+    for field in ('manufacturer', 'vendor'):
+        value = item.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, str) or not value.strip():
+            return None, 'invalid_manufacturer'
+        normalized = ' '.join(value.split()).casefold()
+        if normalized not in UNKNOWN_IDENTITIES:
+            observed.append(normalized)
+    if len(set(observed)) > 1:
+        return None, 'conflicting_manufacturer'
+    return (observed[0] if observed else None), None
+
+
 def reconcile(records):
     """Return review-only candidates with provenance and identity conflicts.
 
@@ -59,6 +80,7 @@ def reconcile(records):
     invalid = []
     identities = {}
     asset_kinds = {}
+    manufacturers = {}
     for index, item in enumerate(records):
         if not isinstance(item, dict):
             invalid.append({'index': index, 'reason': 'not_object'})
@@ -71,7 +93,12 @@ def reconcile(records):
         if kind_error:
             invalid.append({'index': index, 'reason': kind_error})
             continue  # An internally contradictory type cannot be match evidence.
+        manufacturer, manufacturer_error = _manufacturer(item)
+        if manufacturer_error:
+            invalid.append({'index': index, 'reason': manufacturer_error})
+            continue  # Untrusted manufacturer cannot become identity evidence.
         asset_kinds[index] = kind
+        manufacturers[index] = manufacturer
         strong = {field: _identity(item.get(field)) for field in IDENTITY_FIELDS}
         identities[index] = strong
         if not any(strong.values()):
@@ -111,6 +138,12 @@ def reconcile(records):
         ak, bk = asset_kinds[left], asset_kinds[right]
         if ak is not None and bk is not None and ak != bk:
             identity_conflicts.append({'field': 'asset_kind', 'left': ak, 'right': bk})
+        # A serial/WWN/UUID can be reused across different manufacturers.
+        # Contradictory known manufacturer evidence is a strong identity
+        # conflict, not merely a non-blocking descriptive discrepancy.
+        am, bm = manufacturers[left], manufacturers[right]
+        if am is not None and bm is not None and am != bm:
+            identity_conflicts.append({'field': 'manufacturer', 'left': am, 'right': bm})
         # Repeated strong identity from the SAME collector is not independent
         # reconciliation evidence. Quarantine its connected identity component.
         same_source_duplicate = a['source'].strip().casefold() == b['source'].strip().casefold()
