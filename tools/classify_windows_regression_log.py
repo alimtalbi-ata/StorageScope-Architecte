@@ -161,12 +161,16 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
                 if residual:
                     summary["failed_summary_fields_valid"] = False
                     summary["failed_summary_problem"].append("FAILED summary contains unrecognized count fields")
-                if "failures" in declared and "errors" in declared and summary["failed_summary_fields_valid"]:
-                    summary.update(failures=int(declared["failures"]), errors=int(declared["errors"]))
+                if ("failures" in declared or "errors" in declared) and summary["failed_summary_fields_valid"]:
+                    # unittest omits zero-valued categories from FAILED summaries.
+                    summary.update(
+                        failures=int(declared.get("failures", 0)),
+                        errors=int(declared.get("errors", 0)),
+                    )
                 else:
                     summary["failed_summary_fields_valid"] = False
-                    if "failures" not in declared or "errors" not in declared:
-                        summary["failed_summary_problem"].append("FAILED summary does not contain parseable failures and errors totals")
+                    if "failures" not in declared and "errors" not in declared:
+                        summary["failed_summary_problem"].append("FAILED summary does not contain parseable failure/error totals")
                 continue
 
             if re.fullmatch(r"OK(?:\s*\(.*\))?\s*", line):
