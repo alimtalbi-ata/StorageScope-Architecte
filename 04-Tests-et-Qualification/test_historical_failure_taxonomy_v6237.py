@@ -164,5 +164,32 @@ Build step: artifact upload failed
             for item in summary["summary_problem"]
         ))
 
+
+    def test_malformed_run_summary_after_ok_is_rejected(self):
+        log = """Ran 1 test in 0.01s
+OK
+Ran 99 tests in ???s
+"""
+        _, summary = parse_unittest_log(log)
+        self.assertEqual(summary["trailing_output_lines"], 1)
+        self.assertFalse(summary["summary_complete"])
+        self.assertFalse(summary["counts_match_summary"])
+
+    def test_ok_summary_payload_must_match_supported_unittest_fields(self):
+        for payload in ("nonsense", "skipped=1, skipped=2", "unexpected successes=1"):
+            with self.subTest(payload=payload):
+                _, summary = parse_unittest_log(
+                    "Ran 1 test in 0.01s\nOK (" + payload + ")\n"
+                )
+                self.assertFalse(summary["summary_complete"])
+                self.assertFalse(summary["counts_match_summary"])
+
+    def test_standard_unittest_skipped_and_expected_failure_payload_is_accepted(self):
+        _, summary = parse_unittest_log(
+            "Ran 2 tests in 0.01s\nOK (skipped=1, expected failures=1)\n"
+        )
+        self.assertTrue(summary["summary_complete"])
+        self.assertTrue(summary["counts_match_summary"])
+
 if __name__ == "__main__":
     unittest.main()
