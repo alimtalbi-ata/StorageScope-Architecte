@@ -1,4 +1,7 @@
 name: Governance review qualification
+permissions:
+  contents: read
+  actions: read
 on:
   push:
     branches: [feature/audit-coherence-review-20261020]
@@ -63,6 +66,62 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6236.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6237.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_extraction_v6241.py' -v
+      - name: Classify the original Windows historical job log (diagnostic evidence)
+        env:
+          GH_TOKEN: \${{ github.token }}
+          GH_REPO: \${{ github.repository }}
+        run: |
+          set -euo pipefail
+          download="$RUNNER_TEMP/historical-windows-job.download"
+          log="$RUNNER_TEMP/historical-windows-job.log"
+          out="$RUNNER_TEMP/storagescope-historical-taxonomy"
+          mkdir -p "$out"
+          gh api "repos/\${GH_REPO}/actions/jobs/119460870039/logs" > "$download"
+          python - "$download" "$log" <<'PY'
+          from pathlib import Path
+          import io, sys, zipfile
+          source = Path(sys.argv[1]).read_bytes()
+          text = None
+          if zipfile.is_zipfile(io.BytesIO(source)):
+              with zipfile.ZipFile(io.BytesIO(source)) as archive:
+                  candidates = [n for n in archive.namelist() if n.lower().endswith((".txt", ".log"))]
+                  if len(candidates) != 1:
+                      raise SystemExit(f"Expected one job log in archive; found {len(candidates)}")
+                  text = archive.read(candidates[0]).decode("utf-8", errors="replace")
+          else:
+              text = source.decode("utf-8", errors="replace")
+          if "Ran 958 tests" not in text or "FAILED (failures=52, errors=173)" not in text:
+              raise SystemExit("Historical job log does not contain the expected 958-test baseline summary")
+          Path(sys.argv[2]).write_text(text, encoding="utf-8", newline="\n")
+          print(f"Retrieved historical job log; characters={len(text)}; archive={zipfile.is_zipfile(io.BytesIO(source))}")
+          PY
+          python tools/classify_windows_regression_log.py "$log" --run-id 39668811238 --expected-tests 958 --extract-failed-unittest-block --json-output "$out/taxonomy.json" --markdown-output "$out/taxonomy.md"
+          python - "$out/taxonomy.json" <<'PY'
+          import json, sys
+          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          summary = report["summary"]
+          expected = {"tests_run": 958, "observed_failures": 52, "observed_errors": 173, "observed_records": 225}
+          for key, value in expected.items():
+              if summary.get(key) != value:
+                  raise SystemExit(f"Unexpected historical baseline {key}: {summary.get(key)!r} != {value}")
+          if not summary.get("counts_match_summary") or not summary.get("expected_tests_match"):
+              raise SystemExit("Historical failure counts are not internally coherent")
+          categorized = sum(c["total"] for c in report["categories"])
+          if categorized != 225:
+              raise SystemExit(f"Root-cause buckets do not reconcile to 225 records: {categorized}")
+          print("Historical triage PASS: exactly 958 tests / 52 failures / 173 errors; " +
+                str(len(report["categories"])) + " root-cause buckets; " +
+                str(report["unclassified_count"]) + " manual-triage records.")
+          for category in report["categories"]:
+              print(f'{category["category"]}: FAIL={category["failures"]}, ERROR={category["errors"]}, TOTAL={category["total"]}')
+          PY
+      - name: Publish historical Windows taxonomy evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: StorageScope-Historical-Windows-Taxonomy-39668811238
+          path: \${{ runner.temp }}/storagescope-historical-taxonomy/*
+          if-no-files-found: error
+          retention-days: 90
   review-windows:
     runs-on: windows-latest
     steps:
