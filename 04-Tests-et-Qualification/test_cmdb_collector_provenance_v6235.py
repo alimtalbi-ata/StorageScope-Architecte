@@ -74,7 +74,7 @@ class CollectorProvenanceTests(unittest.TestCase):
         self.assertEqual(report['automatic_merges'], 0)
 
     def test_control_character_in_one_strong_id_invalidates_whole_record(self):
-        records = [{'source': 'legacy-export', 'serial': 'SER\\nIAL', 'uuid': 'U-1'},
+        records = [{'source': 'legacy-export', 'serial': 'SER' + chr(10) + 'IAL', 'uuid': 'U-1'},
                    {'source': 'cmdb', 'uuid': 'u-1'},
                    {'source': 'probe', 'uuid': 'U-1'}]
         report = reconcile(records)
