@@ -262,6 +262,69 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
     summary["counts_match_summary"] = bool(counts_match)
     return entries, summary
 
+def extract_failed_unittest_block_from_job_log(text: str) -> tuple[str, dict[str, object]]:
+    """Bound one failed unittest invocation inside a complete GitHub Actions job log.
+
+    The strict parser remains unchanged. This opt-in adapter accepts wrapper output
+    only after the terminal summary, and only when the full job log contains exactly
+    one unittest run summary and one FAILED summary. Multiple runs, post-summary
+    FAIL/ERROR records, successful runs, or missing records are refused.
+    """
+    lines = text.splitlines()
+    cleaned = [clean(line) for line in lines]
+    run_indexes = [
+        index for index, line in enumerate(cleaned)
+        if RUN_SUMMARY_LINE.fullmatch(line)
+    ]
+    result_indexes = [
+        index for index, line in enumerate(cleaned)
+        if FAILED_SUMMARY_LINE.fullmatch(line) or OK_SUMMARY_LINE.fullmatch(line)
+    ]
+    if len(run_indexes) != 1:
+        raise ValueError(
+            "expected exactly one unittest run summary in full job log; found "
+            + str(len(run_indexes))
+        )
+    if len(result_indexes) != 1:
+        raise ValueError(
+            "expected exactly one unittest result summary in full job log; found "
+            + str(len(result_indexes))
+        )
+
+    run_index = run_indexes[0]
+    result_index = result_indexes[0]
+    if result_index <= run_index:
+        raise ValueError("unittest result summary must follow the run summary")
+    if not FAILED_SUMMARY_LINE.fullmatch(cleaned[result_index]):
+        raise ValueError(
+            "job-log extraction is reserved for failed unittest runs; "
+            "parse an isolated successful unittest output directly"
+        )
+
+    record_indexes = [
+        index for index, line in enumerate(cleaned) if RECORD.fullmatch(line)
+    ]
+    if not record_indexes:
+        raise ValueError("no unittest FAIL/ERROR records found before failed summary")
+    if any(index > result_index for index in record_indexes):
+        raise ValueError("unittest FAIL/ERROR record found after terminal summary")
+    if any(index >= run_index for index in record_indexes):
+        raise ValueError("unittest FAIL/ERROR records must precede the run summary")
+
+    start_index = record_indexes[0]
+    bounded = "\\n".join(lines[start_index:result_index + 1]) + "\\n"
+    bounds = {
+        "mode": "explicit_failed_unittest_block",
+        "source_line_start": start_index + 1,
+        "source_line_end": result_index + 1,
+        "run_summary_line": run_index + 1,
+        "result_summary_line": result_index + 1,
+        "test_records": len(record_indexes),
+        "wrapper_lines_excluded_after_result": len(lines) - result_index - 1,
+    }
+    return bounded, bounds
+
+
 def make_report(entries, summary, run_id, source):
     counts = {}
     for entry in entries:
@@ -287,6 +350,7 @@ def make_report(entries, summary, run_id, source):
             "Broad release/build-contract categories require full-traceback review.",
             "Zero codec-error matches only describes this log, not encoding correctness in general.",
             "A missing, duplicated, truncated, inconsistent, zero-count FAILED, or trailing-output unittest summary fails closed; use --expected-tests for a known historical suite.",
+            "For complete workflow logs, --extract-failed-unittest-block is explicit and fail-closed: it requires one failed unittest invocation and rejects ambiguous summaries or post-summary test records.",
         ],
     }
 
@@ -297,7 +361,9 @@ def render_markdown(report):
              "**Auteur :** " + report["author"],
              "**Run :** " + str(report.get("run_id") or "non precise"),
              "**Log :** " + str(report["source_log"]),
-             "**Genere UTC :** " + report["generated_at_utc"], "",
+             "**Genere UTC :** " + report["generated_at_utc"],
+             "**Portee entree :** " + str(s.get("input_scope", "isolated_unittest_output")),
+             "**Bornes extraction :** " + (json.dumps(s["extraction"], ensure_ascii=False, sort_keys=True) if s.get("extraction") else "aucune"), "",
              "## Synthese", "",
              "- Tests declares : " + str(s.get("tests_run", "non trouve")),
              "- Echecs : " + str(s["observed_failures"]) + " (resume " + str(s.get("failures", "absent")) + ")",
@@ -324,6 +390,7 @@ def main(argv=None):
     parser.add_argument("log", type=Path, help="Raw UTF-8 GitHub Actions job log")
     parser.add_argument("--run-id")
     parser.add_argument("--expected-tests", type=int, help="Require the declared unittest test count to match this historical expectation")
+    parser.add_argument("--extract-failed-unittest-block", action="store_true", help="Extract exactly one failed unittest block from a full GitHub Actions job log; ambiguity fails closed")
     parser.add_argument("--json-output", type=Path)
     parser.add_argument("--markdown-output", type=Path)
     args = parser.parse_args(argv)
@@ -333,7 +400,17 @@ def main(argv=None):
         raw = args.log.read_text(encoding="utf-8", errors="strict")
     except (OSError, UnicodeError) as exc:
         parser.error("cannot read UTF-8 log: " + str(exc))
+    extraction = None
+    if args.extract_failed_unittest_block:
+        try:
+            raw, extraction = extract_failed_unittest_block_from_job_log(raw)
+        except ValueError as exc:
+            print("ERROR: refusing to extract unittest output from job log: " + str(exc), file=sys.stderr)
+            return 2
     entries, summary = parse_unittest_log(raw, expected_tests=args.expected_tests)
+    summary["input_scope"] = "github_actions_job_log" if extraction else "isolated_unittest_output"
+    if extraction is not None:
+        summary["extraction"] = extraction
     if not entries:
         print("No unittest FAIL/ERROR records found; refusing empty classification.", file=sys.stderr)
         return 2
