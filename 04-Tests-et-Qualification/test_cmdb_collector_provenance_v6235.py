@@ -79,7 +79,7 @@ class CollectorProvenanceTests(unittest.TestCase):
                    {'source': 'probe', 'uuid': 'U-1'}]
         report = reconcile(records)
         self.assertEqual(report['invalid_records'],
-                         [{'index': 0, 'reason': 'invalid_identity_type:serial'}])
+                         [{'index': 0, 'reason': 'invalid_identity_value:serial'}])
         self.assertEqual(report['invalid_identity_link_indices'], [1, 2])
         self.assertEqual(report['quarantined_indices'], [1, 2])
         self.assertEqual(report['automatic_merges'], 0)
@@ -89,7 +89,7 @@ class CollectorProvenanceTests(unittest.TestCase):
                    {'source': 'cmdb', 'uuid': 'u-2'}]
         report = reconcile(records)
         self.assertEqual(report['invalid_records'],
-                         [{'index': 0, 'reason': 'invalid_identity_type:serial'}])
+                         [{'index': 0, 'reason': 'invalid_identity_value:serial'}])
         self.assertEqual(report['invalid_identity_link_indices'], [1])
         self.assertEqual(report['quarantined_indices'], [1])
 
