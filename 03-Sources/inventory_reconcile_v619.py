@@ -9,22 +9,53 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import unicodedata
 from pathlib import Path
 
 IDENTITY_FIELDS = ('serial', 'wwn', 'uuid')
 UNKNOWN_IDENTITIES = frozenset({'unknown', 'n/a', 'na', 'none', 'null', 'not available', '-'})
 MAX_RECORDS = 10000
 MAX_CANDIDATE_PAIRS = 50000
+MAX_SOURCE_CHARS = 256
+MAX_IDENTITY_CHARS = 512
 ASSET_KIND_ALIASES = {'array': 'storage_array', 'storage': 'storage_array',
                       'switch': 'san_switch', 'server': 'host'}
 
 
 def _identity(value):
-    """Normalize identity evidence, without treating placeholders as keys."""
+    """Normalize compatibility glyphs and placeholders without guessing IDs."""
     if not isinstance(value, str):
         return None
-    normalized = value.strip().casefold()
+    normalized = unicodedata.normalize('NFKC', value).strip().casefold()
     return normalized if normalized and normalized not in UNKNOWN_IDENTITIES else None
+
+
+def _unsafe_identity_string(value):
+    """Reject malformed strong IDs instead of silently discarding one field."""
+    if not isinstance(value, str) or len(value) > MAX_IDENTITY_CHARS:
+        return True
+    normalized = unicodedata.normalize('NFKC', value)
+    return any(unicodedata.category(char).startswith('C') or
+               unicodedata.category(char) in ('Zl', 'Zp')
+               for char in normalized)
+
+
+def _source_identity(value):
+    """Canonical collector key; reject invisible controls and spoofed provenance.
+
+    Unicode NFKC unifies compatibility glyphs (e.g. fullwidth Latin letters).
+    The raw source remains in the evidence report; only comparison keys change.
+    """
+    if not isinstance(value, str) or not value.strip() or len(value) > MAX_SOURCE_CHARS:
+        return None
+    normalized = unicodedata.normalize('NFKC', value)
+    if any(unicodedata.category(char).startswith('C') or
+           unicodedata.category(char) in ('Zl', 'Zp') for char in normalized):
+        return None
+    normalized = ' '.join(normalized.split()).casefold()
+    if not normalized or len(normalized) > MAX_SOURCE_CHARS:
+        return None
+    return normalized
 
 
 def _asset_kind(item):
@@ -81,6 +112,7 @@ def reconcile(records):
     identities = {}
     asset_kinds = {}
     manufacturers = {}
+    sources = {}
     for index, item in enumerate(records):
         if not isinstance(item, dict):
             invalid.append({'index': index, 'reason': 'not_object'})
@@ -89,6 +121,10 @@ def reconcile(records):
         if not isinstance(source, str) or not source.strip():
             invalid.append({'index': index, 'reason': 'missing_source'})
             continue  # Fail closed: unprovenanced records are not match evidence.
+        normalized_source = _source_identity(source)
+        if normalized_source is None:
+            invalid.append({'index': index, 'reason': 'invalid_source'})
+            continue  # Unsafe provenance cannot contribute independent evidence.
         kind, kind_error = _asset_kind(item)
         if kind_error:
             invalid.append({'index': index, 'reason': kind_error})
@@ -102,10 +138,14 @@ def reconcile(records):
         # conceal a contradictory or incorrectly serialized identifier.
         invalid_field = next((field for field in IDENTITY_FIELDS
                               if item.get(field) is not None and
-                              not isinstance(item[field], str)), None)
+                              (not isinstance(item[field], str) or
+                               _unsafe_identity_string(item[field]))), None)
         if invalid_field is not None:
-            invalid.append({'index': index, 'reason': f'invalid_identity_type:{invalid_field}'})
+            reason = ('invalid_identity_type' if not isinstance(item[invalid_field], str)
+                      else 'invalid_identity_value')
+            invalid.append({'index': index, 'reason': f'{reason}:{invalid_field}'})
             continue  # Fail closed; do not use any other ID from this record.
+        sources[index] = normalized_source
         asset_kinds[index] = kind
         manufacturers[index] = manufacturer
         strong = {field: _identity(item.get(field)) for field in IDENTITY_FIELDS}
@@ -174,7 +214,7 @@ def reconcile(records):
             identity_conflicts.append({'field': 'manufacturer', 'left': am, 'right': bm})
         # Repeated strong identity from the SAME collector is not independent
         # reconciliation evidence. Quarantine its connected identity component.
-        same_source_duplicate = a['source'].strip().casefold() == b['source'].strip().casefold()
+        same_source_duplicate = sources[left] == sources[right]
         adjacency[left].add(right)
         adjacency[right].add(left)
         if same_source_duplicate:
@@ -222,7 +262,7 @@ def reconcile(records):
         visited.update(component)
         by_source = collections.defaultdict(list)
         for member in sorted(component):
-            by_source[records[member]['source'].strip().casefold()].append(member)
+            by_source[sources[member]].append(member)
         repeated = {member for members in by_source.values() if len(members) > 1
                     for member in members}
         transitive_duplicate_source_indices.update(repeated - duplicate_source_indices)
