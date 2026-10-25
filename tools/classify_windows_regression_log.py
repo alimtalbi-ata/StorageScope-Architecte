@@ -115,6 +115,7 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
         "summary_complete": False,
         "run_summary_lines": 0,
         "result_summary_lines": 0,
+        "trailing_output_lines": 0,
         "summary_problem": [],
         "failed_summary_fields_valid": True,
         "failed_summary_problem": [],
@@ -132,6 +133,12 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
 
     for raw in text.splitlines():
         line = clean(raw)
+        if not line:
+            continue
+        # The input contract is one isolated unittest invocation. Once its final
+        # OK/FAILED line appears, non-summary output makes the evidence ambiguous.
+        if summary.get("result_summary_lines", 0) and not SUMMARY.match(line):
+            summary["trailing_output_lines"] += 1
         match = RECORD.match(line)
         if match:
             flush()
@@ -167,6 +174,11 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
                         failures=int(declared.get("failures", 0)),
                         errors=int(declared.get("errors", 0)),
                     )
+                    if summary["failures"] + summary["errors"] == 0:
+                        summary["failed_summary_fields_valid"] = False
+                        summary["failed_summary_problem"].append(
+                            "FAILED summary declares zero failures and errors"
+                        )
                 else:
                     summary["failed_summary_fields_valid"] = False
                     if "failures" not in declared and "errors" not in declared:
@@ -199,9 +211,15 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
         problems.append("expected exactly one unittest result summary; found " + str(summary["result_summary_lines"]))
     if summary.get("result_status") == "FAILED" and ("failures" not in summary or "errors" not in summary):
         problems.append("FAILED summary does not contain parseable failures and errors totals")
+    if summary["trailing_output_lines"]:
+        problems.append(
+            "unexpected non-empty output after unittest result summary: "
+            + str(summary["trailing_output_lines"]) + " line(s)"
+        )
 
     summary["summary_complete"] = (
         summary["failed_summary_fields_valid"]
+        and summary["trailing_output_lines"] == 0
         and summary["run_summary_lines"] == 1
         and summary["result_summary_lines"] == 1
         and "tests_run" in summary
@@ -252,7 +270,7 @@ def make_report(entries, summary, run_id, source):
             "Classification is heuristic and does not prove a defect is fixed.",
             "Broad release/build-contract categories require full-traceback review.",
             "Zero codec-error matches only describes this log, not encoding correctness in general.",
-            "A missing, duplicated, truncated, or inconsistent unittest summary fails closed; use --expected-tests for a known historical suite.",
+            "A missing, duplicated, truncated, inconsistent, zero-count FAILED, or trailing-output unittest summary fails closed; use --expected-tests for a known historical suite.",
         ],
     }
 
