@@ -19,6 +19,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Enforce SQLite pagination fixture closure
+        env:
+          PYTHONPATH: 03-Sources
+          PYTHONTRACEMALLOC: '1'
+        run: |
+          python -W error::ResourceWarning -m unittest discover -s 04-Tests-et-Qualification -p 'test_v466.py' -v 2>&1 | tee "$RUNNER_TEMP/sqlite-fixture-v466.log"
+          if grep -Eiq 'ResourceWarning|unclosed database|Exception ignored in:' "$RUNNER_TEMP/sqlite-fixture-v466.log"; then echo "V6.466 fixture leaked a SQLite handle"; exit 1; fi
+          python -W error::ResourceWarning -m unittest discover -s 04-Tests-et-Qualification -p 'test_v467.py' -v 2>&1 | tee "$RUNNER_TEMP/sqlite-fixture-v467.log"
+          if grep -Eiq 'ResourceWarning|unclosed database|Exception ignored in:' "$RUNNER_TEMP/sqlite-fixture-v467.log"; then echo "V6.467 fixture leaked a SQLite handle"; exit 1; fi
       - name: Qualify audit and multi-vendor review
         run: |
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_review_registry_v622.py' -v
@@ -60,6 +69,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Enforce SQLite pagination fixture closure
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = (Join-Path (Get-Location).Path '03-Sources')
+          $log466 = Join-Path $env:RUNNER_TEMP 'sqlite-fixture-v466.log'
+          python -W error::ResourceWarning -X tracemalloc=1 -m unittest discover -s 04-Tests-et-Qualification -p 'test_v466.py' -v 2>&1 | Tee-Object -FilePath $log466
+          if ($LASTEXITCODE -ne 0) { throw 'V6.466 pagination tests failed' }
+          if (Select-String -Quiet -Path $log466 -Pattern '(?i)ResourceWarning|unclosed database|Exception ignored in:') { throw 'V6.466 fixture leaked a SQLite handle' }
+          $log467 = Join-Path $env:RUNNER_TEMP 'sqlite-fixture-v467.log'
+          python -W error::ResourceWarning -X tracemalloc=1 -m unittest discover -s 04-Tests-et-Qualification -p 'test_v467.py' -v 2>&1 | Tee-Object -FilePath $log467
+          if ($LASTEXITCODE -ne 0) { throw 'V6.467 cursor tests failed' }
+          if (Select-String -Quiet -Path $log467 -Pattern '(?i)ResourceWarning|unclosed database|Exception ignored in:') { throw 'V6.467 fixture leaked a SQLite handle' }
       - name: Qualify Windows review logic
         shell: pwsh
         run: |
