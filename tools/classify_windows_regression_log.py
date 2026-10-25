@@ -312,7 +312,7 @@ def extract_failed_unittest_block_from_job_log(text: str) -> tuple[str, dict[str
         raise ValueError("unittest FAIL/ERROR records must precede the run summary")
 
     start_index = record_indexes[0]
-    bounded = "\\n".join(lines[start_index:result_index + 1]) + "\\n"
+    bounded = "\n".join(lines[start_index:result_index + 1]) + "\n"
     bounds = {
         "mode": "explicit_failed_unittest_block",
         "source_line_start": start_index + 1,
