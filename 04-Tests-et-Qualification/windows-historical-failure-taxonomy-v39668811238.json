@@ -22,7 +22,7 @@
     "method": "First-pass rule-based classification of raw GitHub Actions job output; counts cross-checked against all 225 unittest FAIL/ERROR headings and final summary.",
     "is_heuristic": true,
     "encoding_exception_signatures_observed": 0,
-    "manual_follow_up_count": 14,
+    "manual_follow_up_count": 13,
     "categories": [
       {
         "id": "IMPORT_ROOT_OR_SOURCE_PATH",
@@ -89,16 +89,17 @@
       },
       {
         "id": "STALE_SOURCE_CONTRACT",
-        "failures": 0,
+        "failures": 1,
         "errors": 4,
-        "total": 4,
+        "total": 5,
         "confidence": "high",
         "evidence": "ValueError: substring not found in static assertions over publication/rollback source.",
         "examples": [
           "test_backup_before_promote",
           "test_sha_before_promotion",
           "test_hashes_checked_before_replacement",
-          "test_publish_staging_precedes_replacement"
+          "test_publish_staging_precedes_replacement",
+          "test_portable_status_is_visible"
         ],
         "next_fix": "Prefer behavioral rollback and hash-before-replacement tests; update static checks only after confirming the intended invariant."
       },
@@ -117,9 +118,9 @@
       },
       {
         "id": "RELEASE_BUILD_OR_SOURCE_CONTRACT",
-        "failures": 14,
+        "failures": 13,
         "errors": 0,
-        "total": 14,
+        "total": 13,
         "confidence": "low",
         "evidence": "Packaging/version/qualification assertions, including missing bootstrap/preflight contracts and native report status FAIL.",
         "examples": [
