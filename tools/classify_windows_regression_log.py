@@ -117,6 +117,7 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
         "result_summary_lines": 0,
         "summary_problem": [],
         "failed_summary_fields_valid": True,
+        "failed_summary_problem": [],
     }, None
 
     def flush():
@@ -156,16 +157,16 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
                 residual = residual.replace(",", "").strip()
                 if len(count_pairs) != len(declared):
                     summary["failed_summary_fields_valid"] = False
-                    summary["summary_problem"].append("FAILED summary contains duplicate count fields")
+                    summary["failed_summary_problem"].append("FAILED summary contains duplicate count fields")
                 if residual:
                     summary["failed_summary_fields_valid"] = False
-                    summary["summary_problem"].append("FAILED summary contains unrecognized count fields")
+                    summary["failed_summary_problem"].append("FAILED summary contains unrecognized count fields")
                 if "failures" in declared and "errors" in declared and summary["failed_summary_fields_valid"]:
                     summary.update(failures=int(declared["failures"]), errors=int(declared["errors"]))
                 else:
                     summary["failed_summary_fields_valid"] = False
                     if "failures" not in declared or "errors" not in declared:
-                        summary["summary_problem"].append("FAILED summary does not contain parseable failures and errors totals")
+                        summary["failed_summary_problem"].append("FAILED summary does not contain parseable failures and errors totals")
                 continue
 
             if re.fullmatch(r"OK(?:\s*\(.*\))?\s*", line):
@@ -183,7 +184,7 @@ def parse_unittest_log(text: str, expected_tests: int | None = None):
         observed_failures=sum(e["kind"] == "FAIL" for e in entries),
         observed_errors=sum(e["kind"] == "ERROR" for e in entries),
     )
-    problems = []
+    problems = list(summary.get("failed_summary_problem", []))
     if summary["run_summary_lines"] == 0:
         problems.append("missing Ran <n> tests summary")
     elif summary["run_summary_lines"] != 1:
