@@ -62,6 +62,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_key_rotation_v6221.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6236.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6237.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_extraction_v6241.py' -v
   review-windows:
     runs-on: windows-latest
     steps:
@@ -153,3 +154,5 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Historical Windows failure taxonomy tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6237.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'V6.237 fail-closed taxonomy summary tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_extraction_v6241.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'V6.241 bounded job-log extraction tests failed' }
