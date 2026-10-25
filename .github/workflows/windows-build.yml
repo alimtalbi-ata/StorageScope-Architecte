@@ -28,6 +28,13 @@ jobs:
           python -W error::ResourceWarning -X tracemalloc=1 -m unittest discover -s 04-Tests-et-Qualification -p 'test_v467.py' -v 2>&1 | Tee-Object -FilePath $log467
           if ($LASTEXITCODE -ne 0) { throw 'V6.467 cursor tests failed' }
           if (Select-String -Quiet -Path $log467 -Pattern '(?i)ResourceWarning|unclosed database|Exception ignored in:') { throw 'V6.467 fixture leaked a SQLite handle' }
+      - name: Qualify historical Windows failure taxonomy parser
+        shell: pwsh
+        run: |
+          python -m py_compile tools/classify_windows_regression_log.py
+          if ($LASTEXITCODE -ne 0) { throw 'Historical failure taxonomy parser syntax failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6236.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'Historical failure taxonomy tests failed' }
       - name: Check release sources and binary workspace
         shell: pwsh
         run: |
