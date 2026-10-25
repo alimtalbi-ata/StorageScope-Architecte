@@ -8,6 +8,8 @@ from portfolio import portfolio_snapshot
 class SqlPaginationTests(unittest.TestCase):
     def setUp(self):
         self.g=Governance(':memory:')
+        # sqlite3.Connection context managers commit/rollback; they do not close.
+        self.addCleanup(self.g.close)
         self.t=Traceability(self.g)
         self.c=Committees(self.g)
         self.p=Planning(self.c)
