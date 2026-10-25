@@ -138,9 +138,12 @@ def reconcile(records):
         # conceal a contradictory or incorrectly serialized identifier.
         invalid_field = next((field for field in IDENTITY_FIELDS
                               if item.get(field) is not None and
-                              _unsafe_identity_string(item[field])), None)
+                              (not isinstance(item[field], str) or
+                               _unsafe_identity_string(item[field]))), None)
         if invalid_field is not None:
-            invalid.append({'index': index, 'reason': f'invalid_identity_type:{invalid_field}'})
+            reason = ('invalid_identity_type' if not isinstance(item[invalid_field], str)
+                      else 'invalid_identity_value')
+            invalid.append({'index': index, 'reason': f'{reason}:{invalid_field}'})
             continue  # Fail closed; do not use any other ID from this record.
         sources[index] = normalized_source
         asset_kinds[index] = kind
