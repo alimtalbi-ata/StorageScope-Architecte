@@ -137,5 +137,32 @@ FAILED (failures=1, errors=0)
         self.assertIn("missing Ran <n> tests summary", summary["summary_problem"])
 
 
+
+    def test_failed_summary_with_zero_failure_and_error_counts_is_rejected(self):
+        log = """Ran 1 test in 0.01s
+FAILED (failures=0, errors=0)
+"""
+        _, summary = parse_unittest_log(log)
+        self.assertFalse(summary["summary_complete"])
+        self.assertFalse(summary["counts_match_summary"])
+        self.assertIn(
+            "FAILED summary declares zero failures and errors",
+            summary["summary_problem"],
+        )
+
+    def test_nonempty_output_after_final_summary_is_rejected(self):
+        log = """Ran 1 test in 0.01s
+OK
+Build step: artifact upload failed
+"""
+        _, summary = parse_unittest_log(log)
+        self.assertEqual(summary["trailing_output_lines"], 1)
+        self.assertFalse(summary["summary_complete"])
+        self.assertFalse(summary["counts_match_summary"])
+        self.assertTrue(any(
+            "unexpected non-empty output after unittest result summary" in item
+            for item in summary["summary_problem"]
+        ))
+
 if __name__ == "__main__":
     unittest.main()
