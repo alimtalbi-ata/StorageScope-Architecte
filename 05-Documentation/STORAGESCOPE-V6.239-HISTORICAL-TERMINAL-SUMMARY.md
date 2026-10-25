@@ -37,3 +37,11 @@ La preuve locale inclut un sous-processus unittest réellement en échec, volont
 Cette correction rend la décision de réussite du runner de suite plus fiable ; elle ne corrige pas par elle-même les 225 anomalies du run historique de référence 39668811238 (52 failures, 173 errors). L'ancien journal et sa taxonomie sont conservés comme preuve historique. Le prochain build Windows exact-HEAD doit confirmer la suite historique complète, PyInstaller, Inno Setup, rejet d'installateur corrompu, installation/désinstallation, portable et manifestes SHA-256.
 
 Le numéro produit reste 6.108 ; V6.239 identifie ce cycle de développement. Les tests SAN/NAS de la CI sont synthétiques et en lecture seule : aucune validation physique de baie, capture d'écran réelle ou qualification UX humaine n'est revendiquée. Aucune donnée CMDB n'est modifiée et aucune fusion automatique n'est autorisée.
+
+## Durcissement additif — corrélation des marqueurs de suites imbriquées
+
+La première exécution native V6.239 a révélé un cas résiduel : certains tests historiques lancent eux-mêmes le runner historique dans un checkout temporaire. Leur marqueur JSON se retrouve dans la sortie capturée de la suite parente. Le run natif #40237434440 a compté 1 772 tests parent avec un résultat unittest OK, mais a correctement refusé la qualification car deux marqueurs figuraient dans une seule capture. Aucun artefact binaire qualifié n'a été publié.
+
+Le correctif additif donne maintenant à chaque invocation un jeton aléatoire corrélé. `run_suite` produit un jeton propre et le passe au lanceur ; `unittest_discover_with_result.py` l'inclut dans le marqueur ; le parseur n'accepte que le marqueur portant le jeton attendu et refuse la preuve si le marqueur parent est absent. Les marqueurs d'autres invocations demeurent des diagnostics imbriqués. Les journaux bruts et contrôles négatifs sont conservés.
+
+Aucun seuil n'est réduit et aucun test n'est supprimé. La qualification native Windows de ce nouveau HEAD doit repasser la suite complète et les portes PyInstaller/Inno Setup, installation/désinstallation, portable et SHA-256.

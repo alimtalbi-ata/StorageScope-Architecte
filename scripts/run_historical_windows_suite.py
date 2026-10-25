@@ -19,11 +19,12 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 
 COUNT = re.compile(r"\bRan\s+(\d+)\s+tests?\s+in\b")
 CASE = re.compile(r"^(ERROR|FAIL):\s+(.+)$", re.MULTILINE)
 RESULT_SUMMARY = re.compile(r"^(?P<status>OK|FAILED)(?:\s*\((?P<details>[^()]*)\))?\s*$")
-RUNNER_RESULT_PREFIX = "STORAGESCOPE_UNITTEST_RESULT: "
+RUNNER_RESULT_PREFIX = "STORAGESCOPE_UNITTEST_RESULT:"
 SUMMARY_DETAIL = re.compile(r"^(?P<name>skipped|expected failures|failures|errors|unexpected successes)\s*=\s*(?P<count>\d+)$")
 # The two files have distinct purposes; source variant is for legacy tests.
 KNOWN_DIFFERENT_FILES = {"verify-windows-build.py"}
@@ -53,21 +54,52 @@ def classify(output: str) -> dict[str, int]:
 
 
 
-def parse_terminal_summary(output: str) -> dict:
+def parse_terminal_summary(output: str, expected_token: str | None = None) -> dict:
     """Parse the authoritative unittest result marker, with a legacy log fallback."""
     lines = output.splitlines()
-    marker_indexes = [i for i, line in enumerate(lines)
-                      if line.startswith(RUNNER_RESULT_PREFIX)]
+    observed_marker_indexes = [i for i, line in enumerate(lines)
+                               if line.startswith(RUNNER_RESULT_PREFIX)]
+
+    if expected_token is not None:
+        # Bind the marker to this invocation: nested tests can launch their own
+        # runner and emit diagnostic markers inside the parent's captured output.
+        expected_prefix = f"{RUNNER_RESULT_PREFIX}{expected_token}: "
+        marker_indexes = [i for i, line in enumerate(lines)
+                          if line.startswith(expected_prefix)]
+        if not marker_indexes:
+            problems = ["authoritative runner result marker for this invocation missing"]
+            if observed_marker_indexes:
+                problems.append("only nested/foreign runner result markers were observed")
+            return {
+                "status": "UNKNOWN", "summary_line": None, "tests_run": None,
+                "failures": 0, "errors": 0, "skipped": 0,
+                "expected_failures": 0, "unexpected_successes": 0,
+                "summary_complete": False, "trailing_output_lines": 0,
+                "problems": problems, "summary_source": "runner_result_marker",
+            }
+    elif observed_marker_indexes:
+        return {
+            "status": "UNKNOWN", "summary_line": None, "tests_run": None,
+            "failures": 0, "errors": 0, "skipped": 0,
+            "expected_failures": 0, "unexpected_successes": 0,
+            "summary_complete": False, "trailing_output_lines": 0,
+            "problems": ["result marker token is required to disambiguate nested invocations"],
+            "summary_source": "runner_result_marker",
+        }
+    else:
+        expected_prefix = ""
+        marker_indexes = []
+
     if marker_indexes:
         problems = []
         if len(marker_indexes) != 1:
-            problems.append("expected exactly one runner result marker")
+            problems.append("expected exactly one runner result marker for this invocation")
         marker_index = marker_indexes[-1]
         trailing = sum(bool(line.strip()) for line in lines[marker_index + 1:])
         if trailing:
             problems.append("non-empty output follows runner result marker")
         try:
-            payload = json.loads(lines[marker_index][len(RUNNER_RESULT_PREFIX):])
+            payload = json.loads(lines[marker_index][len(expected_prefix):])
             status = payload.get("status")
             tests_run = payload.get("tests_run")
             numeric_fields = ("failures", "errors", "skipped",
@@ -214,8 +246,10 @@ def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
     discovery_runner = root / "scripts" / "unittest_discover_with_result.py"
     if not discovery_runner.is_file():
         raise FileNotFoundError("Authoritative unittest discovery runner is missing: " + str(discovery_runner))
+    result_token = uuid.uuid4().hex
     command = [sys.executable, "-B", str(discovery_runner),
-               "--start", str(start), "--pattern", pattern]
+               "--start", str(start), "--pattern", pattern,
+               "--result-token", result_token]
     completed = subprocess.run(command, cwd=root, env=env, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, encoding="utf-8",
                                errors="replace", check=False)
@@ -235,7 +269,7 @@ def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
         log_evidence = {"log_file": log_name,
                         "log_sha256": hashlib.sha256(payload).hexdigest(),
                         "log_bytes": len(payload)}
-    terminal = parse_terminal_summary(completed.stdout)
+    terminal = parse_terminal_summary(completed.stdout, expected_token=result_token)
     executed = terminal["tests_run"]
     output_signatures = classify(completed.stdout)
     ok = (completed.returncode == 0 and executed is not None and executed >= minimum

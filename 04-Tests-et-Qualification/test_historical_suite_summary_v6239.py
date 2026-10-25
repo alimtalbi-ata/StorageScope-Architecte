@@ -69,17 +69,32 @@ OK
             "status": "OK", "tests_run": 1, "failures": 0, "errors": 0,
             "skipped": 0, "expected_failures": 0, "unexpected_successes": 0,
         }
-        marker = runner.RUNNER_RESULT_PREFIX + json.dumps(payload)
-        self.assertTrue(runner.parse_terminal_summary(marker)["summary_complete"])
+        token = "test-parent-token"
+        marker = f"{runner.RUNNER_RESULT_PREFIX}{token}: " + json.dumps(payload)
+        self.assertTrue(runner.parse_terminal_summary(marker, expected_token=token)["summary_complete"])
         for output in (
             marker + "\nlate diagnostic",
             marker + "\n" + marker,
-            runner.RUNNER_RESULT_PREFIX + '{"status":"OK","tests_run":1}',
+            f"{runner.RUNNER_RESULT_PREFIX}{token}: " + '{"status":"OK","tests_run":1}',
         ):
             with self.subTest(output=output):
-                parsed = runner.parse_terminal_summary(output)
+                parsed = runner.parse_terminal_summary(output, expected_token=token)
                 self.assertFalse(parsed["summary_complete"])
                 self.assertTrue(parsed["problems"])
+
+    def test_child_marker_cannot_satisfy_parent_invocation(self):
+        child_payload = {
+            "status": "OK", "tests_run": 1, "failures": 0, "errors": 0,
+            "skipped": 0, "expected_failures": 0, "unexpected_successes": 0,
+        }
+        child_marker = f"{runner.RUNNER_RESULT_PREFIX}child-token: " + json.dumps(child_payload)
+        parent = runner.parse_terminal_summary(
+            child_marker + "\nRan 1 test in 0.01s\nOK\n",
+            expected_token="parent-token",
+        )
+        self.assertEqual(parent["status"], "UNKNOWN")
+        self.assertFalse(parent["summary_complete"])
+        self.assertTrue(any("nested/foreign" in item for item in parent["problems"]))
 
     def test_real_subprocess_keeps_nested_failure_as_diagnostic_not_outcome(self):
         with tempfile.TemporaryDirectory(prefix="storagescope-v6239-") as tmp:
