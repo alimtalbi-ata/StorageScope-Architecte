@@ -36,6 +36,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_cli_evidence_parity_v6229.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_identity_types_v6231.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_invalid_identity_links_v6232.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_transitive_source_duplicate_v6233.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_manufacturer_identity_v6230.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_dependency_impact_v6199.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_path_quarantine_v6200.py' -v
@@ -91,6 +92,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_identity_types_v6231.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'CMDB strict identity type regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_invalid_identity_links_v6232.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_transitive_source_duplicate_v6233.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'CMDB invalid identity link regression tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_cmdb_manufacturer_identity_v6230.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'CMDB manufacturer identity regression tests failed' }
