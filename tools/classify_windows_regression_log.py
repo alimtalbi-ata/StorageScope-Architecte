@@ -103,8 +103,20 @@ def classify_failure(detail: str, test_name: str = "") -> tuple[str, str, str]:
 
     return "OTHER_NEEDS_MANUAL_TRIAGE", "no known exception signature matched", "low"
 
-def parse_unittest_log(text: str):
-    entries, summary, current = [], {}, None
+def parse_unittest_log(text: str, expected_tests: int | None = None):
+    """Parse one unittest invocation and fail closed on missing/ambiguous summaries.
+
+    A partial log must never be considered internally consistent merely because a
+    summary line was absent. Use --expected-tests when auditing a known historical
+    suite whose declared test count is part of the evidence contract.
+    """
+    entries, summary, current = [], {
+        "summary_present": False,
+        "summary_complete": False,
+        "run_summary_lines": 0,
+        "result_summary_lines": 0,
+        "summary_problem": [],
+    }, None
 
     def flush():
         nonlocal current
@@ -126,26 +138,75 @@ def parse_unittest_log(text: str):
         if SUMMARY.match(line):
             flush()
             ran = re.match(r"Ran\s+(\d+)\s+tests?\s+in\s+([0-9.]+)s", line)
-            failed = re.match(r"FAILED\s*\(\s*failures=(\d+)\s*,\s*errors=(\d+)\s*\)", line)
             if ran:
+                summary["run_summary_lines"] += 1
                 summary.update(tests_run=int(ran.group(1)), duration_seconds=float(ran.group(2)))
+                summary["summary_present"] = True
+                continue
+
+            failed = re.fullmatch(r"FAILED\s*\((.*)\)", line)
             if failed:
-                summary.update(failures=int(failed.group(1)), errors=int(failed.group(2)))
-            continue
+                summary["result_summary_lines"] += 1
+                summary["result_status"] = "FAILED"
+                summary["summary_present"] = True
+                declared = dict(re.findall(r"\b(failures|errors|skipped)=(\d+)\b", failed.group(1)))
+                if "failures" in declared and "errors" in declared:
+                    summary.update(failures=int(declared["failures"]), errors=int(declared["errors"]))
+                continue
+
+            if re.fullmatch(r"OK(?:\s*\(.*\))?\s*", line):
+                summary["result_summary_lines"] += 1
+                summary["result_status"] = "OK"
+                summary.update(failures=0, errors=0)
+                summary["summary_present"] = True
+                continue
         if current is not None:
             current["_detail"].append(line)
     flush()
+
     summary.update(
         observed_records=len(entries),
         observed_failures=sum(e["kind"] == "FAIL" for e in entries),
         observed_errors=sum(e["kind"] == "ERROR" for e in entries),
     )
-    summary["counts_match_summary"] = (
-        summary.get("failures", summary["observed_failures"]) == summary["observed_failures"]
-        and summary.get("errors", summary["observed_errors"]) == summary["observed_errors"]
-    )
-    return entries, summary
+    problems = []
+    if summary["run_summary_lines"] == 0:
+        problems.append("missing Ran <n> tests summary")
+    elif summary["run_summary_lines"] != 1:
+        problems.append("expected exactly one unittest run summary; found " + str(summary["run_summary_lines"]))
+    if summary["result_summary_lines"] == 0:
+        problems.append("missing final OK/FAILED summary")
+    elif summary["result_summary_lines"] != 1:
+        problems.append("expected exactly one unittest result summary; found " + str(summary["result_summary_lines"]))
+    if summary.get("result_status") == "FAILED" and ("failures" not in summary or "errors" not in summary):
+        problems.append("FAILED summary does not contain parseable failures and errors totals")
 
+    summary["summary_complete"] = (
+        summary["run_summary_lines"] == 1
+        and summary["result_summary_lines"] == 1
+        and "tests_run" in summary
+        and summary.get("result_status") in ("FAILED", "OK")
+        and "failures" in summary
+        and "errors" in summary
+    )
+    counts_match = (
+        summary["summary_complete"]
+        and summary["failures"] == summary["observed_failures"]
+        and summary["errors"] == summary["observed_errors"]
+        and summary["tests_run"] >= summary["observed_records"]
+        and (summary["result_status"] != "OK" or summary["observed_records"] == 0)
+    )
+    if summary["summary_complete"] and not counts_match:
+        problems.append("declared summary totals do not match extracted FAIL/ERROR records or test count")
+    if expected_tests is not None:
+        summary["expected_tests"] = expected_tests
+        summary["expected_tests_match"] = summary.get("tests_run") == expected_tests
+        if not summary["expected_tests_match"]:
+            problems.append("declared test count does not match expected count " + str(expected_tests))
+            counts_match = False
+    summary["summary_problem"] = problems
+    summary["counts_match_summary"] = bool(counts_match)
+    return entries, summary
 
 def make_report(entries, summary, run_id, source):
     counts = {}
@@ -171,6 +232,7 @@ def make_report(entries, summary, run_id, source):
             "Classification is heuristic and does not prove a defect is fixed.",
             "Broad release/build-contract categories require full-traceback review.",
             "Zero codec-error matches only describes this log, not encoding correctness in general.",
+            "A missing, duplicated, truncated, or inconsistent unittest summary fails closed; use --expected-tests for a known historical suite.",
         ],
     }
 
@@ -187,7 +249,9 @@ def render_markdown(report):
              "- Echecs : " + str(s["observed_failures"]) + " (resume " + str(s.get("failures", "absent")) + ")",
              "- Erreurs : " + str(s["observed_errors"]) + " (resume " + str(s.get("errors", "absent")) + ")",
              "- Enregistrements : " + str(s["observed_records"]),
-             "- Comptes coherents : " + str(s["counts_match_summary"]),
+             "- Résumé présent/complet : " + str(s.get("summary_present")) + "/" + str(s.get("summary_complete")),
+             "- Comptes cohérents : " + str(s["counts_match_summary"]),
+             "- Problèmes de résumé : " + ("; ".join(s.get("summary_problem", [])) or "aucun"),
              "- Cas non classes automatiquement : " + str(report["unclassified_count"]), "",
              "## Causes racines probables", "",
              "| Categorie | Echecs | Erreurs | Total | Interpretation |",
@@ -205,14 +269,17 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("log", type=Path, help="Raw UTF-8 GitHub Actions job log")
     parser.add_argument("--run-id")
+    parser.add_argument("--expected-tests", type=int, help="Require the declared unittest test count to match this historical expectation")
     parser.add_argument("--json-output", type=Path)
     parser.add_argument("--markdown-output", type=Path)
     args = parser.parse_args(argv)
+    if args.expected_tests is not None and args.expected_tests < 1:
+        parser.error("--expected-tests must be a positive integer")
     try:
         raw = args.log.read_text(encoding="utf-8", errors="strict")
     except (OSError, UnicodeError) as exc:
         parser.error("cannot read UTF-8 log: " + str(exc))
-    entries, summary = parse_unittest_log(raw)
+    entries, summary = parse_unittest_log(raw, expected_tests=args.expected_tests)
     if not entries:
         print("No unittest FAIL/ERROR records found; refusing empty classification.", file=sys.stderr)
         return 2
@@ -227,7 +294,8 @@ def main(argv=None):
     if not args.json_output and not args.markdown_output:
         print(serialized, end="")
     if not summary["counts_match_summary"]:
-        print("WARNING: extracted counts disagree with unittest summary; manual review required.", file=sys.stderr)
+        detail = "; ".join(summary.get("summary_problem", [])) or "summary counts are inconsistent"
+        print("ERROR: refusing to qualify this log: " + detail, file=sys.stderr)
         return 1
     return 0
 
