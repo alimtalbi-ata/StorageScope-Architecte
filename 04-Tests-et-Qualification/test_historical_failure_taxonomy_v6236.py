@@ -41,6 +41,22 @@ FAILED (failures=1, errors=1)
             with self.subTest(detail=detail):
                 self.assertEqual(classify_failure(detail)[0], expected)
 
+    def test_traceback_source_excerpt_cannot_override_terminal_exception(self):
+        # Several old source-contract assertions include source excerpts that contain
+        # "VERSION" or 6.108. The terminal assertion, not that excerpt, is the cause.
+        stale_source = """Traceback (most recent call last):
+  File "test_publication.py", line 20, in test_backup_recovery
+    source = '# VERSION 6.108; rollback implementation changed'
+AssertionError: 'ROLLBACK INCOMPLETE' not found in '# VERSION 6.108; rollback implementation changed'
+"""
+        stale_version = """Traceback (most recent call last):
+  File "test_release.py", line 10, in test_version
+    source = '# VERSION 6.108'
+AssertionError: '6.108' != '6.87'
+"""
+        self.assertEqual(classify_failure(stale_source)[0], "STALE_SOURCE_CONTRACT")
+        self.assertEqual(classify_failure(stale_version)[0], "STALE_VERSION_EXPECTATION")
+
     def test_report_counts_failures_and_errors_by_root_cause(self):
         log = """FAIL: test_a
 AssertionError: '6.108' != '6.87'
