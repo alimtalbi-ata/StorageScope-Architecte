@@ -25,14 +25,18 @@ _DOMAIN = b"StorageScope.observation.hmac-sha256.v1\x00"
 def load_auth_policy(topology):
     """Return bounded source-to-key IDs; v2 permits a two-key rotation window."""
     enforcement = os.environ.get('STORAGESCOPE_REQUIRE_OBSERVATION_AUTH', '0')
+    require_v2 = os.environ.get('STORAGESCOPE_REQUIRE_OBSERVATION_AUTH_V2', '0')
     if enforcement not in ('0', '1'):
         raise ValueError('Invalid observation authentication enforcement setting')
+    # Validate operator switches before branching on payload presence. Otherwise
+    # an invalid V2 value was silently accepted when a policy happened to exist.
+    if require_v2 not in ('0', '1'):
+        raise ValueError('Invalid observation authentication v2 enforcement setting')
     if 'observation_auth_policy' not in topology:
-        if enforcement == '1' or os.environ.get('STORAGESCOPE_REQUIRE_OBSERVATION_AUTH_V2', '0') != '0':
+        if enforcement == '1' or require_v2 == '1':
             raise ValueError('Observation authentication policy required by operator')
         return None
     raw = topology['observation_auth_policy']
-    require_v2 = os.environ.get('STORAGESCOPE_REQUIRE_OBSERVATION_AUTH_V2', '0')
     if require_v2 not in ('0', '1'):
         raise ValueError('Invalid observation authentication v2 enforcement setting')
     if (not isinstance(raw, dict) or set(raw) != {'schema', 'source_keys'} or
