@@ -76,7 +76,7 @@ jobs:
           log="$RUNNER_TEMP/historical-windows-job.log"
           out="$RUNNER_TEMP/storagescope-historical-taxonomy"
           mkdir -p "$out"
-          gh api "repos/${GH_REPO}/actions/jobs/119460870039/logs" > "$download"
+          gh api --allow-escape-sequences "repos/${GH_REPO}/actions/jobs/119460870039/logs" > "$download"
           python - "$download" "$log" <<'PY'
           from pathlib import Path
           import io, sys, zipfile
