@@ -72,6 +72,36 @@ FAILED (failures=1, errors=1)
         self.assertEqual(sum(c["errors"] for c in report["categories"]), 1)
         self.assertIn("test par test", render_markdown(report))
 
+    def test_source_excerpt_does_not_drive_version_or_source_contract_category(self):
+        # GitHub's traceback includes assertion input/source excerpts. Those excerpts
+        # contain VERSION and 6.108 but are not themselves the failure cause.
+        rollback_detail = """Traceback (most recent call last):
+  File "test_publication.py", line 20, in test_backup_recovery
+    source = '# VERSION 6.108; AppVersion'
+AssertionError: 'ROLLBACK INCOMPLETE' not found in '# VERSION 6.108; AppVersion'
+"""
+        self.assertEqual(
+            classify_failure(rollback_detail, "test_backup_recovery")[0],
+            "STALE_SOURCE_CONTRACT",
+        )
+
+    def test_named_version_contracts_are_distinguished_from_source_excerpt(self):
+        source = """Traceback (most recent call last):
+  File "test_release.py", line 10, in test_versions
+    source = '# VERSION = 6.108'
+AssertionError: "VERSION = '6.33'" not found in '# VERSION = 6.108'
+"""
+        self.assertEqual(
+            classify_failure(source, "test_versions (test_release_v633.ReleaseTests.test_versions)")[0],
+            "STALE_VERSION_EXPECTATION",
+        )
+
+    def test_missing_optional_image_dependency_is_not_mislabelled_as_import_root(self):
+        self.assertEqual(
+            classify_failure("RuntimeError: PNG export requires Pillow", "test_png")[0],
+            "MISSING_TEST_DEPENDENCY",
+        )
+
     def test_refuses_to_claim_encoding_cleanliness_when_a_codec_error_exists(self):
         category, _, _ = classify_failure("UnicodeEncodeError: 'charmap' codec can't encode character")
         self.assertEqual(category, "ENCODING")
