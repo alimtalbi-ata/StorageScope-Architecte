@@ -17,16 +17,27 @@ UNKNOWN_IDENTITIES = frozenset({'unknown', 'n/a', 'na', 'none', 'null', 'not ava
 MAX_RECORDS = 10000
 MAX_CANDIDATE_PAIRS = 50000
 MAX_SOURCE_CHARS = 256
+MAX_IDENTITY_CHARS = 512
 ASSET_KIND_ALIASES = {'array': 'storage_array', 'storage': 'storage_array',
                       'switch': 'san_switch', 'server': 'host'}
 
 
 def _identity(value):
-    """Normalize identity evidence, without treating placeholders as keys."""
+    """Normalize compatibility glyphs and placeholders without guessing IDs."""
     if not isinstance(value, str):
         return None
-    normalized = value.strip().casefold()
+    normalized = unicodedata.normalize('NFKC', value).strip().casefold()
     return normalized if normalized and normalized not in UNKNOWN_IDENTITIES else None
+
+
+def _unsafe_identity_string(value):
+    """Reject malformed strong IDs instead of silently discarding one field."""
+    if not isinstance(value, str) or len(value) > MAX_IDENTITY_CHARS:
+        return True
+    normalized = unicodedata.normalize('NFKC', value)
+    return any(unicodedata.category(char).startswith('C') or
+               unicodedata.category(char) in ('Zl', 'Zp')
+               for char in normalized)
 
 
 def _source_identity(value):
@@ -127,7 +138,7 @@ def reconcile(records):
         # conceal a contradictory or incorrectly serialized identifier.
         invalid_field = next((field for field in IDENTITY_FIELDS
                               if item.get(field) is not None and
-                              not isinstance(item[field], str)), None)
+                              _unsafe_identity_string(item[field])), None)
         if invalid_field is not None:
             invalid.append({'index': index, 'reason': f'invalid_identity_type:{invalid_field}'})
             continue  # Fail closed; do not use any other ID from this record.
