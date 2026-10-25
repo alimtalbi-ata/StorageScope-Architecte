@@ -210,12 +210,34 @@ def reconcile(records):
                     pending.append(neighbor)
         return seen
 
+    # V6.233: repeated collector provenance can occur across different
+    # strong IDs joined by an intermediate observation. Such evidence is
+    # not independent, even if no same-source pair shares an ID directly.
+    transitive_duplicate_source_indices = set()
+    visited = set()
+    for index in sorted(adjacency):
+        if index in visited:
+            continue
+        component = connected_component({index})
+        visited.update(component)
+        by_source = collections.defaultdict(list)
+        for member in sorted(component):
+            by_source[records[member]['source'].strip().casefold()].append(member)
+        repeated = {member for members in by_source.values() if len(members) > 1
+                    for member in members}
+        transitive_duplicate_source_indices.update(repeated - duplicate_source_indices)
+    duplicate_source_indices.update(transitive_duplicate_source_indices)
+
     invalid_linked_component = connected_component(invalid_identity_link_indices)
-    quarantined = connected_component(direct_conflicts) | invalid_linked_component
+    duplicate_linked_component = connected_component(transitive_duplicate_source_indices)
+    quarantined = (connected_component(direct_conflicts) | invalid_linked_component |
+                   duplicate_linked_component)
     for candidate in candidates:
         if candidate['action'] == 'REVIEW_REQUIRED':
             if candidate['indices'][0] in invalid_linked_component:
                 candidate['action'] = 'QUARANTINE_LINKED_INVALID_RECORD'
+            elif candidate['indices'][0] in duplicate_linked_component:
+                candidate['action'] = 'QUARANTINE_LINKED_DUPLICATE_SOURCE_OBSERVATION'
             elif candidate['indices'][0] in quarantined:
                 candidate['action'] = 'QUARANTINE_LINKED_IDENTITY_CONFLICT'
 
@@ -228,6 +250,7 @@ def reconcile(records):
         'quarantined_indices': sorted(quarantined),
         'direct_conflict_indices': sorted(direct_conflicts),
         'duplicate_source_indices': sorted(duplicate_source_indices),
+        'transitive_duplicate_source_indices': sorted(transitive_duplicate_source_indices),
         'invalid_identity_origin_indices': sorted(invalid_identity_origin_indices),
         'invalid_identity_link_indices': sorted(invalid_identity_link_indices),
         'propagated_quarantine_indices': sorted(quarantined - direct_conflicts - invalid_identity_link_indices),
