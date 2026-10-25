@@ -263,6 +263,13 @@ jobs:
           $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
           python '04-Tests-et-Qualification/qualify_frozen_cmdb_duplicate_v6228.py' --exe $exe
           if ($LASTEXITCODE -ne 0) { throw 'Frozen V6.228 CMDB duplicate-source quarantine failed' }
+      - name: Verify frozen CMDB manufacturer identity quarantine V6.230
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          python '04-Tests-et-Qualification/qualify_frozen_cmdb_manufacturer_v6230.py' --exe $exe
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen V6.230 CMDB manufacturer identity quarantine failed' }
       - name: Verify frozen CMDB transitive identity quarantine V6.209
         shell: pwsh
         run: |
