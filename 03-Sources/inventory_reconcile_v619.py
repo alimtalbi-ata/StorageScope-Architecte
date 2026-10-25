@@ -117,6 +117,25 @@ def reconcile(records):
             if value is not None:
                 groups[(field, value)].append(index)
 
+    # Invalid observations are never candidates. Their well-typed strong IDs
+    # can only contaminate a valid identity component, not provide match proof.
+    invalid_identity_groups = collections.defaultdict(set)
+    for entry in invalid:
+        index = entry['index']
+        item = records[index]
+        if not isinstance(item, dict):
+            continue
+        for field in IDENTITY_FIELDS:
+            value = _identity(item.get(field))
+            if value is not None:
+                invalid_identity_groups[(field, value)].add(index)
+    invalid_identity_link_indices = set()
+    invalid_identity_origin_indices = set()
+    for key, valid_indices in groups.items():
+        if key in invalid_identity_groups:
+            invalid_identity_link_indices.update(valid_indices)
+            invalid_identity_origin_indices.update(invalid_identity_groups[key])
+
     pairs = collections.defaultdict(set)
     for (field, _value), indices in sorted(groups.items()):
         if len(indices) < 2:
@@ -178,22 +197,27 @@ def reconcile(records):
                        else 'REVIEW_REQUIRED'),
         })
 
-    # Identity evidence forms an undirected graph. A direct contradiction
-    # taints the entire connected component: otherwise a third observation
-    # could still appear REVIEW_REQUIRED through a conflicted neighbor.
-    # Bound traversal by the existing record/pair limits; never auto-merge.
-    quarantined = set(direct_conflicts)
-    pending = collections.deque(sorted(direct_conflicts))
-    while pending:
-        index = pending.popleft()
-        for neighbor in sorted(adjacency[index]):
-            if neighbor not in quarantined:
-                quarantined.add(neighbor)
-                pending.append(neighbor)
+    # Propagate direct conflicts and invalid links across valid-only pairs.
+    # Invalid records never become nodes in the candidate graph.
+    def connected_component(seeds):
+        seen = set(seeds)
+        pending = collections.deque(sorted(seeds))
+        while pending:
+            index = pending.popleft()
+            for neighbor in sorted(adjacency[index]):
+                if neighbor not in seen:
+                    seen.add(neighbor)
+                    pending.append(neighbor)
+        return seen
+
+    invalid_linked_component = connected_component(invalid_identity_link_indices)
+    quarantined = connected_component(direct_conflicts) | invalid_linked_component
     for candidate in candidates:
-        if (candidate['action'] == 'REVIEW_REQUIRED' and
-                candidate['indices'][0] in quarantined):
-            candidate['action'] = 'QUARANTINE_LINKED_IDENTITY_CONFLICT'
+        if candidate['action'] == 'REVIEW_REQUIRED':
+            if candidate['indices'][0] in invalid_linked_component:
+                candidate['action'] = 'QUARANTINE_LINKED_INVALID_RECORD'
+            elif candidate['indices'][0] in quarantined:
+                candidate['action'] = 'QUARANTINE_LINKED_IDENTITY_CONFLICT'
 
     return {
         'schema': 'storagescope.reconciliation.v1',
@@ -204,7 +228,9 @@ def reconcile(records):
         'quarantined_indices': sorted(quarantined),
         'direct_conflict_indices': sorted(direct_conflicts),
         'duplicate_source_indices': sorted(duplicate_source_indices),
-        'propagated_quarantine_indices': sorted(quarantined - direct_conflicts),
+        'invalid_identity_origin_indices': sorted(invalid_identity_origin_indices),
+        'invalid_identity_link_indices': sorted(invalid_identity_link_indices),
+        'propagated_quarantine_indices': sorted(quarantined - direct_conflicts - invalid_identity_link_indices),
         'assessment': ('INCOMPLETE' if invalid or quarantined else
                        'REVIEW_REQUIRED' if candidates else 'NO_CANDIDATES'),
         'automatic_merges': 0,

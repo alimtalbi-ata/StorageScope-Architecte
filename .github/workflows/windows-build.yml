@@ -277,6 +277,13 @@ jobs:
           $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
           python '04-Tests-et-Qualification/qualify_frozen_cmdb_identity_types_v6231.py' --exe $exe
           if ($LASTEXITCODE -ne 0) { throw 'Frozen V6.231 CMDB strict identity type qualification failed' }
+      - name: Verify frozen CMDB invalid-record identity quarantine V6.232
+        shell: pwsh
+        run: |
+          $version = (Get-Content -Raw '07-Manifestes/VERSION').Trim()
+          $exe = (Resolve-Path (Join-Path (Join-Path 'binary' ('v' + $version)) 'StorageScope.exe')).Path
+          python '04-Tests-et-Qualification/qualify_frozen_cmdb_invalid_links_v6232.py' --exe $exe
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen V6.232 invalid-record identity quarantine failed' }
       - name: Verify frozen CMDB transitive identity quarantine V6.209
         shell: pwsh
         run: |
