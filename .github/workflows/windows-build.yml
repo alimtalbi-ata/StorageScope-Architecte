@@ -722,11 +722,3 @@ jobs:
             02-Compilation-Windows/windows-portable-smoke-report.json
             02-Compilation-Windows/windows-release-qualification.json
           if-no-files-found: warn
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: StorageScope-Low-Confidence-Closure-Native-Windows-V6246
-          path: ${{ runner.temp }}/storagescope-low-confidence-closure-v6246/*
-          if-no-files-found: warn
-          retention-days: 90
