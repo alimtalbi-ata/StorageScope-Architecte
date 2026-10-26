@@ -71,12 +71,13 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_workflow_staging_boundaries_v6245.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_subprocess_output_v6243.py' -v
           python -m py_compile tools/strict_subprocess_output.py scripts/run_historical_windows_suite.py
-      - name: Replay the 13 low-confidence historical build-contract records V6.246 (Linux)
+      - name: Replay the 13 low-confidence historical build-contract records V6.247 (Linux)
         run: |
           set -euo pipefail
           python -m py_compile scripts/unittest_discover_with_result.py scripts/run_historical_windows_suite.py
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_low_confidence_closure_v6246.py' -v
-          out="$RUNNER_TEMP/storagescope-low-confidence-closure-v6246"
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_selector_evidence_integrity_v6247.py' -v
+          out="$RUNNER_TEMP/storagescope-low-confidence-closure-v6247"
           mkdir -p "$out"
           python scripts/run_historical_windows_suite.py --repo . --focus-low-confidence-contracts-only --report "$out/report.json"
           python - "$out/report.json" <<'PY'
@@ -87,15 +88,17 @@ jobs:
           if report.get("status") != "PASS" or closure.get("current_regression_status") != "PASS":
               raise SystemExit("V6.246 focused regression gate failed")
           if closure.get("baseline_failure_records") != 13 or closure.get("unique_current_test_selectors") != 8:
-              raise SystemExit("V6.246 coverage is incomplete")
+              raise SystemExit("V6.247 coverage is incomplete")
           if closure.get("historical_root_cause_linkage") != "NOT_ESTABLISHED" or len(closure.get("records", [])) != 13:
-              raise SystemExit("V6.246 evidence scope or mapping is invalid")
-          print("V6.246 targeted closure PASS: 13 baseline records / 8 selectors; historical causes remain unproven.")
+              raise SystemExit("V6.247 evidence scope or mapping is invalid")
+          if closure.get("evidence_integrity_status") != "PASS" or closure.get("validation_issues") != []:
+              raise SystemExit("V6.247 raw evidence integrity failed")
+          print("V6.247 targeted closure PASS: 13 baseline records / 8 selectors; raw logs re-hashed; historical causes remain unproven.")
           PY
       - name: Publish low-confidence closure evidence (Linux)
         uses: actions/upload-artifact@v4
         with:
-          name: StorageScope-Low-Confidence-Closure-Linux-V6246
+          name: StorageScope-Low-Confidence-Closure-Linux-V6247
           path: ${{ runner.temp }}/storagescope-low-confidence-closure-v6246/*
           if-no-files-found: error
           retention-days: 90
@@ -267,14 +270,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'V6.243 strict subprocess output tests failed' }
           python -m py_compile tools/strict_subprocess_output.py scripts/run_historical_windows_suite.py
           if ($LASTEXITCODE -ne 0) { throw 'V6.243 strict subprocess decoder/runner syntax failed' }
-      - name: Replay the 13 low-confidence historical build-contract records V6.246 (Windows)
+      - name: Replay the 13 low-confidence historical build-contract records V6.247 (Windows)
         shell: pwsh
         run: |
           python -m py_compile scripts/unittest_discover_with_result.py scripts/run_historical_windows_suite.py
           if ($LASTEXITCODE -ne 0) { throw 'V6.246 focused runner syntax failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_low_confidence_closure_v6246.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'V6.246 mapping tests failed' }
-          $out = Join-Path $env:RUNNER_TEMP 'storagescope-low-confidence-closure-v6246'
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_selector_evidence_integrity_v6247.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'V6.247 selector evidence integrity tests failed' }
+          $out = Join-Path $env:RUNNER_TEMP 'storagescope-low-confidence-closure-v6247'
           New-Item -ItemType Directory -Force -Path $out | Out-Null
           $report = Join-Path $out 'report.json'
           python scripts/run_historical_windows_suite.py --repo . --focus-low-confidence-contracts-only --report $report
@@ -289,14 +294,16 @@ jobs:
           if closure.get("baseline_failure_records") != 13 or closure.get("unique_current_test_selectors") != 8:
               raise SystemExit("V6.246 coverage is incomplete")
           if closure.get("historical_root_cause_linkage") != "NOT_ESTABLISHED" or len(closure.get("records", [])) != 13:
-              raise SystemExit("V6.246 evidence scope or mapping is invalid")
-          print("V6.246 targeted closure PASS: 13 baseline records / 8 selectors; historical causes remain unproven.")
+              raise SystemExit("V6.247 evidence scope or mapping is invalid")
+          if closure.get("evidence_integrity_status") != "PASS" or closure.get("validation_issues") != []:
+              raise SystemExit("V6.247 raw evidence integrity failed")
+          print("V6.247 targeted closure PASS: 13 baseline records / 8 selectors; raw logs re-hashed; historical causes remain unproven.")
           '@ | python - $report
           if ($LASTEXITCODE -ne 0) { throw 'V6.246 focused closure report is invalid' }
       - name: Publish low-confidence closure evidence (Windows)
         uses: actions/upload-artifact@v4
         with:
-          name: StorageScope-Low-Confidence-Closure-Windows-V6246
+          name: StorageScope-Low-Confidence-Closure-Windows-V6247
           path: ${{ runner.temp }}/storagescope-low-confidence-closure-v6246/*
           if-no-files-found: error
           retention-days: 90
