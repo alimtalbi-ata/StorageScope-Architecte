@@ -225,6 +225,70 @@ def parse_terminal_summary(output: str, expected_token: str | None = None) -> di
     return base
 
 
+def stage_workflow_fixtures(source_root: Path, target_root: Path) -> None:
+    """Stage workflow fixtures without ever overwriting an existing test asset.
+
+    Missing files are copied atomically. Identical files are idempotent. A
+    differing file, symlink, or file/directory collision aborts qualification
+    instead of silently mutating the historical fixture tree.
+    """
+    if not source_root.exists():
+        return
+    if source_root.is_symlink() or not source_root.is_dir():
+        raise RuntimeError("Workflow source is not a regular directory: " + str(source_root))
+    if target_root.is_symlink() or (target_root.exists() and not target_root.is_dir()):
+        raise RuntimeError("Workflow fixture target is not a regular directory: " + str(target_root))
+    target_root.mkdir(parents=True, exist_ok=True)
+
+    for source in sorted(source_root.rglob("*")):
+        relative = source.relative_to(source_root)
+        target = target_root / relative
+        relative_name = relative.as_posix()
+        if source.is_symlink():
+            raise RuntimeError("Refusing symlink in workflow source tree: " + relative_name)
+
+        # Validate each destination parent before mkdir/read/write; a fixture
+        # directory must not redirect staging through a symlink.
+        current = target_root
+        for component in relative.parts[:-1]:
+            current = current / component
+            if current.is_symlink() or (current.exists() and not current.is_dir()):
+                raise RuntimeError("Workflow fixture parent collision: " + relative_name)
+
+        if source.is_dir():
+            if target.is_symlink() or (target.exists() and not target.is_dir()):
+                raise RuntimeError("Workflow fixture directory collision: " + relative_name)
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+        if not source.is_file():
+            raise RuntimeError("Unsupported workflow source entry: " + relative_name)
+
+        source_bytes = source.read_bytes()
+        if target.is_symlink():
+            raise RuntimeError("Workflow fixture symlink collision: " + relative_name)
+        if target.exists():
+            if not target.is_file():
+                raise RuntimeError("Workflow fixture file/directory collision: " + relative_name)
+            if target.read_bytes() != source_bytes:
+                raise RuntimeError("Workflow fixture collision; existing test asset preserved: " + relative_name)
+            continue
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists() or target.is_symlink():
+            raise RuntimeError("Workflow fixture appeared during staging: " + relative_name)
+        pending = target.with_name(target.name + ".staging-" + uuid.uuid4().hex)
+        try:
+            shutil.copy2(source, pending)
+            if pending.read_bytes() != source_bytes:
+                raise RuntimeError("Staged workflow bytes failed verification: " + relative_name)
+            if target.exists() or target.is_symlink():
+                raise RuntimeError("Workflow fixture appeared before atomic promotion: " + relative_name)
+            pending.replace(target)
+        finally:
+            if pending.exists() or pending.is_symlink():
+                pending.unlink()
+
+
 def stage_historical_upgrade_workflow(sources: Path, tests: Path) -> None:
     """Restore the archived v5.89 workflow as a test fixture, not live CI.
 
@@ -396,8 +460,7 @@ def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
                     raise RuntimeError("Unreviewed fixture collision: " + source.name)
                 continue
             shutil.copy2(source, target)
-        if (checkout / ".github").is_dir():
-            shutil.copytree(checkout / ".github", tests / ".github", dirs_exist_ok=True)
+        stage_workflow_fixtures(checkout / ".github", tests / ".github")
         stage_historical_upgrade_workflow(sources, tests)
         version = checkout / "07-Manifestes" / "VERSION"
         if version.is_file():
