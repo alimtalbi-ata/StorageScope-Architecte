@@ -119,10 +119,39 @@ def _hash_file_streaming(path, chunk_size=1024 * 1024):
     return total, digest.hexdigest()
 
 
+def _snapshot_path_has_link_component(path):
+    """Reject symbolic links and Windows junctions anywhere in a snapshot path."""
+    for component in (path, *path.parents):
+        if component.is_symlink():
+            return True
+        # pathlib.Path.is_junction() is available on supported Python 3.12 builds.
+        # Keep compatibility with implementations that do not provide the method.
+        junction_check = getattr(component, 'is_junction', None)
+        if callable(junction_check) and junction_check():
+            return True
+    return False
+
+
 def verify_backup_snapshot(folder):
-    """Verify snapshot inventory and hashes; never modify user data."""
-    folder = Path(folder)
+    """Verify snapshot inventory and hashes without following linked path roots.
+
+    The snapshot directory and every ancestor component must be a real directory
+    path, not a symbolic link or Windows junction. This prevents a caller from
+    presenting an apparently local snapshot path that redirects verification to
+    another tree. Verification remains read-only.
+    """
     try:
+        folder = Path(folder)
+        # Make relative paths absolute but keep any ".." component until link
+        # inspection is complete. Lexical normalization first could erase a
+        # symlink/junction followed by ".." from the caller-supplied path.
+        if not folder.is_absolute():
+            folder = Path.cwd() / folder
+        if _snapshot_path_has_link_component(folder) or not folder.is_dir():
+            return False
+        # Canonicalize dot segments only after the full input path passed the
+        # no-links boundary; no later read will traverse a rejected alias.
+        folder = Path(os.path.abspath(folder))
         manifest_path = folder / 'manifest.json'
         if manifest_path.is_symlink() or manifest_path.stat().st_size > 2 * 1024 * 1024:
             return False
