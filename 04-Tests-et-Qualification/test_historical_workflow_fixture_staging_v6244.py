@@ -4,9 +4,11 @@ An active workflow may be copied into the historical test tree only when it
 does not overwrite an existing fixture with different bytes. Author:
 Abdelhalim Talbi.
 """
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from scripts.run_historical_windows_suite import stage_workflow_fixtures
 
@@ -81,11 +83,10 @@ class WorkflowFixtureStagingV6244(unittest.TestCase):
     def test_concurrent_destination_creation_is_never_overwritten(self):
         source = self.source / "workflows" / "raced.yml"
         source.parent.mkdir()
-        source.write_bytes(b"name: source\\n")
+        source.write_bytes(b"name: source\n")
         target = self.target / "workflows" / "raced.yml"
-        raced_bytes = b"name: concurrent-historical-fixture\\n"
+        raced_bytes = b"name: concurrent-historical-fixture\n"
 
-        import os
         real_link = os.link
 
         def create_target_then_link(src, dst):
@@ -93,7 +94,6 @@ class WorkflowFixtureStagingV6244(unittest.TestCase):
             # The no-overwrite primitive must fail because the target now exists.
             return real_link(src, dst)
 
-        from unittest.mock import patch
         with patch("scripts.run_historical_windows_suite.os.link", side_effect=create_target_then_link):
             with self.assertRaisesRegex(RuntimeError, "no-overwrite promotion"):
                 stage_workflow_fixtures(self.source, self.target)
