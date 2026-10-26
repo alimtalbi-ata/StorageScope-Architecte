@@ -251,19 +251,58 @@ def forecast(document, warning_percent=85, critical_percent=95, horizon_days=90)
             continue
         slope = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)) / denominator
         latest_percent = ys[-1]
-        result = {"asset_id": ident, "status": "NON_GROWING" if slope <= 0 else "FORECAST_AVAILABLE",
+        result = {"asset_id": ident, "status": "FORECAST_AVAILABLE",
                   "sample_count": len(records), "sample_span_days": span_days,
                   "latest_utilization_percent": latest_percent,
                   "growth_percentage_points_per_day": slope,
                   "forecast_horizon_days": horizon_days,
                   "model": "ordinary_least_squares_linear_utilization"}
-        if slope <= 0:
+
+        # A current threshold breach is a present risk, even when usage is falling.
+        # Report it before the non-growing-series shortcut so it cannot disappear.
+        if latest_percent >= critical_percent:
+            result["status"] = "CURRENT_CRITICAL_THRESHOLD_REACHED"
+            findings.append({
+                "level": "HIGH", "code": "CAPACITY_CRITICAL_THRESHOLD_CURRENT",
+                "object_id": ident,
+                "evidence": (f"Current utilization {latest_percent:.2f}% is at or above "
+                             f"the critical threshold {critical_percent:.2f}%"),
+                "recommended_action": "Escalate to the storage owner and review capacity immediately"
+            })
             forecasts.append(result)
             continue
+
         if latest_percent >= warning_percent:
-            result["status"] = "CURRENT_THRESHOLD_ALREADY_REACHED"
+            result["status"] = "CURRENT_WARNING_THRESHOLD_REACHED"
+            findings.append({
+                "level": "MEDIUM", "code": "CAPACITY_WARNING_THRESHOLD_CURRENT",
+                "object_id": ident,
+                "evidence": (f"Current utilization {latest_percent:.2f}% is at or above "
+                             f"the warning threshold {warning_percent:.2f}%"),
+                "recommended_action": "Review capacity headroom and the storage growth plan"
+            })
+            # The warning threshold is already reached, but a rising series can still
+            # estimate time to the critical threshold for planning purposes.
+            if slope > 0:
+                days_critical = (critical_percent - latest_percent) / slope
+                result.update({"days_to_critical": days_critical,
+                               "critical_within_horizon": days_critical <= horizon_days})
+                if days_critical <= horizon_days:
+                    findings.append({
+                        "level": "HIGH", "code": "CAPACITY_CRITICAL_FORECAST", "object_id": ident,
+                        "evidence": (f"Current utilization {latest_percent:.2f}%; trend {slope:.4f} "
+                                     f"percentage points/day; critical threshold estimated in "
+                                     f"{days_critical:.2f} days (horizon {horizon_days:g} days)"),
+                        "recommended_action": "Validate with the storage owner and plan expansion"
+                    })
             forecasts.append(result)
             continue
+
+        if slope <= 0:
+            result["status"] = "NON_GROWING"
+            forecasts.append(result)
+            continue
+
         days_warning = (warning_percent - latest_percent) / slope
         days_critical = (critical_percent - latest_percent) / slope
         result.update({"days_to_warning": days_warning, "days_to_critical": days_critical,
