@@ -55,22 +55,166 @@ LOW_CONFIDENCE_BASELINE_RECORDS = (
 )
 
 
-def build_low_confidence_closure(selector_runs: list[dict]) -> dict:
-    """Link baseline records to actual current test runs; do not overclaim causes."""
-    by_selector = {}
-    for run in selector_runs:
-        for selector in run.get("test_selectors", []):
-            by_selector[selector] = run
+def build_low_confidence_closure(
+    selector_runs: list[dict], evidence_dir: Path | None = None
+) -> dict:
+    """Require one clean test execution and byte-verifiable log per selector.
+
+    A passing unittest process is not enough: skipped tests, duplicate/multi-selector
+    evidence, missing terminal counters, or absent/corrupted raw logs all fail closed.
+    This still proves current regression behavior only, not historical root cause.
+    """
+    records = list(LOW_CONFIDENCE_BASELINE_RECORDS)
+    selectors = list(dict.fromkeys(
+        r.get("selector") for r in records if isinstance(r.get("selector"), str)
+    ))
+    selector_evidence: dict[str, list[dict]] = {selector: [] for selector in selectors}
+    issues: list[str] = []
+
+    if not isinstance(selector_runs, list):
+        selector_runs = []
+        issues.append("selector run collection is not a list")
+
+    for index, run in enumerate(selector_runs, start=1):
+        if not isinstance(run, dict):
+            issues.append(f"run {index}: evidence row is not an object")
+            continue
+        selected = run.get("test_selectors")
+        if (not isinstance(selected, list) or len(selected) != 1
+                or not isinstance(selected[0], str) or not selected[0]):
+            issues.append(f"run {index}: exactly one fully qualified selector is required")
+            continue
+        selector = selected[0]
+        if selector not in selector_evidence:
+            issues.append(f"run {index}: unexpected selector evidence: {selector}")
+            continue
+        selector_evidence[selector].append(run)
+
+    evidence_root = None
+    if evidence_dir is not None:
+        try:
+            evidence_root = Path(evidence_dir).resolve()
+        except (TypeError, OSError, ValueError):
+            issues.append("raw evidence directory is invalid")
+
+    def validate_run(run: dict) -> list[str]:
+        problems: list[str] = []
+        status = run.get("status")
+        exit_code = run.get("exit_code")
+        executed = run.get("executed")
+        if status != "PASS":
+            problems.append("subprocess status is not PASS")
+        if not isinstance(exit_code, int) or isinstance(exit_code, bool) or exit_code != 0:
+            problems.append("subprocess exit code is not integer zero")
+        if not isinstance(executed, int) or isinstance(executed, bool) or executed != 1:
+            problems.append("exactly one unittest case must have executed")
+
+        summary = run.get("terminal_unittest_summary")
+        if not isinstance(summary, dict):
+            problems.append("authoritative terminal unittest summary is missing")
+        else:
+            if summary.get("status") != "OK" or summary.get("summary_complete") is not True:
+                problems.append("terminal unittest summary is not complete OK")
+            count = summary.get("tests_run")
+            if not isinstance(count, int) or isinstance(count, bool) or count != 1:
+                problems.append("terminal summary must report exactly one test")
+            for field in ("failures", "errors", "skipped", "expected_failures", "unexpected_successes"):
+                value = summary.get(field)
+                if not isinstance(value, int) or isinstance(value, bool) or value != 0:
+                    problems.append(f"terminal summary {field} must be integer zero")
+
+        decoding = run.get("subprocess_output_decoding")
+        if not isinstance(decoding, dict):
+            problems.append("strict subprocess decoding evidence is missing")
+            decoding = {}
+        if decoding.get("status") != "ACCEPTED" or decoding.get("decoder") != "utf-8-strict":
+            problems.append("subprocess output was not accepted by the strict UTF-8 decoder")
+        if decoding.get("lossy_decoding_used") is not False:
+            problems.append("subprocess evidence does not attest lossless decoding")
+
+        log_file = run.get("log_file")
+        log_digest = run.get("log_sha256")
+        log_bytes = run.get("log_bytes")
+        payload_digest = decoding.get("payload_sha256")
+        payload_bytes = decoding.get("payload_byte_count")
+        digest_pattern = re.compile(r"^[0-9a-f]{64}$")
+        if not isinstance(log_digest, str) or not digest_pattern.fullmatch(log_digest):
+            problems.append("raw log SHA-256 is missing or malformed")
+        if not isinstance(payload_digest, str) or not digest_pattern.fullmatch(payload_digest):
+            problems.append("decoded payload SHA-256 is missing or malformed")
+        if isinstance(log_bytes, bool) or not isinstance(log_bytes, int) or log_bytes < 0:
+            problems.append("raw log byte count is missing or invalid")
+        if isinstance(payload_bytes, bool) or not isinstance(payload_bytes, int) or payload_bytes < 0:
+            problems.append("decoded payload byte count is missing or invalid")
+        if log_digest != payload_digest:
+            problems.append("raw log and strict-decoder SHA-256 values differ")
+        if log_bytes != payload_bytes:
+            problems.append("raw log and strict-decoder byte counts differ")
+        if run.get("log_encoding") != "raw_subprocess_bytes":
+            problems.append("raw log was not recorded as bytes")
+
+        if (not isinstance(log_file, str) or not log_file
+                or re.fullmatch(r"[A-Za-z0-9._-]+", log_file) is None
+                or log_file in {".", ".."}):
+            problems.append("raw log file name is missing or unsafe")
+        elif evidence_root is None:
+            problems.append("evidence directory is required to verify the raw log")
+        else:
+            candidate = evidence_root / log_file
+            try:
+                if candidate.is_symlink():
+                    problems.append("raw log must not be a symbolic link")
+                elif not candidate.is_file() or candidate.resolve().parent != evidence_root:
+                    problems.append("raw log file is missing or outside the evidence directory")
+                else:
+                    raw = candidate.read_bytes()
+                    actual_digest = hashlib.sha256(raw).hexdigest()
+                    if actual_digest != log_digest or actual_digest != payload_digest:
+                        problems.append("raw log bytes do not match recorded SHA-256")
+                    if len(raw) != log_bytes or len(raw) != payload_bytes:
+                        problems.append("raw log bytes do not match recorded byte counts")
+            except OSError as exc:
+                problems.append(f"raw log could not be verified: {type(exc).__name__}")
+        return problems
+
+    selector_status: dict[str, str] = {}
+    selected_run: dict[str, dict | None] = {}
+    for selector in selectors:
+        candidates = selector_evidence[selector]
+        if not candidates:
+            issues.append(f"missing selector evidence: {selector}")
+            selector_status[selector] = "FAIL_OR_NOT_RUN"
+            selected_run[selector] = None
+            continue
+        if len(candidates) != 1:
+            issues.append(f"duplicate selector evidence rejected: {selector} ({len(candidates)} rows)")
+            selector_status[selector] = "FAIL_OR_NOT_RUN"
+            selected_run[selector] = None
+            continue
+        run = candidates[0]
+        selected_run[selector] = run
+        run_problems = validate_run(run)
+        if run_problems:
+            selector_status[selector] = "FAIL_OR_NOT_RUN"
+            issues.extend(f"{selector}: {problem}" for problem in run_problems)
+        else:
+            selector_status[selector] = "PASS"
+
+    record_ids = [r.get("id") for r in records]
+    taxonomy_keys = [r.get("taxonomy_key") for r in records]
+    baseline_valid = (
+        len(records) == 13 and len(set(record_ids)) == 13
+        and len(set(taxonomy_keys)) == 13 and len(selectors) == 8
+        and all(isinstance(r.get("selector"), str) and r.get("selector") for r in records)
+    )
+    if not baseline_valid:
+        issues.append("immutable low-confidence baseline record set is inconsistent")
 
     rows = []
-    for record in LOW_CONFIDENCE_BASELINE_RECORDS:
-        run = by_selector.get(record["selector"])
-        passed = bool(
-            run and run.get("status") == "PASS" and run.get("exit_code") == 0
-            and isinstance(run.get("executed"), int)
-            and not isinstance(run.get("executed"), bool)
-            and run.get("executed", 0) >= 1
-        )
+    for record in records:
+        selector = record.get("selector")
+        run = selected_run.get(selector)
+        passed = selector_status.get(selector) == "PASS"
         rows.append({
             **record,
             "baseline_run_id": "39668811238",
@@ -79,33 +223,32 @@ def build_low_confidence_closure(selector_runs: list[dict]) -> dict:
             "current_test_status": "PASS" if passed else "FAIL_OR_NOT_RUN",
             "current_tests_executed": run.get("executed") if run else None,
             "current_exit_code": run.get("exit_code") if run else None,
+            "current_log_file": run.get("log_file") if run else None,
+            "current_log_sha256": run.get("log_sha256") if run else None,
             "root_cause_resolution_proven": False,
-            "evidence_basis": "actual current selector execution; shared methods fail if any mapped subTest fails",
+            "evidence_basis": "one real selector subprocess; complete zero-skip terminal summary; raw log bytes re-hashed in the evidence directory",
         })
 
-    selectors = list(dict.fromkeys(r["selector"] for r in LOW_CONFIDENCE_BASELINE_RECORDS))
-    selector_status = {}
-    for selector in selectors:
-        run = by_selector.get(selector)
-        selector_status[selector] = "PASS" if (
-            run and run.get("status") == "PASS" and run.get("exit_code") == 0
-            and isinstance(run.get("executed"), int)
-            and not isinstance(run.get("executed"), bool)
-            and run.get("executed", 0) >= 1
-        ) else "FAIL_OR_NOT_RUN"
-
-    all_pass = len(rows) == 13 and all(r["current_test_status"] == "PASS" for r in rows)
+    all_pass = (
+        baseline_valid and not issues
+        and len(selector_runs) == len(selectors)
+        and all(value == "PASS" for value in selector_status.values())
+    )
     return {
         "baseline_run_id": "39668811238",
         "baseline_failure_records": 13,
         "unique_current_test_selectors": len(selectors),
-        "all_13_records_mapped": len(rows) == 13 and all(r.get("selector") for r in rows),
+        "all_13_records_mapped": baseline_valid and len(rows) == 13,
+        "evidence_integrity_status": "PASS" if all_pass else "FAIL",
         "current_regression_status": "PASS" if all_pass else "FAIL",
         "selector_status": selector_status,
+        "validation_issues": issues,
         "records": rows,
         "historical_root_cause_linkage": "NOT_ESTABLISHED",
-        "interpretation": "PASS proves only that the mapped current tests pass on this HEAD; it does not prove historical causes or remediation commits.",
+        "root_cause_resolution_proven": False,
+        "interpretation": "PASS proves only that the current mapped tests ran once without skips/failures and their persisted raw logs match SHA-256/byte-count evidence on this HEAD; it does not prove historical causes or remediation commits.",
     }
+
 
 
 def classify(output: str) -> dict[str, int]:
@@ -539,6 +682,8 @@ def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
     if minimum_tests < 1 or minimum_nested < 0:
         raise ValueError("Invalid minimum test count")
     if focus_low_confidence_contracts_only:
+        if report is None:
+            raise ValueError("Focused low-confidence closure requires --report so raw selector logs can be verified")
         minimum_tests = 1
         minimum_nested = 0
     if not (repo / "03-Sources").is_dir() or not (repo / "04-Tests-et-Qualification").is_dir():
@@ -603,7 +748,7 @@ def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
                     (selector,),
                 ))
             nested_count = 0
-            low_confidence_closure = build_low_confidence_closure(rows)
+            low_confidence_closure = build_low_confidence_closure(rows, evidence_dir)
             passed = all(r["status"] == "PASS" for r in rows) and low_confidence_closure["current_regression_status"] == "PASS"
         else:
             rows = [run_suite(tests, "test_*.py", checkout, env, minimum_tests, "historical", evidence_dir)]
