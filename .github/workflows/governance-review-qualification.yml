@@ -35,6 +35,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_backup_manifest_duplicate_key_quarantine_v6250.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_backup_json_nonfinite_quarantine_v6252.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_threshold_type_contract_v6253.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_capacity_forecast_v6254.py' -v
       - name: Enforce SQLite pagination fixture closure
         env:
           PYTHONPATH: 03-Sources
@@ -209,6 +210,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'V6.252 non-finite JSON constant quarantine tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_threshold_type_contract_v6253.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'V6.253 capacity threshold type safety tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_capacity_forecast_v6254.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'V6.254 capacity forecast tests failed' }
       - name: Enforce SQLite pagination fixture closure
         shell: pwsh
         run: |
