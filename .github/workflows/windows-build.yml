@@ -87,7 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: StorageScope-Low-Confidence-Closure-Native-Windows-V6247
-          path: ${{ runner.temp }}/storagescope-low-confidence-closure-v6246/*
+          path: ${{ runner.temp }}/storagescope-low-confidence-closure-v6247/*
           if-no-files-found: error
           retention-days: 90
       - name: Build Windows release
