@@ -283,7 +283,16 @@ def stage_workflow_fixtures(source_root: Path, target_root: Path) -> None:
                 raise RuntimeError("Staged workflow bytes failed verification: " + relative_name)
             if target.exists() or target.is_symlink():
                 raise RuntimeError("Workflow fixture appeared before atomic promotion: " + relative_name)
-            pending.replace(target)
+            # Hard-link creation is atomic and fails if the destination already
+            # exists on both POSIX and Windows. Path.replace/os.rename could
+            # overwrite a file created after the pre-promotion existence check.
+            try:
+                os.link(pending, target)
+            except FileExistsError as exc:
+                raise RuntimeError(
+                    "Workflow fixture appeared before no-overwrite promotion: " + relative_name
+                ) from exc
+            pending.unlink()
         finally:
             if pending.exists() or pending.is_symlink():
                 pending.unlink()
