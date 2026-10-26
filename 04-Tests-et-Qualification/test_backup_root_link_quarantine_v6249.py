@@ -35,7 +35,7 @@ def make_snapshot(folder: Path) -> Path:
         }],
     }
     (folder / "manifest.json").write_text(
-        json.dumps(manifest, sort_keys=True) + "\\n", encoding="utf-8"
+        json.dumps(manifest, sort_keys=True) + "\n", encoding="utf-8"
     )
     return folder
 
