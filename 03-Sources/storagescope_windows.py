@@ -142,11 +142,16 @@ def verify_backup_snapshot(folder):
     """
     try:
         folder = Path(folder)
-        # Normalize dot segments without resolving links: resolving first would hide
-        # the very symlink/junction components this boundary is meant to detect.
-        folder = Path(os.path.abspath(folder))
+        # Make relative paths absolute but keep any ".." component until link
+        # inspection is complete. Lexical normalization first could erase a
+        # symlink/junction followed by ".." from the caller-supplied path.
+        if not folder.is_absolute():
+            folder = Path.cwd() / folder
         if _snapshot_path_has_link_component(folder) or not folder.is_dir():
             return False
+        # Canonicalize dot segments only after the full input path passed the
+        # no-links boundary; no later read will traverse a rejected alias.
+        folder = Path(os.path.abspath(folder))
         manifest_path = folder / 'manifest.json'
         if manifest_path.is_symlink() or manifest_path.stat().st_size > 2 * 1024 * 1024:
             return False
