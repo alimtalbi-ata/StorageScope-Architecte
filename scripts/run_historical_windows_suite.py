@@ -225,21 +225,82 @@ def parse_terminal_summary(output: str, expected_token: str | None = None) -> di
     return base
 
 
-def stage_workflow_fixtures(source_root: Path, target_root: Path) -> None:
-    """Stage workflow fixtures without ever overwriting an existing test asset.
+def _stage_workflow_fixture_file(source: Path, target: Path, relative_name: str) -> None:
+    """Copy one fixture without overwriting a destination, including races."""
+    if source.is_symlink():
+        raise RuntimeError("Refusing symlink in workflow source tree: " + relative_name)
+    if not source.is_file():
+        raise RuntimeError("Unsupported workflow source entry: " + relative_name)
 
-    Missing files are copied atomically. Identical files are idempotent. A
-    differing file, symlink, or file/directory collision aborts qualification
-    instead of silently mutating the historical fixture tree.
+    source_bytes = source.read_bytes()
+    if target.is_symlink():
+        raise RuntimeError("Workflow fixture symlink collision: " + relative_name)
+    if target.exists():
+        if not target.is_file():
+            raise RuntimeError("Workflow fixture file/directory collision: " + relative_name)
+        if target.read_bytes() != source_bytes:
+            raise RuntimeError(
+                "Workflow fixture collision; existing test asset preserved: " + relative_name
+            )
+        return
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists() or target.is_symlink():
+        raise RuntimeError("Workflow fixture appeared during staging: " + relative_name)
+
+    pending = target.with_name(target.name + ".staging-" + uuid.uuid4().hex)
+    try:
+        shutil.copy2(source, pending)
+        if pending.read_bytes() != source_bytes:
+            raise RuntimeError("Staged workflow bytes failed verification: " + relative_name)
+        if target.exists() or target.is_symlink():
+            raise RuntimeError("Workflow fixture appeared before atomic promotion: " + relative_name)
+        # Hard-link creation is atomic and does not replace an existing path.
+        # os.rename/Path.replace could overwrite a concurrently created fixture.
+        try:
+            os.link(pending, target)
+        except FileExistsError as exc:
+            raise RuntimeError(
+                "Workflow fixture appeared before no-overwrite promotion: " + relative_name
+            ) from exc
+        pending.unlink()
+    finally:
+        if pending.exists() or pending.is_symlink():
+            pending.unlink()
+
+
+def stage_workflow_fixtures(source_root: Path, target_root: Path) -> None:
+    """Stage workflow fixtures without overwriting assets or traversing nested roots.
+
+    Missing source trees remain a no-op for synthetic checkouts, but a broken
+    symlink is an invalid source and must not be mistaken for a missing tree.
+    Source and destination roots must be disjoint after path resolution.
     """
+    if source_root.is_symlink():
+        raise RuntimeError("Workflow source is a symbolic link: " + str(source_root))
     if not source_root.exists():
         return
-    if source_root.is_symlink() or not source_root.is_dir():
+    if not source_root.is_dir():
         raise RuntimeError("Workflow source is not a regular directory: " + str(source_root))
     if target_root.is_symlink() or (target_root.exists() and not target_root.is_dir()):
         raise RuntimeError("Workflow fixture target is not a regular directory: " + str(target_root))
-    target_root.mkdir(parents=True, exist_ok=True)
 
+    try:
+        source_resolved = source_root.resolve(strict=True)
+        target_resolved = target_root.resolve(strict=False)
+    except (OSError, RuntimeError) as exc:
+        raise RuntimeError("Unable to resolve workflow fixture roots safely") from exc
+    if (
+        source_resolved == target_resolved
+        or source_resolved in target_resolved.parents
+        or target_resolved in source_resolved.parents
+    ):
+        raise RuntimeError(
+            "Workflow source and fixture target trees must be disjoint: "
+            + str(source_resolved) + " <> " + str(target_resolved)
+        )
+
+    target_root.mkdir(parents=True, exist_ok=True)
     for source in sorted(source_root.rglob("*")):
         relative = source.relative_to(source_root)
         target = target_root / relative
@@ -260,64 +321,28 @@ def stage_workflow_fixtures(source_root: Path, target_root: Path) -> None:
                 raise RuntimeError("Workflow fixture directory collision: " + relative_name)
             target.mkdir(parents=True, exist_ok=True)
             continue
-        if not source.is_file():
-            raise RuntimeError("Unsupported workflow source entry: " + relative_name)
-
-        source_bytes = source.read_bytes()
-        if target.is_symlink():
-            raise RuntimeError("Workflow fixture symlink collision: " + relative_name)
-        if target.exists():
-            if not target.is_file():
-                raise RuntimeError("Workflow fixture file/directory collision: " + relative_name)
-            if target.read_bytes() != source_bytes:
-                raise RuntimeError("Workflow fixture collision; existing test asset preserved: " + relative_name)
-            continue
-
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if target.exists() or target.is_symlink():
-            raise RuntimeError("Workflow fixture appeared during staging: " + relative_name)
-        pending = target.with_name(target.name + ".staging-" + uuid.uuid4().hex)
-        try:
-            shutil.copy2(source, pending)
-            if pending.read_bytes() != source_bytes:
-                raise RuntimeError("Staged workflow bytes failed verification: " + relative_name)
-            if target.exists() or target.is_symlink():
-                raise RuntimeError("Workflow fixture appeared before atomic promotion: " + relative_name)
-            # Hard-link creation is atomic and fails if the destination already
-            # exists on both POSIX and Windows. Path.replace/os.rename could
-            # overwrite a file created after the pre-promotion existence check.
-            try:
-                os.link(pending, target)
-            except FileExistsError as exc:
-                raise RuntimeError(
-                    "Workflow fixture appeared before no-overwrite promotion: " + relative_name
-                ) from exc
-            pending.unlink()
-        finally:
-            if pending.exists() or pending.is_symlink():
-                pending.unlink()
+        _stage_workflow_fixture_file(source, target, relative_name)
 
 
 def stage_historical_upgrade_workflow(sources: Path, tests: Path) -> None:
-    """Restore the archived v5.89 workflow as a test fixture, not live CI.
-
-    The active workflow remains in the checkout root. Never replace an
-    existing test fixture with different bytes.
-    """
+    """Restore the archived v5.89 workflow as a safely staged fixture, not live CI."""
     archived = sources / "Ressources" / ".github" / "workflows" / "windows-upgrade-e2e.yml"
+    if archived.is_symlink():
+        raise RuntimeError("Refusing symlink as historical workflow source: " + str(archived))
     if not archived.is_file():
         # Minimal/synthetic checkouts do not carry the historical v5.89 test.
         # Fail closed only when that test actually requires this fixture.
         if (tests / "test_windows_portable_v589.py").is_file():
             raise FileNotFoundError("Missing archived Windows upgrade workflow fixture: " + str(archived))
         return
-    target = tests / ".github" / "workflows" / archived.name
-    if target.exists():
-        if target.read_bytes() != archived.read_bytes():
-            raise RuntimeError("Historical workflow fixture collision: " + str(target))
-        return
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(archived, target)
+
+    target_root = tests / ".github" / "workflows"
+    for parent in (tests / ".github", target_root):
+        if parent.is_symlink() or (parent.exists() and not parent.is_dir()):
+            raise RuntimeError("Historical workflow fixture parent is not a regular directory: " + str(parent))
+    target_root.mkdir(parents=True, exist_ok=True)
+    target = target_root / archived.name
+    _stage_workflow_fixture_file(archived, target, archived.name)
 
 
 def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
