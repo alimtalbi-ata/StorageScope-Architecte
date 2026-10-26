@@ -23,6 +23,7 @@ Le fichier `04-Tests-et-Qualification/test_backup_root_link_quarantine_v6249.py`
 - l’acceptation d’un snapshot normal avec empreinte valide ;
 - le refus d’un lien sur la racine avant l’ouverture du manifeste ;
 - le refus d’un ancêtre symbolique avant l’ouverture du manifeste ;
+- le refus d’un chemin qui contient un lien suivi de `..`, même lorsque sa destination normalisée est un snapshot valide ;
 - la détection déterministe d’un composant de type jonction Windows ;
 - le refus d’un fichier transmis comme racine.
 
