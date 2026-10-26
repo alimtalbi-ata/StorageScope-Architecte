@@ -78,6 +78,29 @@ class WorkflowFixtureStagingV6244(unittest.TestCase):
         stage_workflow_fixtures(missing, self.target)
         self.assertFalse(self.target.exists())
 
+    def test_concurrent_destination_creation_is_never_overwritten(self):
+        source = self.source / "workflows" / "raced.yml"
+        source.parent.mkdir()
+        source.write_bytes(b"name: source\\n")
+        target = self.target / "workflows" / "raced.yml"
+        raced_bytes = b"name: concurrent-historical-fixture\\n"
+
+        import os
+        real_link = os.link
+
+        def create_target_then_link(src, dst):
+            Path(dst).write_bytes(raced_bytes)
+            # The no-overwrite primitive must fail because the target now exists.
+            return real_link(src, dst)
+
+        from unittest.mock import patch
+        with patch("scripts.run_historical_windows_suite.os.link", side_effect=create_target_then_link):
+            with self.assertRaisesRegex(RuntimeError, "no-overwrite promotion"):
+                stage_workflow_fixtures(self.source, self.target)
+
+        self.assertEqual(target.read_bytes(), raced_bytes)
+        self.assertEqual(list(self.target.rglob("*.staging-*")), [])
+
 
 if __name__ == "__main__":
     unittest.main()
