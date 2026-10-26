@@ -73,6 +73,21 @@ class BackupRootLinkQuarantineV6249(unittest.TestCase):
         )):
             self.assertFalse(MODULE.verify_backup_snapshot(candidate))
 
+    def test_symlink_component_before_dotdot_is_rejected(self):
+        alias = self.base / "alias"
+        try:
+            alias.symlink_to(self.snapshot.parent, target_is_directory=True)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"directory symlink unavailable in this environment: {exc}")
+        # OS path traversal through alias/.. arrives at the same snapshot, but the
+        # untrusted caller path still crossed a symbolic-link component. Fail closed.
+        candidate = alias / ".." / self.snapshot.parent.name / self.snapshot.name
+        self.assertTrue(candidate.is_dir())
+        with patch.object(Path, "read_text", side_effect=AssertionError(
+            "manifest must not be opened after a linked path component"
+        )):
+            self.assertFalse(MODULE.verify_backup_snapshot(candidate))
+
     def test_windows_junction_component_is_rejected(self):
         candidate = self.base / "junction" / "snapshot"
         if not hasattr(Path, "is_junction"):
