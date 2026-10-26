@@ -1,0 +1,3 @@
+# Minimal explicit dependencies required by qualification tests.
+# PNG export is a tested feature, not an optional test skip.
+Pillow==11.3.0

@@ -75,6 +75,14 @@ $testsRoot = Join-Path $repoRoot '04-Tests-et-Qualification'
 if (-not (Test-Path -LiteralPath $testsRoot -PathType Container)) {
     throw "Repository qualification directory missing: $testsRoot"
 }
+# V6.248: install the declared test-only dependencies in the isolated build venv.
+# The historical PNG export test must fail for real regressions, never because Pillow was omitted.
+$testRequirements = Join-Path $repoRoot '04-Tests-et-Qualification/requirements-test.txt'
+if (-not (Test-Path -LiteralPath $testRequirements -PathType Leaf)) {
+    throw "Test dependency manifest missing: $testRequirements"
+}
+Invoke-Checked $builder @('-m','pip','install','--disable-pip-version-check','--requirement',$testRequirements)
+Invoke-Checked $builder @('-m','pip','check')
 # V6.186: run historical tests with colocated fixtures and strict 958 + 8 gates.
 # The runner is in the checkout, not the temporary build stage.
 $historicalRunner = Join-Path $repoRoot 'scripts/run_historical_windows_suite.py'
