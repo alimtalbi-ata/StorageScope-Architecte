@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -30,6 +31,16 @@ def _number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and 0 <= value < float("inf")
 
 
+def _finite_threshold(value):
+    """Accept finite numeric percentages only; Python bool is not a metric."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except (OverflowError, TypeError):
+        return False
+
+
 def assess(topology, warning_percent=85, critical_percent=95):
     """Return deterministic findings; incomplete topology is never marked healthy.
 
@@ -40,8 +51,10 @@ def assess(topology, warning_percent=85, critical_percent=95):
         raise ValueError("Topology must be an object")
     if topology.get("schema") != "storagescope.storage-topology.v1":
         raise ValueError("Unsupported topology schema")
-    if not (0 < warning_percent < critical_percent <= 100):
-        raise ValueError("Capacity thresholds must satisfy 0 < warning < critical <= 100")
+    if (not _finite_threshold(warning_percent)
+            or not _finite_threshold(critical_percent)
+            or not (0 < warning_percent < critical_percent <= 100)):
+        raise ValueError("Capacity thresholds must be finite numeric percentages satisfying 0 < warning < critical <= 100")
     for name in ("assets", "paths", "shares"):
         if not isinstance(topology.get(name), list):
             raise ValueError(f"{name} must be an array")
