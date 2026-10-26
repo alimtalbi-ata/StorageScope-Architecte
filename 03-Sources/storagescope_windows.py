@@ -132,6 +132,15 @@ def _snapshot_path_has_link_component(path):
     return False
 
 
+def _reject_duplicate_json_object_keys(pairs):
+    """Decode one JSON object while refusing ambiguous duplicate member names."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f'Duplicate JSON object key: {key}')
+        result[key] = value
+    return result
+
 def verify_backup_snapshot(folder):
     """Verify snapshot inventory and hashes without following linked path roots.
 
@@ -155,7 +164,10 @@ def verify_backup_snapshot(folder):
         manifest_path = folder / 'manifest.json'
         if manifest_path.is_symlink() or manifest_path.stat().st_size > 2 * 1024 * 1024:
             return False
-        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        manifest = json.loads(
+            manifest_path.read_text(encoding='utf-8'),
+            object_pairs_hook=_reject_duplicate_json_object_keys,
+        )
         entries = manifest['files']
         if manifest.get('format') != 'storagescope-backup-v1' or not entries:
             return False

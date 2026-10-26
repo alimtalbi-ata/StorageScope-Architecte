@@ -31,6 +31,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Historical PNG export regression test failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_backup_root_link_quarantine_v6249.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'V6.249 backup root link quarantine tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_backup_manifest_duplicate_key_quarantine_v6250.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'V6.250 backup manifest duplicate-key tests failed' }
       - name: Enforce SQLite pagination fixture closure
         shell: pwsh
         run: |
