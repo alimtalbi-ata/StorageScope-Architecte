@@ -353,6 +353,31 @@ def forecast(document, warning_percent=85, critical_percent=95, horizon_days=90)
     }
 
 
+def _capacity_json_object(pairs):
+    """Build a JSON object while rejecting duplicate member names at every depth."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate JSON object key: {key!r}")
+        result[key] = value
+    return result
+
+
+def _capacity_json_constant(token):
+    """Reject NaN/Infinity extensions that are not part of standard JSON."""
+    raise ValueError(f"Non-standard JSON numeric constant: {token}")
+
+
+def load_capacity_history(path: Path):
+    """Read UTF-8 JSON with unambiguous keys and standard finite numeric tokens only."""
+    payload = Path(path).read_text(encoding="utf-8")
+    return json.loads(
+        payload,
+        object_pairs_hook=_capacity_json_object,
+        parse_constant=_capacity_json_constant,
+    )
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Read-only SAN/NAS capacity trend forecast")
     parser.add_argument("input", type=Path, help="UTF-8 JSON matching storagescope.capacity-history.v1")
@@ -361,7 +386,7 @@ def main(argv=None):
     parser.add_argument("--critical-percent", type=float, default=95)
     parser.add_argument("--horizon-days", type=float, default=90)
     args = parser.parse_args(argv)
-    document = json.loads(args.input.read_text(encoding="utf-8"))
+    document = load_capacity_history(args.input)
     report = forecast(document, args.warning_percent, args.critical_percent, args.horizon_days)
     payload = json.dumps(report, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
     if args.output:
