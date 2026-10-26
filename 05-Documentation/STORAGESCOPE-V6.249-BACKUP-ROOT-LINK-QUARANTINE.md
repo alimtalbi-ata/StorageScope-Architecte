@@ -13,7 +13,8 @@ Ce défaut ne modifie pas le contenu d’une sauvegarde et n’était pas démon
 
 - Vérification de chaque composant du chemin absolu avant toute lecture du manifeste.
 - Refus des liens symboliques et des jonctions Windows lorsque `Path.is_junction()` est disponible.
-- Normalisation des segments `.` et `..` sans résolution préalable des liens, afin de ne pas masquer leur présence.
+- Inspection de tous les composants du chemin absolu avant normalisation de `..`, afin qu'une séquence lien/parent ne masque pas le composant lié.
+- Normalisation des segments seulement après validation de la frontière, avant la lecture du manifeste.
 - Rejet explicite d’un chemin qui n’est pas un répertoire.
 - Aucune écriture, suppression ou réparation automatique des données utilisateur : la vérification reste en lecture seule.
 
