@@ -17,6 +17,7 @@ La copie permissive est remplacée par `stage_workflow_fixtures(source_root, tar
 - un fichier déjà présent et identique est laissé en place (opération idempotente) ;
 - un fichier existant divergent est refusé sans modification de ses octets ;
 - les collisions fichier/répertoire, les liens symboliques et les entrées non régulières sont refusés ;
+- la promotion est sans remplacement atomique : contrairement à `Path.replace`, `os.link` échoue si une destination est apparue après le contrôle préalable ; le temporaire est ensuite supprimé ;
 - les erreurs identifient le chemin relatif de la fixture en cause.
 
 Aucun contrôle n'est désactivé. Le runner doit continuer à échouer en présence d'une collision non approuvée plutôt que d'écraser silencieusement un témoin historique.
@@ -25,7 +26,7 @@ Aucun contrôle n'est désactivé. Le runner doit continuer à échouer en prés
 
 Ajout : `04-Tests-et-Qualification/test_historical_workflow_fixture_staging_v6244.py`.
 
-Cinq scénarios couvrent la copie byte-for-byte, l'idempotence, la collision avec conservation de la fixture, la collision fichier/répertoire et l'absence de source.
+Six scénarios couvrent la copie byte-for-byte, l'idempotence, la collision avec conservation de la fixture, la collision fichier/répertoire, l'absence de source et l'apparition concurrente d'un fichier de destination durant la promotion (la fixture concurrente reste intacte).
 
 Commande :
 
