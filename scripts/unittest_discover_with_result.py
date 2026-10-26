@@ -32,6 +32,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--start", required=True, type=Path)
     parser.add_argument("--pattern", required=True)
+    parser.add_argument("--test-selector", action="append", default=[],
+                        help="Run one fully qualified unittest selector; repeat to run several")
     parser.add_argument("--result-token", required=True)
     args = parser.parse_args()
 
@@ -44,7 +46,16 @@ def main() -> int:
 
     started = time.monotonic()
     try:
-        suite = unittest.defaultTestLoader.discover(str(start), pattern=args.pattern)
+        if args.test_selector:
+            # loadTestsFromName does not automatically add the requested test root to sys.path.
+            start_text = str(start)
+            if start_text not in sys.path:
+                sys.path.insert(0, start_text)
+            suite = unittest.TestSuite()
+            for selector in args.test_selector:
+                suite.addTest(unittest.defaultTestLoader.loadTestsFromName(selector))
+        else:
+            suite = unittest.defaultTestLoader.discover(str(start), pattern=args.pattern)
         result = unittest.TextTestRunner(stream=sys.stderr, verbosity=0).run(suite)
         payload = {
             "status": "OK" if result.wasSuccessful() else "FAILED",

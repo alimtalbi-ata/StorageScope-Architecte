@@ -35,6 +35,78 @@ SUMMARY_DETAIL = re.compile(r"^(?P<name>skipped|expected failures|failures|error
 # The two files have distinct purposes; source variant is for legacy tests.
 KNOWN_DIFFERENT_FILES = {"verify-windows-build.py"}
 
+# Exact records from the immutable #39668811238 diagnostic taxonomy, originally
+# assigned low confidence in RELEASE_BUILD_OR_SOURCE_CONTRACT. Current checks
+# do not prove that the original historical root-cause attribution is established.
+LOW_CONFIDENCE_BASELINE_RECORDS = (
+    {"id":"LC-001","taxonomy_key":"test_real_native_schema_passes","baseline_test":"test_real_native_schema_passes (test_qualification_v699.QualificationV699.test_real_native_schema_passes)","selector":"test_qualification_v699.QualificationV699.test_real_native_schema_passes"},
+    {"id":"LC-002","taxonomy_key":"test_scripts","baseline_test":"test_scripts (test_release_contract_v635.ReleaseContract.test_scripts)","selector":"test_release_contract_v635.ReleaseContract.test_scripts"},
+    {"id":"LC-003","taxonomy_key":"test_bootstrap_files_exist: Construire-StorageScope.cmd","baseline_test":"test_bootstrap_files_exist (test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist) (name='Construire-StorageScope.cmd')","selector":"test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist","subtest":"Construire-StorageScope.cmd"},
+    {"id":"LC-004","taxonomy_key":"test_bootstrap_files_exist: build-all-windows.ps1","baseline_test":"test_bootstrap_files_exist (test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist) (name='build-all-windows.ps1')","selector":"test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist","subtest":"build-all-windows.ps1"},
+    {"id":"LC-005","taxonomy_key":"test_bootstrap_files_exist: StorageScope.spec","baseline_test":"test_bootstrap_files_exist (test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist) (name='StorageScope.spec')","selector":"test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist","subtest":"StorageScope.spec"},
+    {"id":"LC-006","taxonomy_key":"test_bootstrap_files_exist: StorageScope.iss","baseline_test":"test_bootstrap_files_exist (test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist) (name='StorageScope.iss')","selector":"test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist","subtest":"StorageScope.iss"},
+    {"id":"LC-007","taxonomy_key":"test_bootstrap_files_exist: requirements-build.txt","baseline_test":"test_bootstrap_files_exist (test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist) (name='requirements-build.txt')","selector":"test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist","subtest":"requirements-build.txt"},
+    {"id":"LC-008","taxonomy_key":"test_bootstrap_files_exist: verify-windows-build.py","baseline_test":"test_bootstrap_files_exist (test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist) (name='verify-windows-build.py')","selector":"test_release_package_v615.TestReleaseV615.test_bootstrap_files_exist","subtest":"verify-windows-build.py"},
+    {"id":"LC-009","taxonomy_key":"test_preflight","baseline_test":"test_preflight (test_release_v636.ReleaseContracts.test_preflight)","selector":"test_release_v636.ReleaseContracts.test_preflight"},
+    {"id":"LC-010","taxonomy_key":"test_cumulative_packaging","baseline_test":"test_cumulative_packaging (test_windows_embedded_campaign_v564.EmbeddedCampaignTests.test_cumulative_packaging)","selector":"test_windows_embedded_campaign_v564.EmbeddedCampaignTests.test_cumulative_packaging"},
+    {"id":"LC-011","taxonomy_key":"test_script_present","baseline_test":"test_script_present (test_windows_install_v576.WindowsInstallQualificationV578.test_script_present)","selector":"test_windows_install_v576.WindowsInstallQualificationV578.test_script_present"},
+    {"id":"LC-012","taxonomy_key":"test_installer_files","baseline_test":"test_installer_files (test_windows_packaging_v563.TestWindowsPackaging563.test_installer_files)","selector":"test_windows_packaging_v563.TestWindowsPackaging563.test_installer_files"},
+    {"id":"LC-013","taxonomy_key":"test_complete_success","baseline_test":"test_complete_success (test_windows_v694.ReleaseQualification.test_complete_success)","selector":"test_windows_v694.ReleaseQualification.test_complete_success"},
+)
+
+
+def build_low_confidence_closure(selector_runs: list[dict]) -> dict:
+    """Link baseline records to actual current test runs; do not overclaim causes."""
+    by_selector = {}
+    for run in selector_runs:
+        for selector in run.get("test_selectors", []):
+            by_selector[selector] = run
+
+    rows = []
+    for record in LOW_CONFIDENCE_BASELINE_RECORDS:
+        run = by_selector.get(record["selector"])
+        passed = bool(
+            run and run.get("status") == "PASS" and run.get("exit_code") == 0
+            and isinstance(run.get("executed"), int)
+            and not isinstance(run.get("executed"), bool)
+            and run.get("executed", 0) >= 1
+        )
+        rows.append({
+            **record,
+            "baseline_run_id": "39668811238",
+            "baseline_category": "RELEASE_BUILD_OR_SOURCE_CONTRACT",
+            "baseline_confidence": "low",
+            "current_test_status": "PASS" if passed else "FAIL_OR_NOT_RUN",
+            "current_tests_executed": run.get("executed") if run else None,
+            "current_exit_code": run.get("exit_code") if run else None,
+            "root_cause_resolution_proven": False,
+            "evidence_basis": "actual current selector execution; shared methods fail if any mapped subTest fails",
+        })
+
+    selectors = list(dict.fromkeys(r["selector"] for r in LOW_CONFIDENCE_BASELINE_RECORDS))
+    selector_status = {}
+    for selector in selectors:
+        run = by_selector.get(selector)
+        selector_status[selector] = "PASS" if (
+            run and run.get("status") == "PASS" and run.get("exit_code") == 0
+            and isinstance(run.get("executed"), int)
+            and not isinstance(run.get("executed"), bool)
+            and run.get("executed", 0) >= 1
+        ) else "FAIL_OR_NOT_RUN"
+
+    all_pass = len(rows) == 13 and all(r["current_test_status"] == "PASS" for r in rows)
+    return {
+        "baseline_run_id": "39668811238",
+        "baseline_failure_records": 13,
+        "unique_current_test_selectors": len(selectors),
+        "all_13_records_mapped": len(rows) == 13 and all(r.get("selector") for r in rows),
+        "current_regression_status": "PASS" if all_pass else "FAIL",
+        "selector_status": selector_status,
+        "records": rows,
+        "historical_root_cause_linkage": "NOT_ESTABLISHED",
+        "interpretation": "PASS proves only that the mapped current tests pass on this HEAD; it does not prove historical causes or remediation commits.",
+    }
+
 
 def classify(output: str) -> dict[str, int]:
     markers = list(CASE.finditer(output))
@@ -346,14 +418,17 @@ def stage_historical_upgrade_workflow(sources: Path, tests: Path) -> None:
 
 
 def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
-              minimum: int, label: str, evidence_dir: Path | None = None) -> dict:
+              minimum: int, label: str, evidence_dir: Path | None = None,
+              test_selectors: tuple[str, ...] = ()) -> dict:
     discovery_runner = root / "scripts" / "unittest_discover_with_result.py"
     if not discovery_runner.is_file():
         raise FileNotFoundError("Authoritative unittest discovery runner is missing: " + str(discovery_runner))
     result_token = uuid.uuid4().hex
     command = [sys.executable, "-B", str(discovery_runner),
-               "--start", str(start), "--pattern", pattern,
-               "--result-token", result_token]
+               "--start", str(start), "--pattern", pattern]
+    for selector in test_selectors:
+        command.extend(["--test-selector", selector])
+    command.extend(["--result-token", result_token])
     # Capture bytes, not decoded text: evidence is saved exactly as received,
     # before the strict decoder is allowed to interpret it.
     completed = subprocess.run(command, cwd=root, env=env, stdout=subprocess.PIPE,
@@ -408,6 +483,7 @@ def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
         }
         return {
             "suite": label,
+            "test_selectors": list(test_selectors),
             "executed": None,
             "minimum": minimum,
             "exit_code": completed.returncode,
@@ -438,7 +514,8 @@ def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
     ok = (completed.returncode == 0 and executed is not None and executed >= minimum
           and terminal["summary_complete"] and terminal["status"] == "OK")
     return {
-        "suite": label, "executed": executed, "minimum": minimum,
+        "suite": label, "test_selectors": list(test_selectors),
+        "executed": executed, "minimum": minimum,
         "exit_code": completed.returncode, "status": "PASS" if ok else "FAIL",
         "terminal_unittest_summary": terminal,
         "symptom_counts": output_signatures,
@@ -457,9 +534,13 @@ def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
 
 
 def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
-            report: Path | None = None) -> dict:
+            report: Path | None = None,
+            focus_low_confidence_contracts_only: bool = False) -> dict:
     if minimum_tests < 1 or minimum_nested < 0:
         raise ValueError("Invalid minimum test count")
+    if focus_low_confidence_contracts_only:
+        minimum_tests = 1
+        minimum_nested = 0
     if not (repo / "03-Sources").is_dir() or not (repo / "04-Tests-et-Qualification").is_dir():
         raise FileNotFoundError("StorageScope source/test directories are missing")
     with tempfile.TemporaryDirectory(prefix="storagescope-regression-") as temp:
@@ -511,19 +592,35 @@ def execute(repo: Path, minimum_tests: int = 958, minimum_nested: int = 8,
         env["PYTHONPATH"] = os.pathsep.join(filter(None, [
             str(tests), str(sources), str(checkout), env.get("PYTHONPATH")]))
         evidence_dir = report.parent if report else None
-        rows = [run_suite(tests, "test_*.py", checkout, env, minimum_tests,
-                          "historical", evidence_dir)]
-        for nested in nested_files:
-            rows.append(run_suite(nested.parent, nested.name, checkout, env, 1,
-                                  nested.relative_to(tests).as_posix(), evidence_dir))
-    nested_count = sum(r["executed"] or 0 for r in rows[1:])
-    passed = all(r["status"] == "PASS" for r in rows) and nested_count >= minimum_nested
+        if focus_low_confidence_contracts_only:
+            selectors = list(dict.fromkeys(r["selector"] for r in LOW_CONFIDENCE_BASELINE_RECORDS))
+            rows = []
+            for index, selector in enumerate(selectors, start=1):
+                safe_selector = re.sub(r"[^A-Za-z0-9._-]+", "_", selector).strip("._")
+                rows.append(run_suite(
+                    tests, "test_*.py", checkout, env, 1,
+                    f"low-confidence-{index:02d}-{safe_selector}", evidence_dir,
+                    (selector,),
+                ))
+            nested_count = 0
+            low_confidence_closure = build_low_confidence_closure(rows)
+            passed = all(r["status"] == "PASS" for r in rows) and low_confidence_closure["current_regression_status"] == "PASS"
+        else:
+            rows = [run_suite(tests, "test_*.py", checkout, env, minimum_tests, "historical", evidence_dir)]
+            for nested in nested_files:
+                rows.append(run_suite(nested.parent, nested.name, checkout, env, 1, nested.relative_to(tests).as_posix(), evidence_dir))
+            nested_count = sum(r["executed"] or 0 for r in rows[1:])
+            passed = all(r["status"] == "PASS" for r in rows) and nested_count >= minimum_nested
+            low_confidence_closure = None
     data = {"status": "PASS" if passed else "FAIL",
             "generated_utc": datetime.now(timezone.utc).isoformat(),
             "main_minimum": minimum_tests, "nested_minimum": minimum_nested,
             "nested_executed": nested_count, "suites": rows,
             "evidence": "actual_unittest_subprocesses",
-            "qualification": "tests_only_not_windows_binary"}
+            "execution_mode": "targeted_low_confidence_contracts" if focus_low_confidence_contracts_only else "full_historical_suite",
+            "qualification": "targeted_tests_only_not_windows_binary" if focus_low_confidence_contracts_only else "tests_only_not_windows_binary"}
+    if low_confidence_closure is not None:
+        data["low_confidence_closure"] = low_confidence_closure
     if report:
         report.parent.mkdir(parents=True, exist_ok=True)
         pending = report.with_name(report.name + ".tmp")
@@ -542,11 +639,14 @@ def main() -> int:
     parser.add_argument("--repo", required=True, type=Path)
     parser.add_argument("--minimum-tests", type=int, default=958)
     parser.add_argument("--minimum-nested-tests", type=int, default=8)
+    parser.add_argument("--focus-low-confidence-contracts-only", action="store_true",
+                        help="Run the 8 current selectors mapped to 13 low-confidence baseline records")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     try:
         result = execute(args.repo.resolve(), args.minimum_tests,
-                         args.minimum_nested_tests, args.report)
+                         args.minimum_nested_tests, args.report,
+                         args.focus_low_confidence_contracts_only)
         print("HISTORICAL_SUITE_RESULT: " + result["status"])
         return 0 if result["status"] == "PASS" else 1
     except Exception as exc:
