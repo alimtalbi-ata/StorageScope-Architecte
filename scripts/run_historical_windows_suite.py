@@ -21,6 +21,12 @@ import sys
 import tempfile
 import uuid
 
+# Resolve the repository root when this script is invoked by absolute path.
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+from tools.strict_subprocess_output import decode_subprocess_output
+
 COUNT = re.compile(r"\bRan\s+(\d+)\s+tests?\s+in\b")
 CASE = re.compile(r"^(ERROR|FAIL):\s+(.+)$", re.MULTILINE)
 RESULT_SUMMARY = re.compile(r"^(?P<status>OK|FAILED)(?:\s*\((?P<details>[^()]*)\))?\s*$")
@@ -250,28 +256,87 @@ def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
     command = [sys.executable, "-B", str(discovery_runner),
                "--start", str(start), "--pattern", pattern,
                "--result-token", result_token]
+    # Capture bytes, not decoded text: evidence is saved exactly as received,
+    # before the strict decoder is allowed to interpret it.
     completed = subprocess.run(command, cwd=root, env=env, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, encoding="utf-8",
-                               errors="replace", check=False)
-    print(f"===== {label} =====\n{completed.stdout}", flush=True)
-    # Persist complete, unmodified subprocess output outside the temporary checkout.
-    # A failed build must retain enough evidence to reproduce every assertion.
+                               stderr=subprocess.STDOUT, check=False)
+    raw_output = completed.stdout
+    if not isinstance(raw_output, bytes):
+        raise TypeError("subprocess output capture did not return raw bytes")
+    raw_sha256 = hashlib.sha256(raw_output).hexdigest()
+
     log_evidence = {}
     if evidence_dir is not None:
         evidence_dir.mkdir(parents=True, exist_ok=True)
         safe_label = re.sub(r"[^A-Za-z0-9._-]+", "_", label).strip("._") or "suite"
         log_name = f"historical-suite-{safe_label}.log"
         log_path = evidence_dir / log_name
-        payload = completed.stdout.encode("utf-8")
         pending = log_path.with_name(log_path.name + ".tmp")
-        pending.write_bytes(payload)
+        pending.write_bytes(raw_output)
         pending.replace(log_path)
-        log_evidence = {"log_file": log_name,
-                        "log_sha256": hashlib.sha256(payload).hexdigest(),
-                        "log_bytes": len(payload)}
-    terminal = parse_terminal_summary(completed.stdout, expected_token=result_token)
+        log_evidence = {
+            "log_file": log_name,
+            "log_sha256": raw_sha256,
+            "log_bytes": len(raw_output),
+            "log_encoding": "raw_subprocess_bytes",
+        }
+
+    try:
+        output, decode_provenance = decode_subprocess_output(raw_output)
+    except (ValueError, TypeError) as exc:
+        problem = str(exc)
+        print(
+            f"===== {label} =====\n"
+            f"HISTORICAL_SUBPROCESS_OUTPUT_REJECTED: {problem}; "
+            f"raw_sha256={raw_sha256}; raw_bytes={len(raw_output)}",
+            flush=True,
+        )
+        terminal = {
+            "status": "UNKNOWN",
+            "summary_line": None,
+            "tests_run": None,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0,
+            "expected_failures": 0,
+            "unexpected_successes": 0,
+            "summary_complete": False,
+            "trailing_output_lines": 0,
+            "problems": [
+                "subprocess output decoding rejected: " + problem,
+                "result was not parsed as text",
+            ],
+            "summary_source": "strict_utf8_subprocess",
+        }
+        return {
+            "suite": label,
+            "executed": None,
+            "minimum": minimum,
+            "exit_code": completed.returncode,
+            "status": "FAIL",
+            "terminal_unittest_summary": terminal,
+            "symptom_counts": {},
+            "captured_output_symptom_counts": {},
+            "symptom_counts_scope": (
+                "not classified because strict UTF-8 decoding was rejected"
+            ),
+            "subprocess_output_decoding": {
+                "status": "REJECTED",
+                "decoder": "utf-8-strict",
+                "lossy_decoding_used": False,
+                "raw_byte_count": len(raw_output),
+                "raw_sha256": raw_sha256,
+                "error": problem,
+            },
+            **log_evidence,
+        }
+
+    if decode_provenance["payload_sha256"] != raw_sha256:
+        raise RuntimeError("subprocess raw-byte digest changed across strict decoding")
+    print(f"===== {label} =====\n{output}", flush=True)
+    terminal = parse_terminal_summary(output, expected_token=result_token)
     executed = terminal["tests_run"]
-    output_signatures = classify(completed.stdout)
+    output_signatures = classify(output)
     ok = (completed.returncode == 0 and executed is not None and executed >= minimum
           and terminal["summary_complete"] and terminal["status"] == "OK")
     return {
@@ -281,10 +346,14 @@ def run_suite(start: Path, pattern: str, root: Path, env: dict[str, str],
         "symptom_counts": output_signatures,
         "captured_output_symptom_counts": output_signatures,
         "symptom_counts_scope": (
-            "all captured subprocess output, including nested unittest runs and "
+            "all decoded UTF-8 subprocess output, including nested unittest runs and "
             "intentional negative controls; use terminal_unittest_summary for "
             "the authoritative status/counts of this suite invocation"
         ),
+        "subprocess_output_decoding": {
+            "status": "ACCEPTED",
+            **decode_provenance,
+        },
         **log_evidence,
     }
 
