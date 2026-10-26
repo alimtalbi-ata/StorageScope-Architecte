@@ -67,6 +67,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_taxonomy_v6237.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_extraction_v6241.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_job_log_decoding_v6242.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_workflow_fixture_staging_v6244.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_subprocess_output_v6243.py' -v
           python -m py_compile tools/strict_subprocess_output.py scripts/run_historical_windows_suite.py
       - name: Classify the original Windows historical job log (diagnostic evidence)
@@ -229,6 +230,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'V6.242 strict historical job-log decoding tests failed' }
           python -m py_compile tools/strict_job_log_payload.py
           if ($LASTEXITCODE -ne 0) { throw 'V6.242 strict job-log decoder syntax failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_workflow_fixture_staging_v6244.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'V6.244 workflow fixture staging tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_subprocess_output_v6243.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'V6.243 strict subprocess output tests failed' }
           python -m py_compile tools/strict_subprocess_output.py scripts/run_historical_windows_suite.py
