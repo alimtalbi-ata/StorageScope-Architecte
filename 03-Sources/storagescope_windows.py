@@ -141,6 +141,11 @@ def _reject_duplicate_json_object_keys(pairs):
         result[key] = value
     return result
 
+def _reject_non_finite_json_constant(value):
+    """Reject JavaScript-style numeric tokens that are not valid standard JSON."""
+    raise ValueError(f'Non-finite JSON numeric constant: {value}')
+
+
 def verify_backup_snapshot(folder):
     """Verify snapshot inventory and hashes without following linked path roots.
 
@@ -167,6 +172,7 @@ def verify_backup_snapshot(folder):
         manifest = json.loads(
             manifest_path.read_text(encoding='utf-8'),
             object_pairs_hook=_reject_duplicate_json_object_keys,
+            parse_constant=_reject_non_finite_json_constant,
         )
         entries = manifest['files']
         if manifest.get('format') != 'storagescope-backup-v1' or not entries:
