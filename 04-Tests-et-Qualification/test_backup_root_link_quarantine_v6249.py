@@ -89,6 +89,20 @@ class BackupRootLinkQuarantineV6249(unittest.TestCase):
         file_path.write_text("not a directory", encoding="utf-8")
         self.assertFalse(MODULE.verify_backup_snapshot(file_path))
 
+    def test_both_qualification_workflows_run_this_regression(self):
+        workflows = (
+            ROOT / ".github" / "workflows" / "governance-review-qualification.yml",
+            ROOT / ".github" / "workflows" / "windows-build.yml",
+        )
+        for workflow in workflows:
+            with self.subTest(workflow=workflow.name):
+                text = workflow.read_text(encoding="utf-8")
+                self.assertIn(
+                    "test_backup_root_link_quarantine_v6249.py",
+                    text,
+                    f"{workflow.name} must run the V6.249 regression explicitly",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
