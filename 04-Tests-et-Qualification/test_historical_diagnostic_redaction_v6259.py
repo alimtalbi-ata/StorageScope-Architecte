@@ -72,3 +72,17 @@ class HistoricalDiagnosticRedactionV6259(unittest.TestCase):
             "private user", "secret report.csv",
         )
         self.assertIn("<ABS_PATH>", evidence["exception_message"])
+
+    def test_unquoted_path_preserves_following_secret_redaction(self):
+        evidence = self.assert_no_leak(
+            r"RuntimeError: failed at D:\a\StorageScope-Architecte\private\file.py "
+            r"token=abc123 password=do-not-store "
+            r"ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+            "D:\\a", "abc123", "do-not-store",
+            "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+        )
+        message = evidence["exception_message"]
+        self.assertIn("<ABS_PATH>", message)
+        self.assertIn("token=<REDACTED>", message)
+        self.assertIn("password=<REDACTED>", message)
+        self.assertIn("<REDACTED_GITHUB_TOKEN>", message)
