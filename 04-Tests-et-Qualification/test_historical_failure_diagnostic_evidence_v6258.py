@@ -15,7 +15,7 @@ from tools.classify_windows_regression_log import (
 
 
 class HistoricalFailureDiagnosticEvidenceV6258(unittest.TestCase):
-    def _report(self, detail):
+    def _report(self, detail, source='synthetic.log'):
         log = (
             "ERROR: test_import (sample.Test.test_import)\n"
             + detail
@@ -23,7 +23,7 @@ class HistoricalFailureDiagnosticEvidenceV6258(unittest.TestCase):
         )
         entries, summary = parse_unittest_log(log, expected_tests=1)
         self.assertTrue(summary["counts_match_summary"], summary["summary_problem"])
-        return make_report(entries, summary, "synthetic-test", "synthetic.log")
+        return make_report(entries, summary, "synthetic-test", source)
 
     def test_report_contains_exception_and_repository_relative_frame_without_raw_detail(self):
         detail = (
@@ -116,6 +116,12 @@ class HistoricalFailureDiagnosticEvidenceV6258(unittest.TestCase):
         self.assertNotIn(token, markdown)
         self.assertNotIn("token=private", markdown)
         self.assertNotIn("D:\\a\\StorageScope-Architecte", markdown)
+
+    def test_report_reduces_absolute_source_log_to_safe_basename(self):
+        report = self._report("RuntimeError: sample", r"D:\\a\\runner\\_temp\\historical-windows-job.log")
+        self.assertEqual(report["source_log"], "historical-windows-job.log")
+        self.assertNotIn("D:", report["source_log"])
+        self.assertNotIn("runner", report["source_log"])
 
     def test_diagnostic_projection_never_retains_python_source_excerpt(self):
         detail = (
