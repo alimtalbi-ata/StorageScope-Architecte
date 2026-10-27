@@ -117,6 +117,15 @@ class HistoricalFailureDiagnosticEvidenceV6258(unittest.TestCase):
         self.assertNotIn("token=private", markdown)
         self.assertNotIn("D:\\a\\StorageScope-Architecte", markdown)
 
+    def test_source_contract_assertion_does_not_echo_actual_source_body(self):
+        body = "PRIVATE-SOURCE-CONTENT " * 80
+        detail = "AssertionError: 'required phrase' not found in '" + body + "'"
+        evidence = build_bounded_diagnostics(detail)
+        self.assertIn("required phrase", evidence["exception_message"])
+        self.assertIn("<source excerpt omitted>", evidence["exception_message"])
+        self.assertNotIn("PRIVATE-SOURCE-CONTENT", evidence["exception_message"])
+        self.assertLess(len(evidence["exception_message"]), 150)
+
     def test_report_reduces_absolute_source_log_to_safe_basename(self):
         report = self._report("RuntimeError: sample", r"D:\\a\\runner\\_temp\\historical-windows-job.log")
         self.assertEqual(report["source_log"], "historical-windows-job.log")
