@@ -4,6 +4,31 @@ import argparse, json, pathlib, sys, datetime
 REQUIRED_NATIVE_CHECKS = ['release_version', 'build_launcher', 'release_manifest', 'compiled_executable', 'executable_version', 'executable_self_test', 'installer_present']
 NAMES = {"native": "windows-qualification-report.json", "installer": "windows-installer-smoke-report.json", "portable": "windows-portable-smoke-report.json"}
 
+def _strict_object_pairs(pairs):
+    """Build a JSON object only when every member name is unique, at every depth."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON object key: " + repr(key))
+        result[key] = value
+    return result
+
+
+def _reject_nonstandard_constant(token):
+    """Reject NaN/Infinity tokens, which are not valid interoperable JSON."""
+    raise ValueError("non-standard JSON constant is forbidden: " + token)
+
+
+def _load_qualification_json(path):
+    """Read one qualification report as strict UTF-8 JSON, without ambiguous keys."""
+    text = path.read_text(encoding="utf-8-sig")
+    return json.loads(
+        text,
+        object_pairs_hook=_strict_object_pairs,
+        parse_constant=_reject_nonstandard_constant,
+    )
+
+
 def consolidate(root, min_timestamp=None):
     root = pathlib.Path(root)
     version = (root / "07-Manifestes/VERSION").read_text(encoding="utf-8").strip()
@@ -18,7 +43,7 @@ def consolidate(root, min_timestamp=None):
             if min_timestamp is not None and path.stat().st_mtime < min_timestamp:
                 reports[name] = {"status": "FAIL", "reason": "stale report"}
                 continue
-            data = json.loads(path.read_text(encoding="utf-8-sig"))
+            data = _load_qualification_json(path)
             status = data.get("overall") if name == "native" else data.get("status")
             if not isinstance(data, dict) or status != "PASS" or data.get("version") != version:
                 reports[name] = {"status": "FAIL", "reason": "status/version mismatch"}

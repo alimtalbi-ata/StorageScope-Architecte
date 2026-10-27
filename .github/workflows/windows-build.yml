@@ -43,6 +43,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'V6.255 current capacity threshold tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_capacity_json_strict_v6256.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'V6.256 strict capacity JSON tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_qualification_evidence_json_strict_v6257.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'V6.257 strict qualification evidence JSON tests failed' }
       - name: Enforce SQLite pagination fixture closure
         shell: pwsh
         run: |
