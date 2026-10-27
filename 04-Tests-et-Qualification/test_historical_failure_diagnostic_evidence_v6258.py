@@ -68,6 +68,11 @@ class HistoricalFailureDiagnosticEvidenceV6258(unittest.TestCase):
         self.assertIn("token=<REDACTED>", displayed)
         self.assertIn("password=<REDACTED>", displayed)
         self.assertIn("<ABS_PATH>", displayed)
+        # Windows OSError text often contains repr(path), with doubled backslashes.
+        escaped_path = r"FileNotFoundError: missing 'D:\\a\\StorageScope-Architecte\\private\\file.py'"
+        escaped_evidence = build_bounded_diagnostics(escaped_path)
+        self.assertNotIn("D:", escaped_evidence["exception_message"])
+        self.assertIn("<ABS_PATH>", escaped_evidence["exception_message"])
 
     def test_output_bounds_long_message_and_traceback(self):
         frame_lines = [
