@@ -414,6 +414,14 @@ def build_bounded_diagnostics(detail: str) -> dict:
         "raw_detail_retained": False,
     }
 
+def _safe_source_label(source) -> str:
+    """Publish a basename, not the runner's absolute temporary path."""
+    value = str(source or "").replace("\\", "/").rsplit("/", 1)[-1]
+    if value in {"", ".", ".."} or re.fullmatch(r"[A-Za-z0-9._-]{1,120}", value) is None:
+        return "historical-job-log"
+    return value
+
+
 def make_report(entries, summary, run_id, source):
     counts = {}
     items = []
@@ -428,7 +436,7 @@ def make_report(entries, summary, run_id, source):
         "author": "Abdelhalim Talbi",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "run_id": run_id,
-        "source_log": source,
+        "source_log": _safe_source_label(source),
         "summary": summary,
         "classification_is_heuristic": True,
         "diagnostic_evidence_scope": "bounded_sanitized_exception_and_relative_traceback_frames",
