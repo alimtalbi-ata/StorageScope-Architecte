@@ -337,7 +337,7 @@ SECRET_PATTERNS = (
     (re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"), "<REDACTED_GITHUB_TOKEN>"),
     (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b", re.I), "<REDACTED_GITHUB_TOKEN>"),
     (re.compile(r"(?i)\bBearer\s+\S+"), "Bearer <REDACTED>"),
-    (re.compile(r"(?i)\b(token|password|secret|api[_-]?key)\s*([:=])\s*([^\s,;]+)"),
+    (re.compile(r"""(?i)\b(token|password|secret|api[_-]?key)\s*([:=])\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)"""),
      r"\1\2<REDACTED>"),
 )
 
@@ -374,12 +374,12 @@ def _sanitize_diagnostic_text(value: str) -> str:
     # full drive-qualified path (not merely its directory prefix).
     text = text.replace("\\\\", "\\")
     text = re.sub(
-        r"(?i)(?<![A-Za-z0-9_])[A-Z]:[\\/](?:[^\\/\s\"']+[\\/])*[^\\/\s\"']*",
+        r"(?i)(?<![A-Za-z0-9_])[A-Z]:[\\/][^\"'\r\n<>|]*?(?=(?:\s+(?:token|password|secret|api[_-]?key)\s*[:=]|\s+Bearer\s+\S+|\s+gh[pousr]_[A-Za-z0-9_]{20,}\b|\s+github_pat_[A-Za-z0-9_]{20,}\b|[\"']|$))",
         "<ABS_PATH>",
         text,
     )
     text = re.sub(
-        r"(?i)/(?:home|Users|runner|tmp|workspace)/[^\s\"']+",
+        r"(?i)/(?:home|Users|runner|tmp|workspace)/[^\"'\r\n<>|]*?(?=(?:\s+(?:token|password|secret|api[_-]?key)\s*[:=]|\s+Bearer\s+\S+|\s+gh[pousr]_[A-Za-z0-9_]{20,}\b|\s+github_pat_[A-Za-z0-9_]{20,}\b|[\"']|$))",
         "<ABS_PATH>",
         text,
     )

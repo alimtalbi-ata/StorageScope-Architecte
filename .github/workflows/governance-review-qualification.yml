@@ -40,6 +40,7 @@ jobs:
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_storage_capacity_json_strict_v6256.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_qualification_evidence_json_strict_v6257.py' -v
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_diagnostic_evidence_v6258.py' -v
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_diagnostic_redaction_v6259.py' -v
       - name: Enforce SQLite pagination fixture closure
         env:
           PYTHONPATH: 03-Sources
@@ -224,6 +225,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'V6.257 strict qualification evidence JSON tests failed' }
           python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_failure_diagnostic_evidence_v6258.py' -v
           if ($LASTEXITCODE -ne 0) { throw 'V6.258 historical diagnostic evidence tests failed' }
+          python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_diagnostic_redaction_v6259.py' -v
+          if ($LASTEXITCODE -ne 0) { throw 'V6.259 diagnostic redaction tests failed' }
       - name: Enforce SQLite pagination fixture closure
         shell: pwsh
         run: |
