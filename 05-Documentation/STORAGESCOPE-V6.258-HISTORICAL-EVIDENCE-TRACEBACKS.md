@@ -7,7 +7,7 @@
 
 ## Objectif
 
-Rendre le triage historique contrôlable test par test sans exporter les traceback complets, les lignes de code ou des éventuels secrets. Le rapport V2 conserve, par FAIL/ERROR, le type et le message d'exception après assainissement, jusqu'à huit frames relatives, la longueur du détail source et son empreinte SHA-256. Le détail brut n'est jamais recopié dans le rapport.
+Rendre le triage historique contrôlable test par test sans exporter les traceback complets, les lignes de code ou des éventuels secrets. Le rapport V2 conserve, par FAIL/ERROR, le type et le message d'exception après assainissement, jusqu'à huit frames relatives, la longueur du détail normalisé et son empreinte SHA-256. Le parseur historique nettoie timestamps ANSI et espaces de bord avant cette empreinte ; le traceback brut n'est jamais recopié dans le rapport.
 
 Le classement de catégorie reste heuristique. Une catégorie attribuée à chaque symptôme ne signifie pas que sa cause racine est prouvée, ni que le symptôme est corrigé.
 
