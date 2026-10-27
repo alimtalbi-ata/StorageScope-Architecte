@@ -325,29 +325,119 @@ def extract_failed_unittest_block_from_job_log(text: str) -> tuple[str, dict[str
     return bounded, bounds
 
 
+
+DIAGNOSTIC_FRAME = re.compile(
+    r"^\s*File\s+[\"'](?P<file>.+?)[\"'],\s+line\s+(?P<line>\d+),\s+in\s+(?P<function>.+?)\s*$"
+)
+DIAGNOSTIC_EXCEPTION = re.compile(
+    r"^(?P<type>(?:[A-Za-z_]\w*\.)*[A-Za-z_]\w*(?:Error|Exception|Warning)):\s*(?P<message>.*)$"
+)
+SECRET_PATTERNS = (
+    (re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"), "<REDACTED_GITHUB_TOKEN>"),
+    (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b", re.I), "<REDACTED_GITHUB_TOKEN>"),
+    (re.compile(r"(?i)\bBearer\s+\S+"), "Bearer <REDACTED>"),
+    (re.compile(r"(?i)\b(token|password|secret|api[_-]?key)\s*([:=])\s*([^\s,;]+)"),
+     r"\1\2<REDACTED>"),
+)
+
+
+def _relative_diagnostic_path(value: str) -> str:
+    """Keep repository-relative traceback locations; never publish runner roots."""
+    normalized = value.replace("\\", "/")
+    lowered = normalized.lower()
+    markers = ("/storagescope-architecte/", "/checkout/")
+    candidates = [(lowered.rfind(marker), marker) for marker in markers]
+    index, marker = max(candidates, key=lambda item: item[0])
+    if index >= 0:
+        relative = normalized[index + len(marker):]
+    else:
+        relative = normalized.rsplit("/", 1)[-1]
+        if not relative or relative == normalized and (":\\" in value or value.startswith("/")):
+            relative = "<external>"
+    relative = relative.replace("\\", "/").strip("/")
+    if not relative or relative in {".", ".."} or relative.startswith("../"):
+        return "<external>"
+    return relative[:240]
+
+
+def _sanitize_diagnostic_text(value: str) -> str:
+    """Redact likely credentials and absolute runner paths from displayed messages."""
+    text = ANSI.sub("", value).replace("\x00", "")
+    text = re.sub(
+        r"(?i)\b[A-Z]:[\\/](?:[^\\/\s]+[\\/]){1,}",
+        "<ABS_PATH>/",
+        text,
+    )
+    text = re.sub(
+        r"(?i)/(?:home|Users|runner|tmp|workspace)/[^\s\"']+",
+        "<ABS_PATH>",
+        text,
+    )
+    for pattern, replacement in SECRET_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return " ".join(text.split())[:500]
+
+
+def build_bounded_diagnostics(detail: str) -> dict:
+    """Retain useful error context without retaining source excerpts or full tracebacks."""
+    if not isinstance(detail, str):
+        detail = ""
+    raw = detail.encode("utf-8", errors="strict")
+    lines = detail.splitlines()
+    frames = []
+    exception = None
+    for line in lines:
+        frame_match = DIAGNOSTIC_FRAME.match(line)
+        if frame_match:
+            frames.append({
+                "file": _relative_diagnostic_path(frame_match.group("file")),
+                "line": int(frame_match.group("line")),
+                "function": _sanitize_diagnostic_text(frame_match.group("function"))[:100],
+            })
+        exception_match = DIAGNOSTIC_EXCEPTION.match(line.strip())
+        if exception_match:
+            exception = {
+                "type": exception_match.group("type")[-100:],
+                "message": _sanitize_diagnostic_text(exception_match.group("message")),
+            }
+    return {
+        "exception_type": exception["type"] if exception else None,
+        "exception_message": exception["message"] if exception else "",
+        "traceback_frames": frames[-8:],
+        "detail_sha256": hashlib.sha256(raw).hexdigest(),
+        "detail_chars": len(detail),
+        "raw_detail_retained": False,
+    }
+
 def make_report(entries, summary, run_id, source):
     counts = {}
+    items = []
     for entry in entries:
         bucket = counts.setdefault(entry["category"], Counter())
         bucket[entry["kind"]] += 1
+        item = {k: v for k, v in entry.items() if k != "detail"}
+        item["diagnostics"] = build_bounded_diagnostics(entry.get("detail", ""))
+        items.append(item)
     return {
-        "schema": "storagescope.windows-historical-failure-taxonomy.v1",
+        "schema": "storagescope.windows-historical-failure-taxonomy.v2",
         "author": "Abdelhalim Talbi",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "run_id": run_id,
         "source_log": source,
         "summary": summary,
         "classification_is_heuristic": True,
+        "diagnostic_evidence_scope": "bounded_sanitized_exception_and_relative_traceback_frames",
         "unclassified_count": counts.get("OTHER_NEEDS_MANUAL_TRIAGE", Counter()).total(),
         "categories": [
             {"category": name, "description": DESCRIPTIONS[name], "failures": bucket["FAIL"],
              "errors": bucket["ERROR"], "total": bucket["FAIL"] + bucket["ERROR"]}
             for name, bucket in sorted(counts.items())
         ],
-        "items": [{k: v for k, v in entry.items() if k != "detail"} for entry in entries],
+        "items": items,
         "limitations": [
             "Classification is heuristic and does not prove a defect is fixed.",
-            "Broad release/build-contract categories require full-traceback review.",
+            "Bounded traceback evidence improves auditability but does not establish historical root cause or prove a fix.",
+            "Full raw traceback/source excerpts are not retained; per-record detail SHA-256 preserves a comparison fingerprint.",
             "Zero codec-error matches only describes this log, not encoding correctness in general.",
             "A missing, duplicated, truncated, inconsistent, zero-count FAILED, or trailing-output unittest summary fails closed; use --expected-tests for a known historical suite.",
             "For complete workflow logs, --extract-failed-unittest-block is explicit and fail-closed: it requires one failed unittest invocation and rejects ambiguous summaries or post-summary test records.",
@@ -378,9 +468,21 @@ def render_markdown(report):
              "|---|---:|---:|---:|---|"]
     for c in report["categories"]:
         lines.append("| " + c["category"] + " | " + str(c["failures"]) + " | " + str(c["errors"]) + " | " + str(c["total"]) + " | " + c["description"].replace("|", "\\|") + " |")
-    lines += ["", "## Detail test par test", "", "| Type | Test | Categorie | Signature | Confiance |", "|---|---|---|---|---|"]
+    lines += ["", "## Detail test par test", "", "| Type | Test | Categorie | Signature | Exception | Origine (frames) | Confiance |", "|---|---|---|---|---|---|---|"]
     for item in report["items"]:
-        lines.append("| " + item["kind"] + " | " + item["test"].replace("|", "\\|") + " | " + item["category"] + " | " + item["signature"].replace("|", "\\|") + " | " + item["confidence"] + " |")
+        diagnostic = item.get("diagnostics", {})
+        exception_type = diagnostic.get("exception_type") or "n/a"
+        exception_message = diagnostic.get("exception_message") or "n/a"
+        frames = diagnostic.get("traceback_frames", [])[:2]
+        origin = "; ".join(
+            f"{frame.get('file', '<unknown>')}:{frame.get('line', '?')}::{frame.get('function', '?')}"
+            for frame in frames
+        ) or "n/a"
+        cells = [
+            item["kind"], item["test"], item["category"], item["signature"],
+            exception_type + ": " + exception_message, origin, item["confidence"],
+        ]
+        lines.append("| " + " | ".join(str(cell).replace("|", "\\|").replace("\n", " ") for cell in cells) + " |")
     lines += ["", "Ne desactiver aucun controle historique. Corriger les racines d'import/chemins, fermer les handles SQLite, puis rapprocher les contrats de version et packaging des sources canoniques.", ""]
     return "\n".join(lines)
 
