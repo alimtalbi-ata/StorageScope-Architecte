@@ -364,9 +364,13 @@ def _relative_diagnostic_path(value: str) -> str:
 def _sanitize_diagnostic_text(value: str) -> str:
     """Redact likely credentials and absolute runner paths from displayed messages."""
     text = ANSI.sub("", value).replace("\x00", "")
+    # Some Windows OSError messages embed repr(path), doubling the backslashes.
+    # Normalize that spelling only for displayed diagnostics, then remove the
+    # full drive-qualified path (not merely its directory prefix).
+    text = text.replace("\\\\", "\\")
     text = re.sub(
-        r"(?i)\b[A-Z]:[\\/](?:[^\\/\s]+[\\/]){1,}",
-        "<ABS_PATH>/",
+        r"(?i)(?<![A-Za-z0-9_])[A-Z]:[\\/](?:[^\\/\s\"']+[\\/])*[^\\/\s\"']*",
+        "<ABS_PATH>",
         text,
     )
     text = re.sub(
