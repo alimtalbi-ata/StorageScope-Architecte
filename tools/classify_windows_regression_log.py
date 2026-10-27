@@ -364,6 +364,11 @@ def _relative_diagnostic_path(value: str) -> str:
 def _sanitize_diagnostic_text(value: str) -> str:
     """Redact likely credentials and absolute runner paths from displayed messages."""
     text = ANSI.sub("", value).replace("\x00", "")
+    # unittest source-contract assertions can echo the entire searched source file
+    # in "not found in '<actual>'". Preserve the failed claim, drop the echoed body.
+    source_excerpt = re.search(r"(?i)\s+not found in\s+", text)
+    if source_excerpt:
+        text = text[:source_excerpt.start()] + " <source excerpt omitted>"
     # Some Windows OSError messages embed repr(path), doubling the backslashes.
     # Normalize that spelling only for displayed diagnostics, then remove the
     # full drive-qualified path (not merely its directory prefix).
