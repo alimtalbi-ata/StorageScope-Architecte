@@ -13,7 +13,7 @@ La revue du sanitiseur V6.258 a identifié une fuite résiduelle : les expressio
 
 - Les racines absolues Windows et POSIX sont remplacées en incluant les composants et noms de fichiers contenant des espaces.
 - La reconnaissance des valeurs sensibles comprend les chaînes entre guillemets simples ou doubles.
-- Pour un chemin non cité, le sanitiseur privilégie la confidentialité : le reste de la ligne peut être masqué avec le chemin afin de ne pas laisser fuiter un suffixe ambigu.
+- Pour un chemin non cité, le sanitiseur privilégie la confidentialité : le reste de la ligne peut être masqué avec le chemin afin de ne pas laisser fuiter un suffixe ambigu. Les marqueurs reconnus de champs secrets et de jetons Bearer qui suivent le chemin servent de bornes : la redaction du chemin ne doit pas absorber ces champs.
 - L'empreinte SHA-256 continue d'être calculée à partir du détail d'entrée normalisé du parseur ; elle ne remplace pas le contrôle d'accès et ne publie aucun détail brut.
 - Aucun test existant n'est retiré ; la correction est ajoutée à la gouvernance Linux/Windows et à la qualification native Windows.
 
@@ -23,7 +23,7 @@ Commande ciblée à exécuter :
 
     python -m unittest discover -s 04-Tests-et-Qualification -p 'test_historical_diagnostic_redaction_v6259.py' -v
 
-Les six cas synthétiques couvrent les chemins Windows/POSIX cités ou non cités avec espaces, les secrets multi-mots et la conservation de la redaction Bearer historique. La qualification Windows doit être jugée sur le HEAD exact de cette PR, y compris PyInstaller, Inno Setup, installation/désinstallation, portable et SHA-256.
+Les sept cas synthétiques couvrent les chemins Windows/POSIX cités ou non cités avec espaces, les secrets multi-mots, la conservation de la redaction Bearer et les champs secrets placés après un chemin non cité. La qualification Windows doit être jugée sur le HEAD exact de cette PR, y compris PyInstaller, Inno Setup, installation/désinstallation, portable et SHA-256.
 
 ## Limites
 
