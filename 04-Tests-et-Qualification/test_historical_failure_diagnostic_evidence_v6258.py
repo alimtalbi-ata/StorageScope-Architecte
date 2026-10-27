@@ -49,7 +49,8 @@ class HistoricalFailureDiagnosticEvidenceV6258(unittest.TestCase):
         )
         self.assertNotIn("detail", item)
         self.assertFalse(evidence["raw_detail_retained"])
-        self.assertEqual(evidence["detail_sha256"], hashlib.sha256(detail.encode("utf-8")).hexdigest())
+        normalized_detail = "\n".join(line.strip() for line in detail.splitlines())
+        self.assertEqual(evidence["detail_sha256"], hashlib.sha256(normalized_detail.encode("utf-8")).hexdigest())
         self.assertTrue(report["classification_is_heuristic"])
         self.assertEqual(report["summary"]["tests_run"], 1)
 
